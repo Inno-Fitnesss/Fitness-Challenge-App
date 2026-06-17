@@ -1,0 +1,48 @@
+# IDE
+.idea
+.vscode
+*.swp
+*~
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker
+*.log
+.dockerignore
+
+# Misc
+*.zip
+*.tar.gz
+*.sqlite3
+.ipynb_checkpoints
+.mypy_cache
+.logs/
