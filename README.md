@@ -30,7 +30,7 @@ docker compose up --build
 The frontend talks to the backend through `/api` (Nginx proxies it to the backend) — same origin, no CORS issues.
 
 ## Deployed version (for TAs)
-- **URL:** 🔲 _add VM link_
+- **URL:** http://10.93.27.12:80
 
 ## Local dev (without Docker)
 **Backend:**
