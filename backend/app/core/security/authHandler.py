@@ -9,9 +9,10 @@ class AuthHandler(object):
 
     @staticmethod
     def sign_jwt(user_id : int) -> str:
+        # 1-hour access token for now; refresh token in an httpOnly cookie comes later
         payload = {
             "user_id" : user_id,
-            "expires" : time.time() + 900
+            "expires" : time.time() + 3600
         }
         token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
         return token

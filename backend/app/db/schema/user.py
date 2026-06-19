@@ -1,24 +1,19 @@
 from pydantic import EmailStr, BaseModel
-from typing import Union
+from typing import Optional
 
 class UserInCreate(BaseModel):
-    first_name: str
-    last_name: str
+    username: str
     email: EmailStr
     password: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 class UserOutput(BaseModel):
     id: int
-    first_name: str
-    last_name: str
+    username: str
     email: EmailStr
-
-class UserInUpdate(BaseModel):
-    id: int
-    first_name: Union[str, None] = None
-    last_name: Union[str, None] = None
-    email: Union[EmailStr, None] = None
-    password: Union[str, None] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 class UserInLogin(BaseModel):
     email: EmailStr
