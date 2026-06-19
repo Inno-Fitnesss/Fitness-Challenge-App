@@ -9,3 +9,4 @@ python-multipart
 httpx
 email-validator
 python-decouple
+tzdata
