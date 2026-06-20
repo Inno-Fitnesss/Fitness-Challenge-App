@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WowFit CV Prototype</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="desktop-app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">●│🏃</div>
+        <div>
+          <strong>WowFit</strong>
+          <span>CV Prototype</span>
+        </div>
+      </div>
+
+      <nav class="side-nav">
+        <button class="side-nav-item active" data-view="workout">
+          <span>🏠</span>
+          <span>Тренировка</span>
+        </button>
+        <button class="side-nav-item" data-view="leaderboard">
+          <span>🏆</span>
+          <span>Лидерборд</span>
+        </button>
+      </nav>
+
+      <div class="privacy-note">
+        Видео обрабатывается локально и не отправляется на сервер.
+      </div>
+    </aside>
+
+    <main class="content">
+      <section id="workoutView" class="view active">
+        <header class="page-header">
+          <div>
+            <p class="eyebrow">Computer Vision Test</p>
+            <h1>Проверка упражнений</h1>
+            <p class="subtitle">
+              MediaPipe определяет 33 точки тела, а приложение считает фазы и повторы.
+            </p>
+          </div>
+
+          <div class="header-actions">
+            <button id="startButton" class="button primary">Запустить камеру</button>
+            <button id="resetButton" class="button secondary" disabled>Сбросить</button>
+          </div>
+        </header>
+
+        <section class="exercise-grid">
+          <button class="exercise-card active" data-exercise="squat">
+            <span class="exercise-icon">🏋️</span>
+            <span class="exercise-title">Приседания</span>
+            <span class="exercise-subtitle">Подсчёт повторов</span>
+          </button>
+
+          <button class="exercise-card" data-exercise="pushup">
+            <span class="exercise-icon">💪</span>
+            <span class="exercise-title">Отжимания</span>
+            <span class="exercise-subtitle">Классические / от колен</span>
+          </button>
+
+          <button class="exercise-card" data-exercise="plank">
+            <span class="exercise-icon">⏱️</span>
+            <span class="exercise-title">Планка</span>
+            <span class="exercise-subtitle">Время удержания</span>
+          </button>
+        </section>
+
+        <section id="pushupVariantPanel" class="pushup-variant-panel hidden">
+          <div>
+            <strong>Вариант отжиманий</strong>
+            <p>Выберите технику до начала подхода.</p>
+          </div>
+
+          <div class="segmented-control">
+            <button class="segment active" data-variant="classic">
+              Классические
+            </button>
+            <button class="segment" data-variant="knees">
+              От колен
+            </button>
+          </div>
+        </section>
+
+        <section id="instructions" class="instruction-card"></section>
+
+        <section class="workspace">
+          <div class="camera-column">
+            <div class="camera-card">
+              <div class="camera-stage">
+                <video id="video" autoplay playsinline muted></video>
+                <canvas id="overlay"></canvas>
+
+                <div id="loader" class="loader hidden">
+                  <span class="spinner"></span>
+                  <span id="loaderText">Загрузка модели…</span>
+                </div>
+
+                <div id="cameraPlaceholder" class="camera-placeholder">
+                  <span class="camera-placeholder-icon">📷</span>
+                  <strong>Камера выключена</strong>
+                  <span>Нажмите «Запустить камеру»</span>
+                </div>
+              </div>
+
+              <div id="errorBox" class="error hidden"></div>
+            </div>
+
+            <button id="saveResultButton" class="button save-result" disabled>
+              Сохранить результат в лидерборд
+            </button>
+          </div>
+
+          <aside class="stats-column">
+            <article class="main-result-card">
+              <span id="mainMetricLabel">Приседания</span>
+              <strong id="mainMetricValue">0</strong>
+            </article>
+
+            <div class="metrics-grid">
+              <article class="metric-card">
+                <span>Фаза</span>
+                <strong id="phase">Ожидание</strong>
+              </article>
+
+              <article class="metric-card">
+                <span id="primaryAngleLabel">Угол колена</span>
+                <strong><span id="primaryAngle">—</span>°</strong>
+              </article>
+
+              <article class="metric-card">
+                <span id="secondaryMetricLabel">Сторона</span>
+                <strong id="secondaryMetricValue">—</strong>
+              </article>
+
+              <article class="metric-card">
+                <span>Inference</span>
+                <strong><span id="inferenceTime">—</span> мс</strong>
+              </article>
+            </div>
+
+            <article class="status-card">
+              <span>Статус</span>
+              <strong id="status">Камера выключена</strong>
+            </article>
+
+            <details class="settings-card">
+              <summary>Настройка порогов</summary>
+
+              <div id="dynamicSettings"></div>
+
+              <label class="setting-row">
+                <span>
+                  Минимальная видимость:
+                  <b id="visibilityValue">0.55</b>
+                </span>
+                <input
+                  id="visibilityThreshold"
+                  type="range"
+                  min="0.30"
+                  max="0.90"
+                  step="0.05"
+                  value="0.55"
+                />
+              </label>
+
+              <p id="settingsHint" class="hint"></p>
+            </details>
+          </aside>
+        </section>
+      </section>
+
+      <section id="leaderboardView" class="view">
+        <header class="page-header">
+          <div>
+            <p class="eyebrow">Challenge</p>
+            <h1>Лидерборд</h1>
+            <p class="subtitle">
+              Результаты прототипа сохраняются в localStorage этого браузера.
+            </p>
+          </div>
+
+          <button id="clearLeaderboardButton" class="button secondary">
+            Сбросить результаты
+          </button>
+        </header>
+
+        <section class="summary-grid">
+          <article class="summary-card lime">
+            <span>Ваше место</span>
+            <strong id="currentRank">—</strong>
+          </article>
+          <article class="summary-card orange">
+            <span>Ваши очки</span>
+            <strong id="currentScore">0</strong>
+          </article>
+          <article class="summary-card green">
+            <span>Участников</span>
+            <strong id="participantsCount">0</strong>
+          </article>
+        </section>
+
+        <section class="leaderboard-card">
+          <div class="leaderboard-tabs">
+            <button class="leaderboard-tab active" data-board="individual">
+              Участники
+            </button>
+            <button class="leaderboard-tab" data-board="teams">
+              Команды
+            </button>
+          </div>
+
+          <div id="individualBoard" class="board active">
+            <div id="individualLeaderboardList" class="leaderboard-list"></div>
+          </div>
+
+          <div id="teamsBoard" class="board">
+            <div id="teamLeaderboardList" class="leaderboard-list"></div>
+          </div>
+        </section>
+
+        <section class="score-info">
+          <h2>Система очков</h2>
+          <div class="score-grid">
+            <div>
+              <strong>Приседание</strong>
+              <span>1 очко</span>
+            </div>
+            <div>
+              <strong>Отжимание</strong>
+              <span>2 очка</span>
+            </div>
+            <div>
+              <strong>Планка</strong>
+              <span>1 очко за секунду</span>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
