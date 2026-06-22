@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+const optionalName = (label: string, max: number) =>
+  z
+    .string()
+    .max(max, `${label} не должно превышать ${max} символов`)
+    .refine((val) => val === '' || val.length >= 2, {
+      message: `${label} должно содержать минимум 2 символа`,
+    });
+
 export const signInSchema = z.object({
   email: z
     .string()
@@ -10,21 +18,18 @@ export const signInSchema = z.object({
     .string()
     .min(1, 'Пароль обязателен')
     .min(8, 'Пароль должен содержать минимум 8 символов'),
-  rememberMe: z.boolean(),
 });
 
 export const signUpSchema = z
   .object({
-    firstName: z
+    username: z
       .string()
-      .min(1, 'Имя обязательно')
-      .min(2, 'Имя должно содержать минимум 2 символа')
-      .max(50, 'Имя не должно превышать 50 символов'),
-    lastName: z
-      .string()
-      .min(1, 'Фамилия обязательна')
-      .min(2, 'Фамилия должна содержать минимум 2 символа')
-      .max(100, 'Фамилия не должна превышать 100 символов'),
+      .min(1, 'Имя пользователя обязательно')
+      .min(3, 'Минимум 3 символа')
+      .max(50, 'Максимум 50 символов')
+      .regex(/^[a-zA-Z0-9_]+$/, 'Только латиница, цифры и подчёркивание'),
+    firstName: optionalName('Имя', 50),
+    lastName: optionalName('Фамилия', 100),
     email: z
       .string()
       .min(1, 'Email обязателен')
@@ -35,9 +40,6 @@ export const signUpSchema = z
       .min(1, 'Пароль обязателен')
       .min(8, 'Пароль должен содержать минимум 8 символов'),
     confirmPassword: z.string().min(1, 'Подтвердите пароль'),
-    acceptTerms: z.boolean().refine((val) => val === true, {
-      message: 'Необходимо принять условия использования',
-    }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Пароли не совпадают',

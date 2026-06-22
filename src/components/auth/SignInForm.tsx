@@ -7,7 +7,6 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
-import { Checkbox } from '../ui/Checkbox';
 import { FieldError } from '../ui/FieldError';
 import type { ApiError } from '../../types/auth.types';
 
@@ -25,7 +24,6 @@ export function SignInForm() {
     defaultValues: {
       email: '',
       password: '',
-      rememberMe: false,
     },
     mode: 'onBlur',
   });
@@ -33,10 +31,7 @@ export function SignInForm() {
   const onSubmit = async (values: SignInFormValues) => {
     setApiError(null);
     try {
-      await login(
-        { email: values.email, password: values.password },
-        values.rememberMe,
-      );
+      await login({ email: values.email, password: values.password });
     } catch (error) {
       const apiErr = error as ApiError;
       setApiError(apiErr.message ?? 'Не удалось войти. Попробуйте снова.');
@@ -47,7 +42,7 @@ export function SignInForm() {
     <form
       noValidate
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-6 animate-fade-in"
+      className="space-y-4 animate-fade-in"
       aria-labelledby="tab-signin"
     >
       {apiError && (
@@ -106,12 +101,7 @@ export function SignInForm() {
         <FieldError id="signin-password-error" message={errors.password?.message} />
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <Checkbox
-          id="remember-me"
-          label="Запомнить меня"
-          {...register('rememberMe')}
-        />
+      <div className="flex justify-end">
         <a
           href="#"
           className="text-sm font-medium text-brand hover:text-brand-hover transition-colors duration-150"

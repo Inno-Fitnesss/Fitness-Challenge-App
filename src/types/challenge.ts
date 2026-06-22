@@ -1,6 +1,6 @@
-export type ChallengeType = 'individual' | 'team';
-export type PrivacyType = 'public' | 'private';
-export type ChallengeStatus = 'draft' | 'published';
+export type ChallengeTab = 'mine' | 'participating' | 'archive';
+export type ExerciseStatus = 'not_started' | 'in_progress' | 'completed';
+export type ChallengeStatus = 'active' | 'archived' | 'completed';
 
 export interface Exercise {
   id: string;
@@ -8,6 +8,7 @@ export interface Exercise {
   description: string;
   icon: string;
   reps: number;
+  unit?: 'reps' | 'minutes';
 }
 
 export interface ExerciseTemplate {
@@ -18,26 +19,71 @@ export interface ExerciseTemplate {
   defaultReps: number;
 }
 
+export interface ExerciseProgress {
+  exerciseId: string;
+  name: string;
+  goal: number;
+  completed: number;
+  unit: 'reps' | 'minutes';
+  status: ExerciseStatus;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  username: string;
+  streakDays: number;
+  progressPercent: number;
+  isCurrentUser?: boolean;
+  avatarColor: string;
+}
+
 export interface ChallengeFormValues {
   title: string;
   description: string;
   startDate: string;
   endDate: string;
-  type: ChallengeType;
+  type: 'individual' | 'team';
   goal: number;
-  privacy: PrivacyType;
+  privacy: 'public' | 'private';
 }
 
-export interface Challenge {
-  id: string;
+/** UI model mapped from backend challenge detail */
+export interface ChallengeListItem {
+  id: number;
   title: string;
   description: string;
   startDate: string;
   endDate: string;
-  type: ChallengeType;
-  goal: number;
-  privacy: PrivacyType;
-  exercises: Exercise[];
+  scheduleType: 'daily' | 'weekly';
   status: ChallengeStatus;
-  createdAt: string;
+  participantCount: number;
+  isUnlimited: boolean;
+  isOwner: boolean;
+  joinCode?: string;
+  isPreset: boolean;
+  isPrivate: boolean;
+  joined: boolean;
+  exerciseTags: string[];
+  dateLabel: string;
+}
+
+export interface TodayPlanItem {
+  challenge: ChallengeListItem;
+  progressPercent: number;
+  isCompleted: boolean;
+}
+
+export interface DiscoveryChallenge {
+  id: number;
+  title: string;
+  description: string;
+  isUnlimited: boolean;
+  exerciseTags: string[];
+  participantCount: number;
+}
+
+export interface ChallengeModalData {
+  challenge: ChallengeListItem;
+  exercises: ExerciseProgress[];
+  leaderboard: LeaderboardEntry[];
 }

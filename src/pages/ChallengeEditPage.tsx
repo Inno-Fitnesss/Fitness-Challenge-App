@@ -1,0 +1,33 @@
+import { Link } from 'react-router-dom';
+import { ChevronLeft } from 'lucide-react';
+import { Button } from '../components/ui/Button';
+
+export function ChallengeEditPage() {
+  return (
+    <div className="min-h-screen p-8 lg:p-10">
+      <Link
+        to="/challenges?tab=mine"
+        className="inline-flex items-center gap-1 text-sm text-neutral-muted hover:text-brand mb-6 transition-colors"
+      >
+        <ChevronLeft size={16} />
+        Назад к челленджам
+      </Link>
+
+      <h1 className="text-3xl font-extrabold text-neutral-text mb-2">Редактирование челленджа</h1>
+      <p className="text-neutral-secondary mb-8">
+        Страница в разработке — будет дополнена в следующем заходе.
+      </p>
+
+      <div className="bg-white rounded-3xl shadow-card p-8 max-w-xl">
+        <p className="text-sm text-neutral-muted mb-6">
+          Здесь появится форма редактирования с предзаполненными данными челленджа.
+        </p>
+        <Link to="/challenges/create">
+          <Button variant="secondary" size="md">
+            Пока использовать страницу создания
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}

@@ -1,10 +1,13 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './routes/ProtectedRoute';
+import { AppShell } from './components/layout/AppShell';
 import { AuthPage } from './pages/AuthPage';
 import { Dashboard } from './pages/Dashboard';
+import { ChallengesPage } from './pages/ChallengesPage';
 import { ChallengeCreatePage } from './pages/ChallengeCreatePage';
-import { ProfilePage, ExercisesPage } from './pages/PlaceholderPages';
+import { ChallengeEditPage } from './pages/ChallengeEditPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 function App() {
   return (
@@ -14,10 +17,14 @@ function App() {
           <Route path="/auth" element={<AuthPage />} />
 
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/challenges/create" element={<ChallengeCreatePage />} />
-            <Route path="/exercises" element={<ExercisesPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+            <Route element={<AppShell />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/challenges" element={<ChallengesPage />} />
+              <Route path="/challenges/create" element={<ChallengeCreatePage />} />
+              <Route path="/challenges/:id/edit" element={<ChallengeEditPage />} />
+              <Route path="/challenges/:id" element={<ChallengesPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
           </Route>
 
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
