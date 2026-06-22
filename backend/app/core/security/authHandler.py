@@ -11,7 +11,7 @@ class AuthHandler(object):
     def sign_jwt(user_id : int) -> str:
         payload = {
             "user_id" : user_id,
-            "expires" : time.time() + 900
+            "expires" : time.time() + 3600
         }
         token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
         return token

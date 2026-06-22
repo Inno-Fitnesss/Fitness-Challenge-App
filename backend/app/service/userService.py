@@ -11,19 +11,24 @@ class UserService:
         self.__userRepository = UserRepository(session=session)
 
     def signup(self, user_details: UserInCreate) -> UserOutput:
+        user_details.email = user_details.email.lower()
+
         if self.__userRepository.user_exist_by_email(email=user_details.email):
             raise HTTPException(status_code=400, detail="Please Login")
+        if self.__userRepository.user_exist_by_username(username=user_details.username):
+            raise HTTPException(status_code=400, detail="Username already taken")
 
-        hashed_password = HashHelper.get_password_hash(plain_password=user_details.password)
-        user_details.password = hashed_password
-        return self.__userRepository.create_user(user_data=user_details)
+        password_hash = HashHelper.get_password_hash(plain_password=user_details.password)
+        return self.__userRepository.create_user(user_data=user_details, password_hash=password_hash)
 
     def login(self, login_details: UserInLogin) -> UserWithToken:
+        login_details.email = login_details.email.lower()
+
         if not self.__userRepository.user_exist_by_email(email=login_details.email):
             raise HTTPException(status_code=400, detail="Please create an Account")
 
         user = self.__userRepository.get_user_by_email(email=login_details.email)
-        if HashHelper.verify_password(plain_password=login_details.password, hashed_password=user.password):
+        if HashHelper.verify_password(plain_password=login_details.password, hashed_password=user.password_hash):
             token = AuthHandler.sign_jwt(user_id=user.id)
             if token:
                 return UserWithToken(token=token)

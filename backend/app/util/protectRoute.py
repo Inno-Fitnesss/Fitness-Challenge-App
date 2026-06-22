@@ -31,6 +31,7 @@ def get_current_user(
             user = UserService(session=session).get_user_by_id(payload["user_id"])
             return UserOutput(
                 id=user.id,
+                username=user.username,
                 first_name=user.first_name,
                 last_name=user.last_name,
                 email=user.email
