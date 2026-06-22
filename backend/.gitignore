@@ -43,6 +43,8 @@ desktop.ini
 *.zip
 *.tar.gz
 *.sqlite3
+*.db
+test.db
 .ipynb_checkpoints
 .mypy_cache
 .logs/

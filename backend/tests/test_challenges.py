@@ -755,14 +755,237 @@ class TestArchive:
 # ============================================================
 
 class TestExercisesList:
-    
+
     def test_list_exercises(self, auth_token):
         """Should return list of all exercises"""
         response = client.get(
             "/exercises",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert len(data) >= 3
+
+
+# ============================================================
+# 11. TODAY (/me/today) TESTS
+# ============================================================
+
+class TestToday:
+
+    def _create_today_challenge(self, token, exercise_ids, schedule_type="daily", schedule_days=None):
+        """Helper: create an active challenge that has already started.
+
+        Uses a start_date a few days in the past so the challenge is guaranteed
+        to have started regardless of the server timezone, while a daily schedule
+        keeps it active for the current day.
+        """
+        data = {
+            "name": "Today Challenge",
+            "schedule_type": schedule_type,
+            "start_date": (date.today() - timedelta(days=3)).isoformat(),
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 20}],
+        }
+        if schedule_days is not None:
+            data["schedule_days"] = schedule_days
+        return client.post(
+            "/challenges",
+            json=data,
+            headers={"Authorization": f"Bearer {token}"}
+        )
+
+    def test_today_returns_scheduled_challenge(self, auth_token, exercise_ids):
+        """Should return today's active challenges with exercise progress"""
+        self._create_today_challenge(auth_token, exercise_ids)
+
+        response = client.get(
+            "/me/today",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Today Challenge"
+        assert len(data[0]["exercises"]) == 1
+        assert data[0]["exercises"][0]["clean_today"] == 0
+        assert data[0]["exercises"][0]["closed"] is False
+
+    def test_today_excludes_future_challenge(self, auth_token, challenge_id):
+        """Should not include challenges that start in the future"""
+        # the challenge_id fixture starts tomorrow
+        response = client.get(
+            "/me/today",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_today_excludes_unscheduled_weekday(self, auth_token, exercise_ids):
+        """Should not include a weekly challenge not scheduled for today"""
+        today_weekday = date.today().isoweekday()
+        # exclude today and the adjacent weekday so the test is robust even if the
+        # server's local date differs from the test machine's by a timezone offset
+        prev_weekday = today_weekday - 1 or 7
+        excluded = {today_weekday, prev_weekday}
+        other_days = [d for d in range(1, 8) if d not in excluded][:2]
+        self._create_today_challenge(
+            auth_token, exercise_ids, schedule_type="weekly", schedule_days=other_days
+        )
+
+        response = client.get(
+            "/me/today",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_today_reflects_submitted_progress(self, auth_token, exercise_ids):
+        """Should reflect submitted reps in clean_today"""
+        create = self._create_today_challenge(auth_token, exercise_ids)
+        challenge_id = create.json()["id"]
+        challenge_exercise_id = create.json()["exercises"][0]["challenge_exercise_id"]
+
+        client.post(
+            f"/challenges/{challenge_id}/sessions",
+            json={
+                "challenge_exercise_id": challenge_exercise_id,
+                "total_reps": 12,
+                "clean_reps": 10
+            },
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+
+        response = client.get(
+            "/me/today",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        exercise = response.json()[0]["exercises"][0]
+        assert exercise["clean_today"] == 10
+        assert exercise["closed"] is False
+
+    def test_today_requires_auth(self):
+        """Should require authentication"""
+        response = client.get("/me/today")
+        assert response.status_code == 401
+
+
+# ============================================================
+# 12. AUTH TESTS
+# ============================================================
+
+class TestAuthSignup:
+
+    def test_signup_success(self):
+        """Should register a new user"""
+        response = client.post("/auth/signup", json={
+            "username": "newuser",
+            "email": "new@example.com",
+            "password": "Test123!",
+            "first_name": "New",
+            "last_name": "User"
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["username"] == "newuser"
+        assert data["email"] == "new@example.com"
+
+    def test_signup_fails_with_duplicate_email(self):
+        """Should fail if email is already registered"""
+        client.post("/auth/signup", json={
+            "username": "userA", "email": "dup@example.com", "password": "Test123!"
+        })
+        response = client.post("/auth/signup", json={
+            "username": "userB", "email": "dup@example.com", "password": "Test123!"
+        })
+        assert response.status_code == 400
+
+    def test_signup_fails_with_duplicate_username(self):
+        """Should fail if username is already taken"""
+        client.post("/auth/signup", json={
+            "username": "taken", "email": "first@example.com", "password": "Test123!"
+        })
+        response = client.post("/auth/signup", json={
+            "username": "taken", "email": "second@example.com", "password": "Test123!"
+        })
+        assert response.status_code == 400
+
+    def test_signup_fails_with_invalid_email(self):
+        """Should fail validation for a malformed email"""
+        response = client.post("/auth/signup", json={
+            "username": "bademail", "email": "not-an-email", "password": "Test123!"
+        })
+        assert response.status_code == 422
+
+    def test_signup_fails_with_missing_fields(self):
+        """Should fail validation when required fields are missing"""
+        response = client.post("/auth/signup", json={"username": "incomplete"})
+        assert response.status_code == 422
+
+
+class TestAuthLogin:
+
+    def test_login_success(self, auth_token):
+        """Should return a token on valid credentials"""
+        assert auth_token is not None
+        assert isinstance(auth_token, str)
+
+    def test_login_fails_with_wrong_password(self, auth_token):
+        """Should fail with an incorrect password"""
+        response = client.post("/auth/login", json={
+            "email": "test@example.com", "password": "WrongPassword!"
+        })
+        assert response.status_code == 400
+
+    def test_login_fails_for_nonexistent_user(self):
+        """Should fail for an email that is not registered"""
+        response = client.post("/auth/login", json={
+            "email": "ghost@example.com", "password": "Test123!"
+        })
+        assert response.status_code == 400
+
+    def test_login_fails_with_invalid_email(self):
+        """Should fail validation for a malformed email"""
+        response = client.post("/auth/login", json={
+            "email": "not-an-email", "password": "Test123!"
+        })
+        assert response.status_code == 422
+
+
+class TestAuthProtectedRoutes:
+
+    def test_protected_route_without_token(self):
+        """Should reject requests with no Authorization header"""
+        response = client.get("/me")
+        assert response.status_code == 401
+
+    def test_protected_route_with_malformed_header(self):
+        """Should reject an Authorization header without the Bearer prefix"""
+        response = client.get("/me", headers={"Authorization": "token-without-bearer"})
+        assert response.status_code == 401
+
+    def test_protected_route_with_invalid_token(self):
+        """Should reject a token that cannot be decoded"""
+        response = client.get(
+            "/me",
+            headers={"Authorization": "Bearer not.a.valid.token"}
+        )
+        assert response.status_code == 401
+
+    def test_protected_route_with_expired_token(self, auth_token):
+        """Should reject a structurally valid but expired token"""
+        import time
+        import jwt
+        from app.core.security.authHandler import JWT_SECRET, JWT_ALGORITHM
+
+        expired_token = jwt.encode(
+            {"user_id": 1, "expires": time.time() - 10},
+            JWT_SECRET,
+            algorithm=JWT_ALGORITHM,
+        )
+        response = client.get(
+            "/me",
+            headers={"Authorization": f"Bearer {expired_token}"}
+        )
+        assert response.status_code == 401
