@@ -36,15 +36,15 @@ function ExerciseItem({ exercise }: { exercise: ExerciseProgress }) {
 
   return (
     <div className="py-4 border-b border-neutral-border last:border-0">
-      <div className="flex items-start justify-between gap-4 mb-2">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
+        <div className="min-w-0">
           <h4 className="font-semibold text-neutral-text">{exercise.name}</h4>
           <p className="text-sm text-neutral-muted">{formatGoal(exercise)}</p>
         </div>
         <Button
           variant={isCompleted ? 'lime' : 'primary'}
           size="sm"
-          className={isCompleted ? 'pointer-events-none opacity-90' : ''}
+          className={`w-full sm:w-auto flex-shrink-0 ${isCompleted ? 'pointer-events-none opacity-90' : ''}`}
         >
           {isCompleted ? 'Выполнено' : 'Начать'}
         </Button>
@@ -66,21 +66,21 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
 
   return (
     <div
-      className={`flex items-center gap-3 p-3 rounded-2xl ${
+      className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-2xl ${
         entry.isCurrentUser ? 'bg-brand-light' : ''
       }`}
     >
-      <span className={`text-lg font-bold w-6 text-center ${medalColors[entry.rank] ?? 'text-neutral-muted'}`}>
+      <span className={`text-base sm:text-lg font-bold w-5 sm:w-6 text-center flex-shrink-0 ${medalColors[entry.rank] ?? 'text-neutral-muted'}`}>
         {entry.rank}
       </span>
-      <div className={`w-9 h-9 rounded-full flex-shrink-0 ${entry.avatarColor}`} />
+      <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex-shrink-0 ${entry.avatarColor}`} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-neutral-text truncate">{entry.username}</p>
         <p className="text-xs text-neutral-muted flex items-center gap-1">
           🔥 {entry.streakDays} {entry.streakDays === 1 ? 'день' : entry.streakDays < 5 ? 'дня' : 'дней'}
         </p>
       </div>
-      <div className="w-24 flex-shrink-0">
+      <div className="w-16 sm:w-24 flex-shrink-0">
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs text-neutral-muted">{entry.progressPercent}%</span>
         </div>
@@ -132,7 +132,7 @@ export function ChallengeDetailModal({ challengeId, onClose }: ChallengeDetailMo
   const challenge = data?.challenge;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-6">
       <button
         type="button"
         aria-label="Закрыть"
@@ -144,18 +144,18 @@ export function ChallengeDetailModal({ challengeId, onClose }: ChallengeDetailMo
         role="dialog"
         aria-modal="true"
         aria-labelledby="challenge-modal-title"
-        className="relative bg-white rounded-3xl shadow-modal w-full max-w-[900px] max-h-[90vh] overflow-y-auto animate-scale-in"
+        className="relative bg-white rounded-t-3xl sm:rounded-3xl shadow-modal w-full sm:max-w-[900px] max-h-[92vh] sm:max-h-[90vh] overflow-y-auto animate-scale-in"
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="Закрыть"
-          className="absolute top-5 right-5 p-2 rounded-xl text-neutral-muted hover:text-neutral-text hover:bg-neutral-card transition-colors z-10"
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 rounded-xl text-neutral-muted hover:text-neutral-text hover:bg-neutral-card transition-colors z-10"
         >
           <X size={20} />
         </button>
 
-        <div className="p-8">
+        <div className="p-4 sm:p-8 pt-5">
           {isLoading && (
             <p className="text-neutral-muted text-sm py-12 text-center">Загрузка...</p>
           )}
@@ -166,8 +166,8 @@ export function ChallengeDetailModal({ challengeId, onClose }: ChallengeDetailMo
 
           {challenge && data && !isLoading && !error && (
             <>
-              <header className="mb-8 pr-10">
-                <h2 id="challenge-modal-title" className="text-2xl font-extrabold text-neutral-text mb-3">
+              <header className="mb-6 sm:mb-8 pr-10">
+                <h2 id="challenge-modal-title" className="text-xl sm:text-2xl font-extrabold text-neutral-text mb-3">
                   {challenge.title}
                 </h2>
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -181,7 +181,7 @@ export function ChallengeDetailModal({ challengeId, onClose }: ChallengeDetailMo
                 )}
               </header>
 
-              <div className="grid grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
                 <section>
                   <h3 className="text-base font-bold text-neutral-text mb-2">Упражнения</h3>
                   {data.exercises.length === 0 ? (

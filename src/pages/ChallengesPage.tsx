@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { PageTabs } from '../components/ui/PageTabs';
+import { PageContainer } from '../components/layout/PageContainer';
 import { ChallengeCard } from '../components/challenges/ChallengeCard';
 import { DiscoveryCard } from '../components/challenges/DiscoveryCard';
 import { ChallengeDetailModal } from '../components/challenges/ChallengeDetailModal';
@@ -27,6 +28,35 @@ function filterByTab(items: ChallengeListItem[], tab: ChallengeTab): ChallengeLi
   if (tab === 'archive') return items;
   if (tab === 'mine') return items.filter((c) => c.isOwner);
   return items.filter((c) => !c.isOwner);
+}
+
+function DiscoverySection({
+  discovery,
+  isLoading,
+  onJoin,
+}: {
+  discovery: DiscoveryChallenge[];
+  isLoading: boolean;
+  onJoin: (id: number) => void;
+}) {
+  return (
+    <>
+      <h2 className="text-lg font-bold text-neutral-text mb-1">Обзор</h2>
+      <p className="text-sm text-neutral-muted mb-4 sm:mb-5">Готовые челленджи</p>
+      <div className="space-y-4">
+        {discovery.length === 0 && !isLoading && (
+          <p className="text-sm text-neutral-muted">Нет готовых челленджей</p>
+        )}
+        {discovery.map((challenge) => (
+          <DiscoveryCard
+            key={challenge.id}
+            challenge={challenge}
+            onJoin={() => onJoin(challenge.id)}
+          />
+        ))}
+      </div>
+    </>
+  );
 }
 
 export function ChallengesPage() {
@@ -145,13 +175,13 @@ export function ChallengesPage() {
   const challenges = filterByTab(sourceList, activeTab);
 
   return (
-    <div className="min-h-screen p-8 lg:p-10">
-      <div className="flex gap-10">
+    <PageContainer>
+      <div className="flex flex-col xl:flex-row gap-8 xl:gap-10">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-extrabold text-neutral-text">Челленджи</h1>
-            <Link to="/challenges/create">
-              <Button variant="primary" size="md">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-text">Челленджи</h1>
+            <Link to="/challenges/create" className="w-full sm:w-auto">
+              <Button variant="primary" size="md" fullWidth className="sm:w-auto">
                 <Plus size={18} />
                 Создать челлендж
               </Button>
@@ -162,12 +192,10 @@ export function ChallengesPage() {
             tabs={[...TABS]}
             activeTab={activeTab}
             onChange={handleTabChange}
-            className="mb-8"
+            className="mb-6 sm:mb-8"
           />
 
-          {isLoading && (
-            <p className="text-neutral-muted text-sm py-8">Загрузка...</p>
-          )}
+          {isLoading && <p className="text-neutral-muted text-sm py-8">Загрузка...</p>}
 
           {error && (
             <p className="text-red-500 text-sm py-8" role="alert">{error}</p>
@@ -192,7 +220,7 @@ export function ChallengesPage() {
               ))}
 
               {challenges.length === 0 && (
-                <p className="text-neutral-muted text-center py-16">
+                <p className="text-neutral-muted text-center py-12 sm:py-16">
                   {activeTab === 'mine' && 'Вы ещё не создали ни одного челленджа'}
                   {activeTab === 'participating' && 'Вы пока не участвуете в челленджах'}
                   {activeTab === 'archive' && 'Архив пуст'}
@@ -200,23 +228,24 @@ export function ChallengesPage() {
               )}
             </div>
           )}
+
+          {/* Mobile / tablet discovery below list */}
+          <section className="xl:hidden mt-10 pt-8 border-t border-neutral-border">
+            <DiscoverySection
+              discovery={discovery}
+              isLoading={isLoading}
+              onJoin={(id) => void handleJoin(id)}
+            />
+          </section>
         </div>
 
-        <aside className="w-[300px] flex-shrink-0 hidden xl:block">
-          <h2 className="text-lg font-bold text-neutral-text mb-1">Обзор</h2>
-          <p className="text-sm text-neutral-muted mb-5">Готовые челленджи</p>
-          <div className="space-y-4">
-            {discovery.length === 0 && !isLoading && (
-              <p className="text-sm text-neutral-muted">Нет готовых челленджей</p>
-            )}
-            {discovery.map((challenge) => (
-              <DiscoveryCard
-                key={challenge.id}
-                challenge={challenge}
-                onJoin={() => void handleJoin(challenge.id)}
-              />
-            ))}
-          </div>
+        {/* Desktop discovery sidebar */}
+        <aside className="hidden xl:block w-[300px] flex-shrink-0">
+          <DiscoverySection
+            discovery={discovery}
+            isLoading={isLoading}
+            onJoin={(id) => void handleJoin(id)}
+          />
         </aside>
       </div>
 
@@ -230,11 +259,11 @@ export function ChallengesPage() {
       {toast && (
         <div
           role="status"
-          className="fixed bottom-6 right-6 z-50 px-5 py-3 bg-neutral-text text-white text-sm font-medium rounded-2xl shadow-modal animate-slide-up"
+          className="fixed bottom-20 lg:bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-sm z-50 px-5 py-3 bg-neutral-text text-white text-sm font-medium rounded-2xl shadow-modal animate-slide-up text-center sm:text-left"
         >
           {toast}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

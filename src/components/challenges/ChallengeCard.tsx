@@ -28,35 +28,40 @@ function ActionBar({
 }: ChallengeCardProps) {
   const challengeId = challenge.id;
   const btnClass =
-    'flex-1 py-3 text-sm font-medium text-neutral-secondary hover:text-neutral-text hover:bg-white/60 transition-colors text-center';
+    'flex-shrink-0 px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium text-neutral-secondary hover:text-neutral-text hover:bg-white/60 transition-colors text-center whitespace-nowrap';
+
+  const divider = <span className="w-px h-6 bg-neutral-border self-center flex-shrink-0" />;
 
   if (tab === 'mine') {
     return (
-      <div className="flex items-center border-t border-neutral-border bg-neutral-card/80 rounded-b-3xl overflow-hidden">
-        <button type="button" className={btnClass} onClick={() => onEdit?.(challengeId)}>
-          Редактировать
-        </button>
-        <span className="w-px h-6 bg-neutral-border" />
-        <button type="button" className={btnClass} onClick={() => onCopyLink?.(challengeId)}>
-          Скопировать ссылку
-        </button>
-        <span className="w-px h-6 bg-neutral-border" />
-        <button type="button" className={btnClass} onClick={() => onLeaderboard?.(challengeId)}>
-          Лидерборд
-        </button>
-        <span className="w-px h-6 bg-neutral-border" />
-        <button type="button" className={btnClass} onClick={() => onArchive?.(challengeId)}>
-          В архив
-        </button>
-        <span className="w-px h-6 bg-neutral-border" />
-        <button
-          type="button"
-          className={`${btnClass} flex items-center justify-center gap-1 text-red-400 hover:text-red-500`}
-          onClick={() => onDelete?.(challengeId)}
-        >
-          <Trash2 size={14} />
-          Удалить
-        </button>
+      <div className="border-t border-neutral-border bg-neutral-card/80 rounded-b-3xl overflow-x-auto">
+        <div className="flex items-center min-w-max sm:min-w-0 sm:w-full">
+          <button type="button" className={`${btnClass} sm:flex-1`} onClick={() => onEdit?.(challengeId)}>
+            Редактировать
+          </button>
+          {divider}
+          <button type="button" className={`${btnClass} sm:flex-1`} onClick={() => onCopyLink?.(challengeId)}>
+            <span className="hidden sm:inline">Скопировать ссылку</span>
+            <span className="sm:hidden">Ссылка</span>
+          </button>
+          {divider}
+          <button type="button" className={`${btnClass} sm:flex-1`} onClick={() => onLeaderboard?.(challengeId)}>
+            Лидерборд
+          </button>
+          {divider}
+          <button type="button" className={`${btnClass} sm:flex-1`} onClick={() => onArchive?.(challengeId)}>
+            В архив
+          </button>
+          {divider}
+          <button
+            type="button"
+            className={`${btnClass} sm:flex-1 flex items-center justify-center gap-1 text-red-400 hover:text-red-500`}
+            onClick={() => onDelete?.(challengeId)}
+          >
+            <Trash2 size={14} />
+            Удалить
+          </button>
+        </div>
       </div>
     );
   }
@@ -64,11 +69,11 @@ function ActionBar({
   if (tab === 'participating') {
     return (
       <div className="flex border-t border-neutral-border bg-neutral-card/80 rounded-b-3xl overflow-hidden">
-        <button type="button" className={btnClass} onClick={() => onLeaderboard?.(challengeId)}>
+        <button type="button" className={`${btnClass} flex-1`} onClick={() => onLeaderboard?.(challengeId)}>
           Лидерборд
         </button>
-        <span className="w-px h-6 bg-neutral-border self-center" />
-        <button type="button" className={btnClass} onClick={() => onLeave?.(challengeId)}>
+        {divider}
+        <button type="button" className={`${btnClass} flex-1`} onClick={() => onLeave?.(challengeId)}>
           Покинуть
         </button>
       </div>
@@ -77,11 +82,11 @@ function ActionBar({
 
   return (
     <div className="flex border-t border-neutral-border bg-neutral-card/80 rounded-b-3xl overflow-hidden">
-      <button type="button" className={btnClass} onClick={() => onLeaderboard?.(challengeId)}>
+      <button type="button" className={`${btnClass} flex-1`} onClick={() => onLeaderboard?.(challengeId)}>
         Лидерборд
       </button>
-      <span className="w-px h-6 bg-neutral-border self-center" />
-      <button type="button" className={btnClass} onClick={() => onResume?.(challengeId)}>
+      {divider}
+      <button type="button" className={`${btnClass} flex-1`} onClick={() => onResume?.(challengeId)}>
         Возобновить
       </button>
     </div>
@@ -93,15 +98,15 @@ export function ChallengeCard(props: ChallengeCardProps) {
   const dateVariant = challenge.isUnlimited || tab === 'archive' ? 'orange' : 'orange';
 
   return (
-    <article className="bg-white rounded-3xl shadow-card overflow-hidden">
+    <article className="bg-white rounded-2xl sm:rounded-3xl shadow-card overflow-hidden">
       <button
         type="button"
         onClick={() => onOpen(challenge.id)}
-        className="w-full text-left p-6 hover:bg-neutral-card/30 transition-colors"
+        className="w-full text-left p-4 sm:p-6 hover:bg-neutral-card/30 transition-colors"
       >
-        <h3 className="text-lg font-bold text-neutral-text mb-3">{challenge.title}</h3>
+        <h3 className="text-base sm:text-lg font-bold text-neutral-text mb-3">{challenge.title}</h3>
 
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-3 sm:mb-4">
           <Badge variant={dateVariant} icon={<Clock size={12} />}>
             {challenge.dateLabel}
           </Badge>

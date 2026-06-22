@@ -15,13 +15,13 @@ export function TodayPlanCard({ item, onClick }: TodayPlanCardProps) {
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left rounded-3xl shadow-card p-6 transition-all hover:shadow-card-hover ${
+      className={`w-full text-left rounded-2xl sm:rounded-3xl shadow-card p-4 sm:p-6 transition-all hover:shadow-card-hover ${
         isCompleted ? 'bg-lime-pale border border-lime-light' : 'bg-white'
       }`}
     >
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <h3 className="text-lg font-bold text-neutral-text mb-2">{challenge.title}</h3>
+          <h3 className="text-base sm:text-lg font-bold text-neutral-text mb-2">{challenge.title}</h3>
           <div className="flex flex-wrap gap-2">
             <Badge variant="orange" icon={<Clock size={12} />}>
               {challenge.dateLabel}

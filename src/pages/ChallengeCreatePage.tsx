@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
+import { PageContainer } from '../components/layout/PageContainer';
 import { ChallengeForm } from '../components/ChallengeForm';
 import { ChallengePreview } from '../components/ChallengePreview';
 import type { ChallengeFormValues, Exercise } from '../types/challenge';
@@ -35,24 +36,24 @@ export function ChallengeCreatePage() {
   };
 
   return (
-    <div className="min-h-screen p-8 lg:p-10">
+    <PageContainer>
       <Link
         to="/challenges?tab=mine"
-        className="inline-flex items-center gap-1 text-sm text-neutral-muted hover:text-brand mb-6 transition-colors"
+        className="inline-flex items-center gap-1 text-sm text-neutral-muted hover:text-brand mb-5 sm:mb-6 transition-colors"
       >
         <ChevronLeft size={16} />
         Назад к челленджам
       </Link>
 
-      <header className="mb-8">
-        <h1 className="text-3xl font-extrabold text-neutral-text mb-2">Создать челлендж</h1>
-        <p className="text-neutral-secondary">
+      <header className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-text mb-2">Создать челлендж</h1>
+        <p className="text-sm sm:text-base text-neutral-secondary">
           Мотивируйте участников поддерживать спортивную активность между тренировками.
         </p>
       </header>
 
-      <div className="flex gap-8 items-start">
-        <div className="flex-1 min-w-0">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+        <div className="flex-1 min-w-0 w-full">
           <ChallengeForm
             onValuesChange={setFormValues}
             onExercisesChange={setExercises}
@@ -65,13 +66,18 @@ export function ChallengeCreatePage() {
         <div className="hidden lg:block w-80 flex-shrink-0">
           <ChallengePreview data={{ ...formValues }} exercises={exercises} />
         </div>
+
+        <div className="lg:hidden w-full">
+          <h2 className="text-lg font-bold text-neutral-text mb-4">Предпросмотр</h2>
+          <ChallengePreview data={{ ...formValues }} exercises={exercises} />
+        </div>
       </div>
 
       {toast && (
         <div
           role="alert"
           className={`
-            fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-modal
+            fixed bottom-20 lg:bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-modal
             text-sm font-semibold animate-slide-up
             ${toast.type === 'success' ? 'bg-lime-light text-lime-hover' : 'bg-red-50 text-red-700 border border-red-200'}
           `}
@@ -80,6 +86,6 @@ export function ChallengeCreatePage() {
           {toast.message}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { PageContainer } from '../components/layout/PageContainer';
 import { WeeklyCalendar } from '../components/dashboard/WeeklyCalendar';
 import { StreakWidget } from '../components/dashboard/StreakWidget';
 import { TodayPlanCard } from '../components/dashboard/TodayPlanCard';
 import { ChallengeDetailModal } from '../components/challenges/ChallengeDetailModal';
 import { fetchTodayPlan } from '../api/challengeQueries';
 import type { TodayPlanItem } from '../types/challenge';
-import { useEffect } from 'react';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -53,31 +53,29 @@ export function Dashboard() {
   const streakDays = user?.streakCurrent ?? 0;
 
   return (
-    <div className="min-h-screen p-8 lg:p-10">
-      <header className="mb-8">
-        <h1 className="text-3xl font-extrabold text-neutral-text">
+    <PageContainer>
+      <header className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-text leading-tight">
           {getGreeting()}, {displayName}!
         </h1>
       </header>
 
-      <div className="flex gap-6 mb-10">
+      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-8 sm:mb-10">
         <WeeklyCalendar />
         <StreakWidget days={streakDays} />
       </div>
 
       <section>
-        <h2 className="text-xl font-bold text-neutral-text mb-5">План на сегодня</h2>
+        <h2 className="text-lg sm:text-xl font-bold text-neutral-text mb-4 sm:mb-5">План на сегодня</h2>
 
-        {isLoading && (
-          <p className="text-neutral-muted text-sm">Загрузка...</p>
-        )}
+        {isLoading && <p className="text-neutral-muted text-sm">Загрузка...</p>}
 
         {error && (
           <p className="text-red-500 text-sm" role="alert">{error}</p>
         )}
 
         {!isLoading && !error && todayPlan.length === 0 && (
-          <div className="max-w-3xl bg-white rounded-3xl shadow-card p-8 text-center">
+          <div className="bg-white rounded-3xl shadow-card p-6 sm:p-8 text-center">
             <p className="text-neutral-secondary mb-1">На сегодня нет активных челленджей</p>
             <p className="text-sm text-neutral-muted">
               Создайте челлендж или присоединитесь к готовому в разделе «Челленджи»
@@ -85,7 +83,7 @@ export function Dashboard() {
           </div>
         )}
 
-        <div className="space-y-4 max-w-3xl">
+        <div className="space-y-4">
           {todayPlan.map((item) => (
             <TodayPlanCard
               key={item.challenge.id}
@@ -102,6 +100,6 @@ export function Dashboard() {
           onClose={() => setSelectedChallengeId(null)}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }

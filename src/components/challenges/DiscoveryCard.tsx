@@ -31,12 +31,12 @@ export function DiscoveryCard({ challenge, onJoin }: DiscoveryCardProps) {
         ))}
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <span className="flex items-center gap-1.5 text-xs text-neutral-secondary">
           <Flame size={14} className="text-brand" />
           {challenge.participantCount} участников
         </span>
-        <Button variant="lime" size="sm" onClick={() => onJoin(challenge.id)}>
+        <Button variant="lime" size="sm" onClick={() => onJoin(challenge.id)} className="w-full sm:w-auto">
           Присоединиться
         </Button>
       </div>
