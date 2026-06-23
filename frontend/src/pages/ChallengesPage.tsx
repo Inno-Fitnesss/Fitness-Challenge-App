@@ -307,6 +307,7 @@ export function ChallengesPage() {
         <ChallengeDetailModal
           challengeId={selectedChallengeId}
           onClose={closeChallenge}
+          onResume={() => showToast('Возобновление пока не поддерживается API')}
         />
       )}
 
