@@ -47,6 +47,33 @@ class ChallengeCreate(BaseModel):
 class ChallengeEdit(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=255)
     description: Optional[str] = None
+    schedule_type: Optional[Literal["daily", "weekly"]] = None
+    schedule_days: Optional[List[int]] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    exercises: Optional[List[ChallengeExerciseIn]] = None
+
+    @field_validator("schedule_days")
+    @classmethod
+    def _valid_days(cls, v):
+        if v is not None and (not v or any(d < 1 or d > 7 for d in v)):
+            raise ValueError("schedule_days must be a non-empty subset of 1..7")
+        return v
+
+    @model_validator(mode="after")
+    def _consistency(self):
+        if self.schedule_type == "weekly" and not self.schedule_days:
+            raise ValueError("weekly schedule requires schedule_days")
+        if self.schedule_type == "daily":
+            self.schedule_days = None
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValueError("end_date is before start_date")
+        if self.exercises is not None:
+            if not self.exercises:
+                raise ValueError("exercises must be a non-empty list")
+            if len({e.exercise_id for e in self.exercises}) != len(self.exercises):
+                raise ValueError("duplicate exercise in challenge")
+        return self
 
 
 class JoinIn(BaseModel):

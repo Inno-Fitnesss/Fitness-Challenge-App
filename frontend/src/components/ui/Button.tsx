@@ -1,7 +1,7 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost';
-type ButtonSize = 'md' | 'lg';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'lime' | 'danger';
+type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -17,11 +17,14 @@ const variantClasses: Record<ButtonVariant, string> = {
     'border-2 border-brand text-brand hover:bg-brand/5 disabled:hover:bg-transparent',
   ghost:
     'text-neutral-secondary hover:text-brand hover:bg-brand/5 disabled:hover:bg-transparent',
+  lime: 'bg-lime text-white hover:bg-lime-hover shadow-sm disabled:hover:bg-lime',
+  danger: 'text-red-500 hover:bg-red-50',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  md: 'px-5 py-3 text-sm',
-  lg: 'px-6 py-4 text-base',
+  sm: 'px-3 py-1.5 text-xs rounded-xl',
+  md: 'px-5 py-2.5 text-sm rounded-2xl',
+  lg: 'px-6 py-3 text-sm rounded-2xl',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -45,7 +48,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={isDisabled}
         className={`
-          inline-flex items-center justify-center gap-2 font-semibold rounded-2xl
+          inline-flex items-center justify-center gap-2 font-semibold
           transition-all duration-200 active:scale-[0.98]
           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
           ${variantClasses[variant]}

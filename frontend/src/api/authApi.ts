@@ -1,4 +1,4 @@
-import { apiClient } from './axios';
+import { apiClient } from './axios.ts';
 import type {
   LoginCredentials,
   ProtectedResponse,
@@ -7,8 +7,19 @@ import type {
   UserInLogin,
   UserOutput,
   UserWithToken,
-} from '../types/auth.types';
-import { mapRegisterDataToApi, mapUserOutputToUser } from '../utils/userMapper';
+} from '../types/auth.types.ts';
+import type { ApiMeResponse } from '../types/api.types.ts';
+import { mapRegisterDataToApi, mapUserOutputToUser } from '../utils/userMapper.ts';
+
+function mapMeToUser(data: ApiMeResponse): User {
+  return {
+    id: data.id,
+    username: data.username,
+    email: data.email,
+    streakCurrent: data.streak_current,
+    streakLongest: data.streak_longest,
+  };
+}
 
 export const authApi = {
   /** POST /auth/signup — регистрация, возвращает UserOutput (201) */
@@ -30,8 +41,14 @@ export const authApi = {
     return data;
   },
 
-  /** GET /protected — проверка токена и получение данных пользователя (200) */
+  /** GET /me — профиль со стриком и объёмом */
   async getCurrentUser(): Promise<User> {
+    const { data } = await apiClient.get<ApiMeResponse>('/me');
+    return mapMeToUser(data);
+  },
+
+  /** GET /protected — fallback для совместимости */
+  async getProtectedUser(): Promise<User> {
     const { data } = await apiClient.get<ProtectedResponse>('/protected');
     return mapUserOutputToUser(data.data);
   },

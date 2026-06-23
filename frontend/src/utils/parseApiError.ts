@@ -6,6 +6,12 @@ const ERROR_TRANSLATIONS: Record<string, string> = {
   'Please check your Credentials': 'Неверный пароль. Проверьте данные и попробуйте снова.',
   'Unable to process request': 'Не удалось обработать запрос. Попробуйте позже.',
   'Invalid Authentication Credentials': 'Сессия истекла. Войдите снова.',
+  'Username already taken': 'Это имя пользователя уже занято. Выберите другое.',
+  'Already joined': 'Вы уже участвуете в этом челлендже.',
+  'Challenge not found': 'Челлендж не найден.',
+  'Invalid code': 'Неверный код приглашения.',
+  'Only the creator can archive': 'Только создатель может архивировать челлендж.',
+  'Not a participant': 'Вы не участвуете в этом челлендже.',
   'Validation Error': 'Проверьте правильность заполнения полей.',
 };
 

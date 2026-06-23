@@ -1,5 +1,5 @@
 import { Flame } from 'lucide-react';
-import { Logo } from '../ui/Logo';
+import { Logo } from '../ui/Logo.tsx';
 
 interface AuthLayoutProps {
   children: React.ReactNode;

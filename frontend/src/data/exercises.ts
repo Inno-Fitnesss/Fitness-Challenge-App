@@ -1,4 +1,4 @@
-import type { ExerciseTemplate } from '../types/challenge';
+import type { ExerciseTemplate } from '../types/challenge.ts';
 
 export const EXERCISE_TEMPLATES: ExerciseTemplate[] = [
   {

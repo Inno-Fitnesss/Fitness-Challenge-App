@@ -157,6 +157,33 @@ class ChallengeService:
             c.name = data.name
         if data.description is not None:
             c.description = data.description
+        if data.schedule_type is not None:
+            c.schedule_type = data.schedule_type
+            c.schedule_days = None if data.schedule_type == "daily" else data.schedule_days
+        if data.start_date is not None:
+            c.start_date = data.start_date
+        if data.end_date is not None:
+            c.end_date = data.end_date
+        if data.exercises is not None:
+            existing = {
+                ce.exercise_id: ce
+                for ce in self.s.query(ChallengeExercise).filter_by(challenge_id=challenge_id).all()
+            }
+            new_ids = {ex.exercise_id for ex in data.exercises}
+            for exercise_id, ce in list(existing.items()):
+                if exercise_id not in new_ids:
+                    self.s.delete(ce)
+            for ex in data.exercises:
+                if not self.s.get(Exercise, ex.exercise_id):
+                    raise HTTPException(status_code=400, detail=f"Exercise {ex.exercise_id} not found")
+                if ex.exercise_id in existing:
+                    existing[ex.exercise_id].goal = ex.goal
+                else:
+                    self.s.add(ChallengeExercise(
+                        challenge_id=challenge_id, exercise_id=ex.exercise_id, goal=ex.goal,
+                    ))
+        if c.start_date and c.end_date and c.end_date < c.start_date:
+            raise HTTPException(status_code=422, detail="end_date is before start_date")
         self.s.commit()
         return self.detail(user_id, challenge_id)
 

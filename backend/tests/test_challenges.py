@@ -337,6 +337,50 @@ class TestChallengeEdit:
         assert data["name"] == "Updated Name"
         assert data["description"] == "Updated description"
 
+    def test_edit_challenge_schedule(self, auth_token, challenge_id):
+        """Should edit schedule type and days"""
+        data = {
+            "schedule_type": "weekly",
+            "schedule_days": [1, 3, 5],
+        }
+        response = client.patch(
+            f"/challenges/{challenge_id}",
+            json=data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+
+        assert response.status_code == 200
+        result = response.json()
+        assert result["schedule_type"] == "weekly"
+        assert result["schedule_days"] == [1, 3, 5]
+
+    def test_edit_challenge_schedule_to_daily(self, auth_token, exercise_ids):
+        """Should clear schedule_days when switching to daily"""
+        start_date = (date.today() + timedelta(days=1)).isoformat()
+        create = client.post(
+            "/challenges",
+            json={
+                "name": "Weekly",
+                "schedule_type": "weekly",
+                "schedule_days": [2, 4],
+                "start_date": start_date,
+                "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 20}],
+            },
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+        challenge_id = create.json()["id"]
+
+        response = client.patch(
+            f"/challenges/{challenge_id}",
+            json={"schedule_type": "daily"},
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+
+        assert response.status_code == 200
+        result = response.json()
+        assert result["schedule_type"] == "daily"
+        assert result["schedule_days"] is None
+
     def test_edit_challenge_by_non_creator(self, auth_token2, challenge_id):
         """Should fail if non-creator tries to edit"""
         data = {"name": "Hacked Name"}

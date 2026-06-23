@@ -4,9 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, AlertCircle, Dumbbell } from 'lucide-react';
 import type { Resolver } from 'react-hook-form';
-import { ExerciseCard } from './ExerciseCard';
-import { ExerciseSelectorModal } from './ExerciseSelectorModal';
-import type { Exercise, ChallengeFormValues, ExerciseTemplate } from '../types/challenge';
+import { ExerciseCard } from './ExerciseCard.tsx';
+import { ExerciseSelectorModal } from './ExerciseSelectorModal.tsx';
+import type { Exercise, ChallengeFormValues, ExerciseTemplate } from '../types/challenge.ts';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MAX_DATE_YEAR = CURRENT_YEAR + 10;
