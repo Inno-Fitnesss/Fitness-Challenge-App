@@ -3,8 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { Dumbbell } from 'lucide-react';
 import { Tabs } from '../components/ui/Tabs.tsx';
 import { Toast } from '../components/ui/Toast.tsx';
-import { Logo } from '../components/ui/Logo.tsx';
-import { BrandIcon } from '../components/ui/BrandIcon.tsx';
+import { BrandLogoLink } from '../components/ui/BrandLogoLink.tsx';
 import { SignInForm } from '../components/auth/SignInForm.tsx';
 import { SignUpForm } from '../components/auth/SignUpForm.tsx';
 import { useAuth } from '../context/AuthContext.tsx';
@@ -45,10 +44,7 @@ export function AuthPage() {
     <div className="min-h-screen bg-neutral-card flex flex-col lg:flex-row lg:h-screen lg:overflow-hidden">
       <aside className="hidden lg:flex lg:w-[40%] bg-white border-r border-neutral-border relative h-full items-center justify-center px-10 xl:px-14">
         <div className="relative z-10 w-full max-w-sm">
-          <div className="flex items-center gap-2.5 mb-8">
-            <BrandIcon />
-            <Logo />
-          </div>
+          <BrandLogoLink className="inline-flex items-center gap-2.5 mb-8 hover:opacity-90 transition-opacity" />
 
           <h2 className="text-2xl xl:text-3xl font-extrabold text-neutral-text leading-snug mb-3">
             Будьте активны между тренировками
@@ -78,10 +74,7 @@ export function AuthPage() {
 
       <main className="flex-1 flex items-center justify-center px-4 sm:px-6 py-6 overflow-y-auto min-h-0">
         <div className="w-full max-w-lg animate-slide-up">
-          <div className="lg:hidden flex items-center gap-2.5 mb-5 justify-center">
-            <BrandIcon />
-            <Logo />
-          </div>
+          <BrandLogoLink className="lg:hidden inline-flex items-center gap-2.5 mb-5 justify-center hover:opacity-90 transition-opacity" />
 
           <div className="bg-white rounded-3xl shadow-card px-6 py-5 sm:px-7 sm:py-6">
             <div className="text-center mb-5">

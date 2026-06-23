@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '../ui/Badge.tsx';
 import { Button } from '../ui/Button.tsx';
 import { ProgressBar } from '../ui/ProgressBar.tsx';
@@ -11,6 +12,14 @@ import type { ChallengeModalData, ExerciseProgress, LeaderboardEntry } from '../
 interface ChallengeDetailModalProps {
   challengeId: number;
   onClose: () => void;
+  onResume?: (challengeId: number) => void;
+}
+
+interface ExerciseItemProps {
+  exercise: ExerciseProgress;
+  challengeId: number;
+  isArchived: boolean;
+  onStart: () => void;
 }
 
 function formatGoal(exercise: ExerciseProgress): string {
@@ -30,9 +39,16 @@ function formatStatus(exercise: ExerciseProgress): string {
   return 'Не начато';
 }
 
-function ExerciseItem({ exercise }: { exercise: ExerciseProgress }) {
+function ExerciseItem({ exercise, challengeId, isArchived, onStart }: ExerciseItemProps) {
+  const navigate = useNavigate();
   const isCompleted = exercise.status === 'completed';
   const percent = exercise.goal > 0 ? (exercise.completed / exercise.goal) * 100 : 0;
+
+  const handleStart = () => {
+    if (isArchived) return;
+    onStart();
+    navigate(`/challenges/${challengeId}/exercise/${exercise.exerciseId}`);
+  };
 
   return (
     <div className="py-4 border-b border-neutral-border last:border-0">
@@ -44,14 +60,19 @@ function ExerciseItem({ exercise }: { exercise: ExerciseProgress }) {
         <Button
           variant={isCompleted ? 'lime' : 'primary'}
           size="sm"
-          className={`w-full sm:w-auto flex-shrink-0 ${isCompleted ? 'pointer-events-none opacity-90' : ''}`}
+          className={`w-full sm:w-auto flex-shrink-0 ${isCompleted && !isArchived ? 'opacity-90' : ''}`}
+          onClick={handleStart}
+          disabled={isArchived}
+          title={isArchived ? 'Сначала возобновите челлендж из архива' : undefined}
         >
-          {isCompleted ? 'Выполнено' : 'Начать'}
+          {isArchived ? 'Недоступно' : isCompleted ? 'Повторить' : 'Начать'}
         </Button>
       </div>
       <ProgressBar value={percent} color={isCompleted ? 'orange' : 'grey'} className="mb-1.5" />
       <p className={`text-xs ${isCompleted ? 'text-lime-hover' : 'text-neutral-muted'}`}>
-        {formatStatus(exercise)}
+        {isArchived
+          ? 'Выполнение недоступно — челлендж в архиве'
+          : formatStatus(exercise)}
       </p>
     </div>
   );
@@ -90,7 +111,7 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
   );
 }
 
-export function ChallengeDetailModal({ challengeId, onClose }: ChallengeDetailModalProps) {
+export function ChallengeDetailModal({ challengeId, onClose, onResume }: ChallengeDetailModalProps) {
   const { user } = useAuth();
   const [data, setData] = useState<ChallengeModalData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -130,6 +151,7 @@ export function ChallengeDetailModal({ challengeId, onClose }: ChallengeDetailMo
   }, [challengeId, user?.username]);
 
   const challenge = data?.challenge;
+  const isArchived = challenge?.status === 'archived';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-6">
@@ -175,7 +197,25 @@ export function ChallengeDetailModal({ challengeId, onClose }: ChallengeDetailMo
                     {challenge.dateLabel}
                   </Badge>
                   <Badge variant="grey">{challenge.participantCount} участника</Badge>
+                  {isArchived && <Badge variant="grey">В архиве</Badge>}
                 </div>
+                {isArchived && (
+                  <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <p className="text-sm text-amber-900">
+                      Челлендж в архиве. Возобновите его, чтобы снова начать выполнение упражнений.
+                    </p>
+                    {onResume && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="w-full sm:w-auto flex-shrink-0"
+                        onClick={() => onResume(challengeId)}
+                      >
+                        Возобновить
+                      </Button>
+                    )}
+                  </div>
+                )}
                 {challenge.description && (
                   <p className="text-sm text-neutral-secondary">{challenge.description}</p>
                 )}
@@ -188,7 +228,13 @@ export function ChallengeDetailModal({ challengeId, onClose }: ChallengeDetailMo
                     <p className="text-sm text-neutral-muted">Нет упражнений</p>
                   ) : (
                     data.exercises.map((exercise) => (
-                      <ExerciseItem key={exercise.exerciseId} exercise={exercise} />
+                      <ExerciseItem
+                        key={exercise.exerciseId}
+                        exercise={exercise}
+                        challengeId={challengeId}
+                        isArchived={isArchived}
+                        onStart={onClose}
+                      />
                     ))
                   )}
                 </section>
