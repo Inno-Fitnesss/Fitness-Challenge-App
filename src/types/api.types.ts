@@ -75,3 +75,15 @@ export interface ApiJoinResponse {
   participation_id: number;
   challenge_id: number;
 }
+
+export interface ApiSessionResponse {
+  exercise: {
+    clean: number;
+    goal: number;
+    closed: boolean;
+  };
+  day_closed: boolean;
+  challenge_streak: number;
+  user_streak: number;
+  place: number | null;
+}

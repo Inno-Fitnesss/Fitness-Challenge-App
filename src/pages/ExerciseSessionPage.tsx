@@ -57,6 +57,7 @@ export function ExerciseSessionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const { videoRef, status: cameraStatus, errorMessage, startCamera, stopCamera } =
     useCameraStream();
@@ -64,9 +65,16 @@ export function ExerciseSessionPage() {
   const parsedChallengeId = Number(challengeId);
   const parsedExerciseId = Number(challengeExerciseId);
 
-  const { stats, feedback, cvConnected, resetSession } = useCvSession({
+  const {
+    stats,
+    feedback,
+    analysisStatus,
+    cvConnected,
+    overlayCanvasRef,
+    resetSession,
+  } = useCvSession({
+    exerciseName: context?.exerciseName ?? '',
     metric: context?.metric ?? 'reps',
-    goal: context?.goal ?? 1,
     isRunning,
     videoRef,
   });
@@ -147,6 +155,7 @@ export function ExerciseSessionPage() {
   }, [navigate, parsedChallengeId, stopCamera]);
 
   const handleToggleSession = useCallback(() => {
+    setSaveError(null);
     if (cameraStatus !== 'active') {
       void startCamera();
       return;
@@ -159,15 +168,50 @@ export function ExerciseSessionPage() {
 
     setIsFinishing(true);
     setIsRunning(false);
+    setSaveError(null);
 
     try {
-      // TODO: POST /challenges/{id}/sessions — подключить после интеграции CV
-    } finally {
+      const measuredValue =
+        context.metric === 'seconds'
+          ? stats.elapsedSeconds
+          : stats.reps;
+      const cleanValue =
+        context.metric === 'seconds'
+          ? stats.elapsedSeconds
+          : stats.cleanReps;
+
+      await challengeApi.submitSession(context.challengeId, {
+        challenge_exercise_id: context.challengeExerciseId,
+        total_reps: measuredValue,
+        clean_reps: cleanValue,
+        duration_seconds:
+          context.metric === 'seconds' ? stats.elapsedSeconds : null,
+      });
+
       stopCamera();
       navigate(`/challenges/${context.challengeId}`);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : error &&
+              typeof error === 'object' &&
+              'message' in error &&
+              typeof error.message === 'string'
+            ? error.message
+          : 'Не удалось сохранить результат упражнения';
+      setSaveError(message);
+    } finally {
       setIsFinishing(false);
     }
-  }, [context, navigate, stopCamera]);
+  }, [
+    context,
+    navigate,
+    stats.cleanReps,
+    stats.elapsedSeconds,
+    stats.reps,
+    stopCamera,
+  ]);
 
   const handleRestart = useCallback(() => {
     resetSession();
@@ -206,9 +250,12 @@ export function ExerciseSessionPage() {
           <div className="space-y-5">
             <CameraPreview
               videoRef={videoRef}
+              overlayCanvasRef={overlayCanvasRef}
               status={cameraStatus}
               errorMessage={errorMessage}
               isSessionActive={isRunning}
+              analysisStatus={analysisStatus}
+              cvConnected={cvConnected}
               onStartCamera={startCamera}
             />
 
@@ -244,6 +291,15 @@ export function ExerciseSessionPage() {
                 Завершить
               </Button>
             </div>
+
+            {saveError && (
+              <div
+                className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600 text-center"
+                role="alert"
+              >
+                {saveError}
+              </div>
+            )}
 
             {goalReached && (
               <div className="rounded-2xl bg-lime-pale border border-lime/30 px-4 py-3 text-sm text-lime-hover font-medium text-center">
