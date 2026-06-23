@@ -1,4 +1,4 @@
-import { apiClient } from './axios';
+import { apiClient } from './axios.ts';
 import type {
   LoginCredentials,
   ProtectedResponse,
@@ -7,9 +7,9 @@ import type {
   UserInLogin,
   UserOutput,
   UserWithToken,
-} from '../types/auth.types';
-import type { ApiMeResponse } from '../types/api.types';
-import { mapRegisterDataToApi, mapUserOutputToUser } from '../utils/userMapper';
+} from '../types/auth.types.ts';
+import type { ApiMeResponse } from '../types/api.types.ts';
+import { mapRegisterDataToApi, mapUserOutputToUser } from '../utils/userMapper.ts';
 
 function mapMeToUser(data: ApiMeResponse): User {
   return {

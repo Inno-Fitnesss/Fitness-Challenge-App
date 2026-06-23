@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
-import { Button } from '../components/ui/Button';
-import { PageTabs } from '../components/ui/PageTabs';
-import { PageContainer } from '../components/layout/PageContainer';
-import { ChallengeCard } from '../components/challenges/ChallengeCard';
-import { DiscoveryCard } from '../components/challenges/DiscoveryCard';
-import { ChallengeDetailModal } from '../components/challenges/ChallengeDetailModal';
-import { challengeApi } from '../api/challengeApi';
+import { Button } from '../components/ui/Button.tsx';
+import { PageTabs } from '../components/ui/PageTabs.tsx';
+import { PageContainer } from '../components/layout/PageContainer.tsx';
+import { ChallengeCard } from '../components/challenges/ChallengeCard.tsx';
+import { DiscoveryCard } from '../components/challenges/DiscoveryCard.tsx';
+import { ChallengeDetailModal } from '../components/challenges/ChallengeDetailModal.tsx';
+import { ChallengeFormModal } from '../components/challenges/ChallengeFormModal.tsx';
+import { challengeApi } from '../api/challengeApi.ts';
 import {
   fetchChallengeListItems,
   fetchDiscoveryChallenges,
-} from '../api/challengeQueries';
-import type { ChallengeListItem, ChallengeTab, DiscoveryChallenge } from '../types/challenge';
+} from '../api/challengeQueries.ts';
+import type { ChallengeListItem, ChallengeTab, DiscoveryChallenge } from '../types/challenge.ts';
 
 const TABS = [
   { id: 'mine', label: 'Мои' },
@@ -66,6 +67,26 @@ export function ChallengesPage() {
 
   const tabParam = searchParams.get('tab');
   const activeTab: ChallengeTab = isValidTab(tabParam) ? tabParam : 'mine';
+  const showCreateModal = searchParams.get('create') === '1';
+  const editIdParam = searchParams.get('edit');
+  const editChallengeId =
+    editIdParam && !Number.isNaN(Number(editIdParam)) ? Number(editIdParam) : null;
+
+  const openCreateModal = () => {
+    setSearchParams({ tab: activeTab, create: '1' });
+  };
+
+  const closeCreateModal = () => {
+    setSearchParams({ tab: activeTab });
+  };
+
+  const openEditModal = (id: number) => {
+    setSearchParams({ tab: activeTab, edit: String(id) });
+  };
+
+  const closeEditModal = () => {
+    setSearchParams({ tab: activeTab });
+  };
 
   const [activeChallenges, setActiveChallenges] = useState<ChallengeListItem[]>([]);
   const [archivedChallenges, setArchivedChallenges] = useState<ChallengeListItem[]>([]);
@@ -131,6 +152,18 @@ export function ChallengesPage() {
     setTimeout(() => setToast(null), 2500);
   };
 
+  const handleCreateSuccess = async () => {
+    closeCreateModal();
+    showToast('Челлендж создан');
+    await loadData();
+  };
+
+  const handleEditSuccess = async () => {
+    closeEditModal();
+    showToast('Изменения сохранены');
+    await loadData();
+  };
+
   const handleCopyLink = async (challenge: ChallengeListItem) => {
     if (!challenge.joinCode) return;
     try {
@@ -180,12 +213,16 @@ export function ChallengesPage() {
         <div className="flex-1 min-w-0">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-text">Челленджи</h1>
-            <Link to="/challenges/create" className="w-full sm:w-auto">
-              <Button variant="primary" size="md" fullWidth className="sm:w-auto">
-                <Plus size={18} />
-                Создать челлендж
-              </Button>
-            </Link>
+            <Button
+              variant="primary"
+              size="md"
+              fullWidth
+              className="sm:w-auto"
+              onClick={openCreateModal}
+            >
+              <Plus size={18} />
+              Создать челлендж
+            </Button>
           </div>
 
           <PageTabs
@@ -209,7 +246,7 @@ export function ChallengesPage() {
                   challenge={challenge}
                   tab={activeTab}
                   onOpen={openChallenge}
-                  onEdit={(cid) => navigate(`/challenges/${cid}/edit`)}
+                  onEdit={openEditModal}
                   onCopyLink={() => void handleCopyLink(challenge)}
                   onLeaderboard={openChallenge}
                   onArchive={(cid) => void handleArchive(cid)}
@@ -249,10 +286,28 @@ export function ChallengesPage() {
         </aside>
       </div>
 
+      {showCreateModal && (
+        <ChallengeFormModal
+          mode="create"
+          onClose={closeCreateModal}
+          onSuccess={() => void handleCreateSuccess()}
+        />
+      )}
+
+      {editChallengeId != null && (
+        <ChallengeFormModal
+          mode="edit"
+          challengeId={editChallengeId}
+          onClose={closeEditModal}
+          onSuccess={() => void handleEditSuccess()}
+        />
+      )}
+
       {selectedChallengeId != null && (
         <ChallengeDetailModal
           challengeId={selectedChallengeId}
           onClose={closeChallenge}
+          onResume={() => showToast('Возобновление пока не поддерживается API')}
         />
       )}
 

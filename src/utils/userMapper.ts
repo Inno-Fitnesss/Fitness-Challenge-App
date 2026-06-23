@@ -1,4 +1,4 @@
-import type { User, UserOutput } from '../types/auth.types';
+import type { User, UserOutput } from '../types/auth.types.ts';
 
 export function mapUserOutputToUser(output: UserOutput): User {
   return {

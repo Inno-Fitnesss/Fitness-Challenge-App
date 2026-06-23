@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Calendar, Target, Users, Lock, Globe, TrendingUp, Zap } from 'lucide-react';
-import type { ChallengeFormValues, Exercise } from '../types/challenge';
+import type { ChallengeFormValues, Exercise } from '../types/challenge.ts';
 
 interface ChallengePreviewProps {
   data: Partial<ChallengeFormValues>;

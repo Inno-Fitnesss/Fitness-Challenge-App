@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { PageContainer } from '../components/layout/PageContainer';
-import { WeeklyCalendar } from '../components/dashboard/WeeklyCalendar';
-import { StreakWidget } from '../components/dashboard/StreakWidget';
-import { TodayPlanCard } from '../components/dashboard/TodayPlanCard';
-import { ChallengeDetailModal } from '../components/challenges/ChallengeDetailModal';
-import { fetchTodayPlan } from '../api/challengeQueries';
-import type { TodayPlanItem } from '../types/challenge';
+import { useAuth } from '../context/AuthContext.tsx';
+import { PageContainer } from '../components/layout/PageContainer.tsx';
+import { WeeklyCalendar } from '../components/dashboard/WeeklyCalendar.tsx';
+import { StreakWidget } from '../components/dashboard/StreakWidget.tsx';
+import { TodayPlanCard } from '../components/dashboard/TodayPlanCard.tsx';
+import { ChallengeDetailModal } from '../components/challenges/ChallengeDetailModal.tsx';
+import { fetchTodayPlan } from '../api/challengeQueries.ts';
+import type { TodayPlanItem } from '../types/challenge.ts';
 
 function getGreeting(): string {
   const hour = new Date().getHours();

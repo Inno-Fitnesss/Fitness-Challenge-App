@@ -1,5 +1,5 @@
 import { Minus, Plus, Trash2 } from 'lucide-react';
-import type { Exercise } from '../types/challenge';
+import type { Exercise } from '../types/challenge.ts';
 
 interface ExerciseCardProps {
   exercise: Exercise;

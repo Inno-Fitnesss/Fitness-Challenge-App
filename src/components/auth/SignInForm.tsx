@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff } from 'lucide-react';
-import { signInSchema, type SignInFormValues } from '../../schemas/auth.schema';
-import { useAuth } from '../../context/AuthContext';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-import { Label } from '../ui/Label';
-import { FieldError } from '../ui/FieldError';
-import type { ApiError } from '../../types/auth.types';
+import { signInSchema, type SignInFormValues } from '../../schemas/auth.schema.ts';
+import { useAuth } from '../../context/AuthContext.tsx';
+import { Button } from '../ui/Button.tsx';
+import { Input } from '../ui/Input.tsx';
+import { Label } from '../ui/Label.tsx';
+import { FieldError } from '../ui/FieldError.tsx';
+import type { ApiError } from '../../types/auth.types.ts';
 
 export function SignInForm() {
   const { login } = useAuth();

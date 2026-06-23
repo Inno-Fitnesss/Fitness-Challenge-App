@@ -1,6 +1,6 @@
 import { Clock, Trash2 } from 'lucide-react';
-import { Badge } from '../ui/Badge';
-import type { ChallengeListItem, ChallengeTab } from '../../types/challenge';
+import { Badge } from '../ui/Badge.tsx';
+import type { ChallengeListItem, ChallengeTab } from '../../types/challenge.ts';
 
 interface ChallengeCardProps {
   challenge: ChallengeListItem;

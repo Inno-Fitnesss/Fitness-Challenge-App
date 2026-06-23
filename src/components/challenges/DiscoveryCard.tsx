@@ -1,7 +1,7 @@
 import { Clock, Flame } from 'lucide-react';
-import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
-import type { DiscoveryChallenge } from '../../types/challenge';
+import { Badge } from '../ui/Badge.tsx';
+import { Button } from '../ui/Button.tsx';
+import type { DiscoveryChallenge } from '../../types/challenge.ts';
 
 interface DiscoveryCardProps {
   challenge: DiscoveryChallenge;

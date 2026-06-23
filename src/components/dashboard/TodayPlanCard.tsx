@@ -1,7 +1,7 @@
 import { Clock } from 'lucide-react';
-import { Badge } from '../ui/Badge';
-import { ProgressBar } from '../ui/ProgressBar';
-import type { TodayPlanItem } from '../../types/challenge';
+import { Badge } from '../ui/Badge.tsx';
+import { ProgressBar } from '../ui/ProgressBar.tsx';
+import type { TodayPlanItem } from '../../types/challenge.ts';
 
 interface TodayPlanCardProps {
   item: TodayPlanItem;

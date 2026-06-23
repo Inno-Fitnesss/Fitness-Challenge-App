@@ -3,14 +3,14 @@ import type {
   ApiChallengeExercise,
   ApiLeaderboardEntry,
   ApiTodayChallenge,
-} from '../types/api.types';
+} from '../types/api.types.ts';
 import type {
   ChallengeListItem,
   DiscoveryChallenge,
   ExerciseProgress,
   LeaderboardEntry,
   TodayPlanItem,
-} from '../types/challenge';
+} from '../types/challenge.ts';
 
 const MONTHS_SHORT = [
   'янв', 'фев', 'мар', 'апр', 'май', 'июн',

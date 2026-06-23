@@ -4,9 +4,9 @@ import {
   mapLeaderboard,
   mapPresetToDiscovery,
   mapTodayToPlanItem,
-} from '../utils/challengeMappers';
-import { meApi, challengeApi } from '../api/challengeApi';
-import type { ChallengeListItem, DiscoveryChallenge, TodayPlanItem } from '../types/challenge';
+} from '../utils/challengeMappers.ts';
+import { meApi, challengeApi } from './challengeApi.ts';
+import type { ChallengeListItem, DiscoveryChallenge, TodayPlanItem } from '../types/challenge.ts';
 
 export async function fetchChallengeListItems(
   status: 'active' | 'archived',

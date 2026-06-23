@@ -8,15 +8,15 @@ import {
   type ReactNode,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authApi } from '../api/authApi';
-import { STORAGE_KEYS } from '../constants/storage';
+import { authApi } from '../api/authApi.ts';
+import { STORAGE_KEYS } from '../constants/storage.ts';
 import type {
   ApiError,
   AuthContextValue,
   LoginCredentials,
   RegisterData,
   User,
-} from '../types/auth.types';
+} from '../types/auth.types.ts';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 

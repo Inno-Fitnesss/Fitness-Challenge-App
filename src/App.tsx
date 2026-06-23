@@ -1,13 +1,14 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import { ProtectedRoute } from './routes/ProtectedRoute';
-import { AppShell } from './components/layout/AppShell';
-import { AuthPage } from './pages/AuthPage';
-import { Dashboard } from './pages/Dashboard';
-import { ChallengesPage } from './pages/ChallengesPage';
-import { ChallengeCreatePage } from './pages/ChallengeCreatePage';
-import { ChallengeEditPage } from './pages/ChallengeEditPage';
-import { SettingsPage } from './pages/SettingsPage';
+import { AuthProvider } from './context/AuthContext.tsx';
+import { ProtectedRoute } from './routes/ProtectedRoute.tsx';
+import { AppShell } from './components/layout/AppShell.tsx';
+import { AuthPage } from './pages/AuthPage.tsx';
+import { Dashboard } from './pages/Dashboard.tsx';
+import { ChallengesPage } from './pages/ChallengesPage.tsx';
+import { ChallengeCreatePage } from './pages/ChallengeCreatePage.tsx';
+import { ChallengeEditPage } from './pages/ChallengeEditPage.tsx';
+import { SettingsPage } from './pages/SettingsPage.tsx';
+import { ExerciseSessionPage } from './pages/ExerciseSessionPage.tsx';
 
 function App() {
   return (
@@ -17,6 +18,10 @@ function App() {
           <Route path="/auth" element={<AuthPage />} />
 
           <Route element={<ProtectedRoute />}>
+            <Route
+              path="/challenges/:challengeId/exercise/:challengeExerciseId"
+              element={<ExerciseSessionPage />}
+            />
             <Route element={<AppShell />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/challenges" element={<ChallengesPage />} />
