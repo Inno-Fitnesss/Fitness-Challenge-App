@@ -1,4 +1,4 @@
-import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'src/api/axios.ts';
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { STORAGE_KEYS } from '../constants/storage.ts';
 import { parseApiError } from '../utils/parseApiError.ts';
 

@@ -1,0 +1,40 @@
+import os
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from app.util.init_db import create_tables, seed_exercises
+from app.routers.auth import authRouter
+from app.routers.challenges import challengeRouter
+from app.routers.exercises import exerciseRouter
+from app.routers.me import meRouter
+from app.util.protectRoute import get_current_user
+from app.db.schema.user import UserOutput
+
+@asynccontextmanager
+async def lifespan(app : FastAPI):
+    create_tables()
+    seed_exercises()
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.getenv("CORS_ORIGINS", "*").split(","),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(router=authRouter, tags=["auth"], prefix="/auth")
+app.include_router(router=challengeRouter, tags=["challenges"], prefix="/challenges")
+app.include_router(router=exerciseRouter, tags=["exercises"], prefix="/exercises")
+app.include_router(router=meRouter, tags=["me"], prefix="/me")
+
+@app.get("/health")
+def health():
+    return {"status" : "Running...."}
+
+@app.get("/protected")
+def read_protected(user : UserOutput = Depends(get_current_user)):
+    return {"data" : user}

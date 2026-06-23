@@ -3,11 +3,33 @@ import type {
   ApiChallengeDetail,
   ApiChallengePreset,
   ApiChallengeSummary,
+  ApiExercise,
   ApiLeaderboardEntry,
   ApiMeResponse,
   ApiTodayChallenge,
   ApiJoinResponse,
 } from '../types/api.types.ts';
+
+export interface ChallengeCreatePayload {
+  name: string;
+  description?: string | null;
+  schedule_type: 'daily' | 'weekly';
+  schedule_days?: number[] | null;
+  start_date?: string;
+  end_date?: string;
+  is_private?: boolean;
+  exercises: { exercise_id: number; goal: number }[];
+}
+
+export interface ChallengeEditPayload {
+  name?: string;
+  description?: string | null;
+  schedule_type?: 'daily' | 'weekly';
+  schedule_days?: number[] | null;
+  start_date?: string;
+  end_date?: string;
+  exercises?: { exercise_id: number; goal: number }[];
+}
 
 export const meApi = {
   async getProfile(): Promise<ApiMeResponse> {
@@ -28,7 +50,24 @@ export const meApi = {
   },
 };
 
+export const exerciseApi = {
+  async list(): Promise<ApiExercise[]> {
+    const { data } = await apiClient.get<ApiExercise[]>('/exercises');
+    return data;
+  },
+};
+
 export const challengeApi = {
+  async create(payload: ChallengeCreatePayload): Promise<ApiChallengeDetail> {
+    const { data } = await apiClient.post<ApiChallengeDetail>('/challenges', payload);
+    return data;
+  },
+
+  async update(id: number, payload: ChallengeEditPayload): Promise<ApiChallengeDetail> {
+    const { data } = await apiClient.patch<ApiChallengeDetail>(`/challenges/${id}`, payload);
+    return data;
+  },
+
   async getDetail(id: number): Promise<ApiChallengeDetail> {
     const { data } = await apiClient.get<ApiChallengeDetail>(`/challenges/${id}`);
     return data;
