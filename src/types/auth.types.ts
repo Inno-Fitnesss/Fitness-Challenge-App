@@ -1,9 +1,10 @@
 /** DTO запроса регистрации — POST /auth/signup */
 export interface UserInCreate {
-  first_name: string;
-  last_name: string;
+  username: string;
   email: string;
   password: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 /** DTO запроса входа — POST /auth/login */
@@ -15,9 +16,10 @@ export interface UserInLogin {
 /** DTO ответа с данными пользователя — UserOutput */
 export interface UserOutput {
   id: number;
-  first_name: string;
-  last_name: string;
+  username: string;
   email: string;
+  first_name?: string | null;
+  last_name?: string | null;
 }
 
 /** DTO ответа с токеном — UserWithToken */
@@ -33,9 +35,12 @@ export interface ProtectedResponse {
 /** Доменная модель пользователя на фронтенде (camelCase) */
 export interface User {
   id: number;
+  username: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
+  streakCurrent?: number;
+  streakLongest?: number;
 }
 
 export interface LoginCredentials {
@@ -44,10 +49,11 @@ export interface LoginCredentials {
 }
 
 export interface RegisterData {
-  firstName: string;
-  lastName: string;
+  username: string;
   email: string;
   password: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface AuthContextValue {
@@ -55,7 +61,7 @@ export interface AuthContextValue {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials, rememberMe?: boolean) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;

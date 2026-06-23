@@ -1,24 +1,27 @@
-import type { User, UserOutput } from '../types/auth.types';
+import type { User, UserOutput } from '../types/auth.types.ts';
 
 export function mapUserOutputToUser(output: UserOutput): User {
   return {
     id: output.id,
+    username: output.username,
     email: output.email,
-    firstName: output.first_name,
-    lastName: output.last_name,
+    firstName: output.first_name ?? undefined,
+    lastName: output.last_name ?? undefined,
   };
 }
 
 export function mapRegisterDataToApi(data: {
-  firstName: string;
-  lastName: string;
+  username: string;
   email: string;
   password: string;
+  firstName?: string;
+  lastName?: string;
 }) {
   return {
-    first_name: data.firstName,
-    last_name: data.lastName,
+    username: data.username,
     email: data.email,
     password: data.password,
+    ...(data.firstName ? { first_name: data.firstName } : {}),
+    ...(data.lastName ? { last_name: data.lastName } : {}),
   };
 }

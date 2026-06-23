@@ -8,15 +8,15 @@ import {
   type ReactNode,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authApi } from '../api/authApi';
-import { STORAGE_KEYS } from '../constants/storage';
+import { authApi } from '../api/authApi.ts';
+import { STORAGE_KEYS } from '../constants/storage.ts';
 import type {
   ApiError,
   AuthContextValue,
   LoginCredentials,
   RegisterData,
   User,
-} from '../types/auth.types';
+} from '../types/auth.types.ts';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -82,12 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [checkAuth]);
 
   const login = useCallback(
-    async (credentials: LoginCredentials, rememberMe = false) => {
+    async (credentials: LoginCredentials) => {
       const { token: authToken } = await authApi.login(credentials);
       localStorage.setItem(STORAGE_KEYS.TOKEN, authToken);
 
       const currentUser = await authApi.getCurrentUser();
-      persistSession(authToken, currentUser, rememberMe);
+      persistSession(authToken, currentUser, true);
       setToken(authToken);
       setUser(currentUser);
       navigate('/dashboard');

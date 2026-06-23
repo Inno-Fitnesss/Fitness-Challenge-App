@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Search, X } from 'lucide-react';
-import { EXERCISE_TEMPLATES } from '../data/exercises';
-import type { ExerciseTemplate } from '../types/challenge';
+import { EXERCISE_TEMPLATES } from '../data/exercises.ts';
+import type { ExerciseTemplate } from '../types/challenge.ts';
 
 interface ExerciseSelectorModalProps {
   selectedIds: string[];

@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import { STORAGE_KEYS } from '../constants/storage';
-import { parseApiError } from '../utils/parseApiError';
+import { STORAGE_KEYS } from '../constants/storage.ts';
+import { parseApiError } from '../utils/parseApiError.ts';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
