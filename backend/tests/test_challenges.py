@@ -56,6 +56,11 @@ def setup_database():
     Runs automatically BEFORE each test.
     Cleans up the database after the test.
     """
+    # Re-bind the DB override to THIS module's engine. Other test modules also
+    # override get_db at import time on the shared app; re-binding per test keeps
+    # the suite correct when run together (otherwise: "no such table").
+    app.dependency_overrides[get_db] = override_get_db
+
     Base.metadata.create_all(bind=engine)
     
     # Seed data: 3 basic exercises (same as in the real app)
@@ -164,13 +169,19 @@ def challenge_id_future(auth_token, exercise_ids):
 @pytest.fixture
 def challenge_id_active(auth_token, exercise_ids):
     """
-    Creates a challenge that starts TODAY.
+    Creates an active daily challenge (started YESTERDAY).
     Used in tests for:
     - Sessions (need an active challenge to submit workouts)
     - /me/today (challenge must be in today's plan)
     - Leaderboard (need participants in an active challenge)
+
+    Note: start_date is yesterday (not today) so the challenge is reliably
+    "already started" regardless of the server timezone. The backend compares
+    against the user's local_today (UTC by default), which can be a day behind
+    the test machine's local date — a start_date of "today" would then be
+    treated as not-yet-started and drop out of /me/today.
     """
-    start_date = date.today().isoformat()
+    start_date = (date.today() - timedelta(days=1)).isoformat()
     
     challenge_data = {
         "name": "Active Challenge",
@@ -194,11 +205,14 @@ def challenge_id_active(auth_token, exercise_ids):
 @pytest.fixture
 def public_challenge_active(auth_token, exercise_ids):
     """
-    Creates a PUBLIC challenge that starts TODAY.
+    Creates a PUBLIC active daily challenge (started YESTERDAY).
     Used in JOIN tests where joining by ID is required.
     (Private challenges can only be joined by code)
+
+    Uses a yesterday start_date for the same timezone-safety reason as
+    challenge_id_active.
     """
-    start_date = date.today().isoformat()
+    start_date = (date.today() - timedelta(days=1)).isoformat()
     
     challenge_data = {
         "name": "Public Active Challenge",
@@ -1074,3 +1088,107 @@ class TestExercisesList:
         assert "Приседания" in exercise_names
         assert "Отжимания" in exercise_names
         assert "Планка" in exercise_names
+
+
+# ================================================================
+# 14. TESTS: /me/today — EDGE CASES
+# ================================================================
+# test_today_plan (above) covers the happy path. These cover the
+# scheduling/visibility edge cases:
+# - future challenges are hidden
+# - weekly challenges not scheduled for today are hidden
+# - submitted progress is reflected in today's plan
+# - the endpoint requires authentication
+# ================================================================
+
+class TestTodayEdgeCases:
+
+    def test_today_excludes_future_challenge(self, auth_token, challenge_id_future):
+        """
+        What we're testing:
+        - A challenge that starts tomorrow must NOT appear in today's plan
+        """
+        response = client.get(
+            "/me/today",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        ids = [c["id"] for c in response.json()]
+        assert challenge_id_future not in ids
+
+    def test_today_excludes_unscheduled_weekday(self, auth_token, exercise_ids):
+        """
+        What we're testing:
+        - A weekly challenge not scheduled for today is NOT in today's plan
+        - schedule_days exclude today and the adjacent weekday so the test is
+          robust even if the server's local date differs by a timezone offset
+        """
+        today_weekday = date.today().isoweekday()
+        prev_weekday = today_weekday - 1 or 7
+        excluded = {today_weekday, prev_weekday}
+        other_days = [d for d in range(1, 8) if d not in excluded][:2]
+
+        challenge_data = {
+            "name": "Weekly Off-day Challenge",
+            "schedule_type": "weekly",
+            "schedule_days": other_days,
+            "start_date": (date.today() - timedelta(days=3)).isoformat(),
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 20}],
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+
+        today = client.get(
+            "/me/today",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert today.status_code == 200
+        ids = [c["id"] for c in today.json()]
+        assert challenge_id not in ids
+
+    def test_today_reflects_submitted_progress(self, auth_token, challenge_id_active):
+        """
+        What we're testing:
+        - After submitting a session, clean_today reflects the clean reps
+        - The exercise is not yet closed when clean_today < goal
+        """
+        detail = client.get(
+            f"/challenges/{challenge_id_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        challenge_exercise_id = detail["exercises"][0]["challenge_exercise_id"]
+
+        client.post(
+            f"/challenges/{challenge_id_active}/sessions",
+            json={
+                "challenge_exercise_id": challenge_exercise_id,
+                "total_reps": 12,
+                "clean_reps": 10
+            },
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+
+        response = client.get(
+            "/me/today",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        challenge = next(c for c in response.json() if c["id"] == challenge_id_active)
+        exercise = next(
+            e for e in challenge["exercises"]
+            if e["challenge_exercise_id"] == challenge_exercise_id
+        )
+        assert exercise["clean_today"] == 10
+        assert exercise["closed"] is False
+
+    def test_today_requires_auth(self):
+        """
+        What we're testing:
+        - /me/today without a token returns 401
+        """
+        response = client.get("/me/today")
+        assert response.status_code == 401

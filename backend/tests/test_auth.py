@@ -45,6 +45,11 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def setup_database():
     """Create tables and seed exercises before each test."""
+    # Re-bind the DB override to THIS module's engine. Other test modules also
+    # override get_db at import time on the shared app; re-binding per test keeps
+    # the suite correct when run together (otherwise: "no such table").
+    app.dependency_overrides[get_db] = override_get_db
+
     # Полная очистка и пересоздание таблиц
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
