@@ -1,13 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutGrid, BarChart3, Settings, LogOut } from 'lucide-react';
+import { LayoutGrid, BarChart3, User, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
-import { Logo } from '../ui/Logo.tsx';
-import { BrandIcon } from '../ui/BrandIcon.tsx';
+import { BrandLogoLink } from '../ui/BrandLogoLink.tsx';
 
 const navItems = [
   { to: '/dashboard', label: 'Главная', icon: LayoutGrid, end: true },
   { to: '/challenges', label: 'Челленджи', icon: BarChart3, end: false },
-  { to: '/settings', label: 'Настройки', icon: Settings, end: false },
+  { to: '/settings', label: 'Профиль', icon: User, end: false },
 ];
 
 function getDisplayName(username?: string, email?: string): string {
@@ -74,10 +73,7 @@ export function AppShell() {
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-[240px] flex-shrink-0 bg-white border-r border-neutral-border flex-col fixed inset-y-0 left-0 z-30">
         <div className="px-6 pt-8 pb-6">
-          <div className="flex items-center gap-2.5">
-            <BrandIcon />
-            <Logo />
-          </div>
+          <BrandLogoLink />
         </div>
 
         <nav className="flex-1 px-3 space-y-1" aria-label="Основная навигация">
@@ -106,10 +102,11 @@ export function AppShell() {
 
       {/* Mobile header */}
       <header className="lg:hidden sticky top-0 z-30 bg-white border-b border-neutral-border px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <BrandIcon className="w-8 h-8 rounded-lg bg-lime flex-shrink-0" />
-          <Logo className="text-base font-extrabold truncate" />
-        </div>
+        <BrandLogoLink
+          iconClassName="w-8 h-8 rounded-lg bg-lime flex-shrink-0"
+          logoClassName="text-base font-extrabold truncate"
+          className="inline-flex items-center gap-2.5 min-w-0 flex-shrink hover:opacity-90 transition-opacity"
+        />
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="text-xs font-semibold text-neutral-secondary truncate max-w-[80px]">
             {displayName}

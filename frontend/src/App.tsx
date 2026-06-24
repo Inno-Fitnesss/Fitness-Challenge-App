@@ -8,6 +8,7 @@ import { ChallengesPage } from './pages/ChallengesPage.tsx';
 import { ChallengeCreatePage } from './pages/ChallengeCreatePage.tsx';
 import { ChallengeEditPage } from './pages/ChallengeEditPage.tsx';
 import { SettingsPage } from './pages/SettingsPage.tsx';
+import { ExerciseSessionPage } from './pages/ExerciseSessionPage.tsx';
 
 function App() {
   return (
@@ -17,6 +18,10 @@ function App() {
           <Route path="/auth" element={<AuthPage />} />
 
           <Route element={<ProtectedRoute />}>
+            <Route
+              path="/challenges/:challengeId/exercise/:challengeExerciseId"
+              element={<ExerciseSessionPage />}
+            />
             <Route element={<AppShell />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/challenges" element={<ChallengesPage />} />
