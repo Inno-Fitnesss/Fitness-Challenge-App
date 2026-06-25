@@ -18,3 +18,9 @@ dist/
 Thumbs.db
 .idea/
 .vscode/
+
+# CV model (downloaded at runtime / by calibrate script)
+*.task
+
+# Локальные тестовые видео + офлайн-калибровка (не коммитим)
+test_videos/

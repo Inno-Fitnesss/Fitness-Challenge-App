@@ -52,9 +52,9 @@ const EXERCISES = {
     hint:
       "Классические отжимания проверяют линию плечо–таз–стопа. Отжимания от колен — линию плечо–таз–колено.",
     settings: [
-      { key: "bottom", label: "Нижняя фаза", min: 65, max: 130, step: 1, value: 90, suffix: "°" },
+      { key: "bottom", label: "Нижняя фаза", min: 65, max: 140, step: 1, value: 110, suffix: "°" },
       { key: "top", label: "Верхняя фаза", min: 120, max: 178, step: 1, value: 125, suffix: "°" },
-      { key: "bodyLine", label: "Минимальный угол корпуса", min: 135, max: 178, step: 1, value: 160, suffix: "°" },
+      { key: "bodyLine", label: "Минимальный угол корпуса", min: 130, max: 178, step: 1, value: 150, suffix: "°" },
     ],
   },
 
@@ -133,6 +133,67 @@ const leaderboardTabs = [...document.querySelectorAll(".leaderboard-tab")];
 const individualBoard = document.querySelector("#individualBoard");
 const teamsBoard = document.querySelector("#teamsBoard");
 
+// --- P3: сигнальная обработка ---
+// One-Euro фильтр: адаптивный low-pass (мало лага на быстром движении,
+// сильное сглаживание в покое) + оценка скорости сигнала.
+class OneEuroFilter {
+  constructor({ minCutoff = 1.0, beta = 0.0, dCutoff = 1.0 } = {}) {
+    this.minCutoff = minCutoff;
+    this.beta = beta;
+    this.dCutoff = dCutoff;
+    this.reset();
+  }
+
+  reset() {
+    this.xPrev = null;
+    this.dxPrev = 0;
+    this.tPrev = null;
+  }
+
+  static alpha(cutoff, dt) {
+    const tau = 1 / (2 * Math.PI * cutoff);
+    return 1 / (1 + tau / dt);
+  }
+
+  // Возвращает { value, velocity } — отфильтрованное значение и скорость (ед./с).
+  filter(value, timestampMs) {
+    if (this.xPrev === null) {
+      this.xPrev = value;
+      this.tPrev = timestampMs;
+      this.dxPrev = 0;
+      return { value, velocity: 0 };
+    }
+
+    let dt = (timestampMs - this.tPrev) / 1000;
+    if (dt <= 0) {
+      dt = 1e-3;
+    }
+    this.tPrev = timestampMs;
+
+    const dx = (value - this.xPrev) / dt;
+    const aD = OneEuroFilter.alpha(this.dCutoff, dt);
+    const dxHat = aD * dx + (1 - aD) * this.dxPrev;
+
+    const cutoff = this.minCutoff + this.beta * Math.abs(dxHat);
+    const a = OneEuroFilter.alpha(cutoff, dt);
+    const xHat = a * value + (1 - a) * this.xPrev;
+
+    this.xPrev = xHat;
+    this.dxPrev = dxHat;
+    return { value: xHat, velocity: dxHat };
+  }
+}
+
+// Медианный фильтр окна (отбрасывает одиночные выбросы landmark'ов).
+function pushMedian(buffer, value, size = 3) {
+  buffer.push(value);
+  if (buffer.length > size) {
+    buffer.shift();
+  }
+  const sorted = [...buffer].sort((a, b) => a - b);
+  return sorted[(sorted.length - 1) >> 1];
+}
+
 let poseLandmarker = null;
 let drawingUtils = null;
 let cameraStream = null;
@@ -147,10 +208,14 @@ let exerciseValues = {};
 
 let repCount = 0;
 let repState = "WAITING_FOR_TOP";
-let stableTopFrames = 0;
-let stableBottomFrames = 0;
 let stableValidFrames = 0;
 
+// P2: трекинг амплитуды и скорости в пределах одного повтора.
+let minAngleInRep = Infinity;
+let maxAngleInRep = -Infinity;
+let primaryVelocity = 0;
+
+// Отфильтрованные значения (заполняются фильтрами в analyze*).
 let smoothedPrimaryAngle = null;
 let smoothedBodyLine = null;
 let smoothedTilt = null;
@@ -158,12 +223,23 @@ let smoothedTilt = null;
 let plankHoldMs = 0;
 let plankLastTimestamp = null;
 
-const MIN_STABLE_FRAMES = 3;
-const PUSHUP_MIN_STABLE_FRAMES = 1;
-const PUSHUP_SMOOTH_ALPHA = 0.45;
-const PUSHUP_CLASSIC_MAX_TILT = 25;
+// P3: фильтры сигналов. Первичный угол — отзывчивее (beta выше),
+// корпус и наклон — спокойнее.
+const primaryFilter = new OneEuroFilter({ minCutoff: 1.5, beta: 0.5 });
+const bodyLineFilter = new OneEuroFilter({ minCutoff: 1.0, beta: 0.3 });
+const tiltFilter = new OneEuroFilter({ minCutoff: 1.0, beta: 0.3 });
+const primaryMedianBuf = [];
+const bodyLineMedianBuf = [];
+const tiltMedianBuf = [];
+
+// Откалибровано на test_videos (5/7/17 отжиманий) для 3D-углов по worldLandmarks.
+const PUSHUP_CLASSIC_MAX_TILT = 45;
 const PLANK_STABLE_FRAMES = 5;
 const INFERENCE_INTERVAL_MS = 50;
+
+// P2: порог скорости только для подписи фазы (счёт идёт по гистерезису+амплитуде).
+const VELOCITY_EPS = 10; // град/с
+const MIN_REP_AMPLITUDE = 15; // град: минимальная амплитуда засчитываемого повтора
 
 function cloneDefaultLeaderboard() {
   return JSON.parse(JSON.stringify(DEFAULT_LEADERBOARD));
@@ -286,13 +362,22 @@ function renderExerciseSettings() {
 function resetExercise() {
   repCount = 0;
   repState = "WAITING_FOR_TOP";
-  stableTopFrames = 0;
-  stableBottomFrames = 0;
   stableValidFrames = 0;
+
+  minAngleInRep = Infinity;
+  maxAngleInRep = -Infinity;
+  primaryVelocity = 0;
 
   smoothedPrimaryAngle = null;
   smoothedBodyLine = null;
   smoothedTilt = null;
+
+  primaryFilter.reset();
+  bodyLineFilter.reset();
+  tiltFilter.reset();
+  primaryMedianBuf.length = 0;
+  bodyLineMedianBuf.length = 0;
+  tiltMedianBuf.length = 0;
 
   plankHoldMs = 0;
   plankLastTimestamp = null;
@@ -608,23 +693,28 @@ function resizeCanvas() {
   }
 }
 
+// P1: угол в 3D. Для worldLandmarks доступна координата z (метры),
+// что делает угол инвариантным к ракурсу камеры. Для 2D-точек z=0.
 function calculateAngle(first, vertex, third) {
   const vectorA = {
     x: first.x - vertex.x,
     y: first.y - vertex.y,
+    z: (first.z ?? 0) - (vertex.z ?? 0),
   };
 
   const vectorB = {
     x: third.x - vertex.x,
     y: third.y - vertex.y,
+    z: (third.z ?? 0) - (vertex.z ?? 0),
   };
 
   const dot =
     vectorA.x * vectorB.x +
-    vectorA.y * vectorB.y;
+    vectorA.y * vectorB.y +
+    vectorA.z * vectorB.z;
 
-  const lengthA = Math.hypot(vectorA.x, vectorA.y);
-  const lengthB = Math.hypot(vectorB.x, vectorB.y);
+  const lengthA = Math.hypot(vectorA.x, vectorA.y, vectorA.z);
+  const lengthB = Math.hypot(vectorB.x, vectorB.y, vectorB.z);
 
   if (lengthA < 1e-6 || lengthB < 1e-6) {
     return null;
@@ -653,12 +743,6 @@ function angleToHorizontal(first, second) {
   }
 
   return angle;
-}
-
-function smooth(previous, next, alpha = 0.35) {
-  return previous === null
-    ? next
-    : alpha * next + (1 - alpha) * previous;
 }
 
 function minVisibility(landmarks, indices) {
@@ -701,7 +785,7 @@ function getSideIndices(side) {
   };
 }
 
-function measureSquat(landmarks) {
+function measureSquat(landmarks, worldLandmarks) {
   const choice = chooseSide(
     landmarks,
     [LANDMARKS.LEFT_HIP, LANDMARKS.LEFT_KNEE, LANDMARKS.LEFT_ANKLE],
@@ -709,14 +793,16 @@ function measureSquat(landmarks) {
   );
 
   const indices = getSideIndices(choice.side);
+  // P1: углы считаем по 3D-точкам, видимость и отрисовку — по 2D.
+  const angleSource = worldLandmarks ?? landmarks;
 
   return {
     side: choice.side,
     visibility: choice.visibility,
     primaryAngle: calculateAngle(
-      landmarks[indices.hip],
-      landmarks[indices.knee],
-      landmarks[indices.ankle]
+      angleSource[indices.hip],
+      angleSource[indices.knee],
+      angleSource[indices.ankle]
     ),
     bodyLine: null,
     tilt: null,
@@ -724,7 +810,7 @@ function measureSquat(landmarks) {
   };
 }
 
-function measureHorizontalExercise(landmarks) {
+function measureHorizontalExercise(landmarks, worldLandmarks) {
   const leftRequired =
     pushupVariant === "knees"
       ? [
@@ -766,9 +852,9 @@ function measureHorizontalExercise(landmarks) {
   );
 
   const indices = getSideIndices(choice.side);
+  // 2D-точки: наклон к горизонту, проверка таза в планке и отрисовка.
   const shoulder = landmarks[indices.shoulder];
   const elbow = landmarks[indices.elbow];
-  const wrist = landmarks[indices.wrist];
   const hip = landmarks[indices.hip];
   const knee = landmarks[indices.knee];
   const ankle = landmarks[indices.ankle];
@@ -778,11 +864,22 @@ function measureHorizontalExercise(landmarks) {
       ? knee
       : ankle;
 
+  // P1: 3D-точки для углов локтя и линии корпуса.
+  const angleSource = worldLandmarks ?? landmarks;
+  const wShoulder = angleSource[indices.shoulder];
+  const wElbow = angleSource[indices.elbow];
+  const wWrist = angleSource[indices.wrist];
+  const wHip = angleSource[indices.hip];
+  const wSupport =
+    currentExercise === "pushup" && pushupVariant === "knees"
+      ? angleSource[indices.knee]
+      : angleSource[indices.ankle];
+
   return {
     side: choice.side,
     visibility: choice.visibility,
-    elbowAngle: calculateAngle(shoulder, elbow, wrist),
-    bodyLine: calculateAngle(shoulder, hip, supportPoint),
+    elbowAngle: calculateAngle(wShoulder, wElbow, wWrist),
+    bodyLine: calculateAngle(wShoulder, wHip, wSupport),
     tilt: angleToHorizontal(shoulder, supportPoint),
     shoulder,
     hip,
@@ -836,19 +933,19 @@ function drawResults(landmarks, measurement) {
   context.restore();
 }
 
-function updateRepState(primaryAngle) {
+// P2: state machine со счётом по гистерезис-порогам top/bottom + проверкой
+// амплитуды (аналог motion + state machine из статьи). Скорость (velocity)
+// идёт только в подпись фазы — строгое подтверждение по нулевой скорости
+// теряло быстрые повторы при дискретизации 50 мс (см. калибровку test_videos).
+// Для приседа/отжимания первичный угол УБЫВАЕТ к нижней точке: v<0 — спуск.
+function updateRepState(primaryAngle, velocity) {
   const bottomThreshold = exerciseValues.bottom;
   const topThreshold = exerciseValues.top;
-  const requiredStableFrames =
-    currentExercise === "pushup"
-      ? PUSHUP_MIN_STABLE_FRAMES
-      : MIN_STABLE_FRAMES;
 
   const isTop = primaryAngle >= topThreshold;
   const isBottom = primaryAngle <= bottomThreshold;
-
-  stableTopFrames = isTop ? stableTopFrames + 1 : 0;
-  stableBottomFrames = isBottom ? stableBottomFrames + 1 : 0;
+  const descending = velocity < -VELOCITY_EPS;
+  const ascending = velocity > VELOCITY_EPS;
 
   if (repState === "WAITING_FOR_TOP") {
     phaseElement.textContent =
@@ -856,8 +953,10 @@ function updateRepState(primaryAngle) {
         ? "Встаньте прямо"
         : "Выпрямите руки";
 
-    if (stableTopFrames >= requiredStableFrames) {
+    if (isTop) {
       repState = "READY";
+      minAngleInRep = primaryAngle;
+      maxAngleInRep = primaryAngle;
       phaseElement.textContent = "Верх";
     }
 
@@ -865,41 +964,57 @@ function updateRepState(primaryAngle) {
   }
 
   if (repState === "READY") {
+    minAngleInRep = Math.min(minAngleInRep, primaryAngle);
+
+    // Переход в нижнюю фазу по гистерезис-порогу. Скорость используется
+    // только для подписи фазы: строгое подтверждение по нулевой скорости
+    // теряло быстрые повторы (см. калибровку на test_videos).
     if (isBottom) {
+      repState = "BOTTOM_REACHED";
+      maxAngleInRep = primaryAngle;
       phaseElement.textContent = "Внизу";
-    } else if (!isTop) {
+    } else if (descending) {
       phaseElement.textContent = "Опускаетесь";
     } else {
       phaseElement.textContent = "Верх";
-    }
-
-    if (stableBottomFrames >= requiredStableFrames) {
-      repState = "BOTTOM_REACHED";
-      phaseElement.textContent = "Внизу";
     }
 
     return;
   }
 
   if (repState === "BOTTOM_REACHED") {
-    phaseElement.textContent =
-      isTop ? "Верх" : "Поднимаетесь";
+    maxAngleInRep = Math.max(maxAngleInRep, primaryAngle);
 
-    if (stableTopFrames >= requiredStableFrames) {
-      repCount += 1;
-      mainMetricValue.textContent = String(repCount);
+    // Возврат наверх завершает повтор; реальность движения гарантирует
+    // проверка амплитуды (min..max), а не скорость.
+    if (isTop) {
+      const amplitude = maxAngleInRep - minAngleInRep;
+
+      if (amplitude >= MIN_REP_AMPLITUDE) {
+        repCount += 1;
+        mainMetricValue.textContent = String(repCount);
+        phaseElement.textContent = "Засчитано";
+        saveResultButton.disabled = false;
+      } else {
+        phaseElement.textContent = "Верх";
+      }
+
       repState = "READY";
-      phaseElement.textContent = "Засчитано";
-      saveResultButton.disabled = false;
+      minAngleInRep = primaryAngle;
+      maxAngleInRep = primaryAngle;
+    } else if (ascending) {
+      phaseElement.textContent = "Поднимаетесь";
+    } else {
+      phaseElement.textContent = "Внизу";
     }
   }
 }
 
-function analyzeSquat(measurement) {
-  smoothedPrimaryAngle = smooth(
-    smoothedPrimaryAngle,
-    measurement.primaryAngle
-  );
+function analyzeSquat(measurement, timestamp) {
+  const median = pushMedian(primaryMedianBuf, measurement.primaryAngle);
+  const filtered = primaryFilter.filter(median, timestamp);
+  smoothedPrimaryAngle = filtered.value;
+  primaryVelocity = filtered.velocity;
 
   primaryAngleElement.textContent =
     String(Math.round(smoothedPrimaryAngle));
@@ -908,27 +1023,19 @@ function analyzeSquat(measurement) {
     measurement.side === "left" ? "Левая" : "Правая";
 
   statusElement.textContent = "Поза распознана";
-  updateRepState(smoothedPrimaryAngle);
+  updateRepState(smoothedPrimaryAngle, primaryVelocity);
 }
 
-function analyzePushup(measurement) {
-  smoothedPrimaryAngle = smooth(
-    smoothedPrimaryAngle,
-    measurement.elbowAngle,
-    PUSHUP_SMOOTH_ALPHA
-  );
+function analyzePushup(measurement, timestamp) {
+  const elbowMedian = pushMedian(primaryMedianBuf, measurement.elbowAngle);
+  const bodyMedian = pushMedian(bodyLineMedianBuf, measurement.bodyLine);
+  const tiltVal = pushMedian(tiltMedianBuf, measurement.tilt);
 
-  smoothedBodyLine = smooth(
-    smoothedBodyLine,
-    measurement.bodyLine,
-    PUSHUP_SMOOTH_ALPHA
-  );
-
-  smoothedTilt = smooth(
-    smoothedTilt,
-    measurement.tilt,
-    PUSHUP_SMOOTH_ALPHA
-  );
+  const primary = primaryFilter.filter(elbowMedian, timestamp);
+  smoothedPrimaryAngle = primary.value;
+  primaryVelocity = primary.velocity;
+  smoothedBodyLine = bodyLineFilter.filter(bodyMedian, timestamp).value;
+  smoothedTilt = tiltFilter.filter(tiltVal, timestamp).value;
 
   measurement.primaryAngle = smoothedPrimaryAngle;
 
@@ -951,8 +1058,9 @@ function analyzePushup(measurement) {
         : "Расположитесь горизонтально и боком";
 
     phaseElement.textContent = "Положение неверно";
-    stableTopFrames = 0;
-    stableBottomFrames = 0;
+    // P2: плохая форма не должна засчитываться — сбрасываем амплитуду повтора.
+    minAngleInRep = smoothedPrimaryAngle;
+    maxAngleInRep = smoothedPrimaryAngle;
     return;
   }
 
@@ -963,8 +1071,8 @@ function analyzePushup(measurement) {
         : "Выпрямите корпус";
 
     phaseElement.textContent = "Положение неверно";
-    stableTopFrames = 0;
-    stableBottomFrames = 0;
+    minAngleInRep = smoothedPrimaryAngle;
+    maxAngleInRep = smoothedPrimaryAngle;
     return;
   }
 
@@ -973,7 +1081,7 @@ function analyzePushup(measurement) {
       ? "Отжимание от колен распознано"
       : "Классическое отжимание распознано";
 
-  updateRepState(smoothedPrimaryAngle);
+  updateRepState(smoothedPrimaryAngle, primaryVelocity);
 }
 
 function getPlankFeedback(measurement) {
@@ -1013,15 +1121,10 @@ function getPlankFeedback(measurement) {
 }
 
 function analyzePlank(measurement, timestamp) {
-  smoothedBodyLine = smooth(
-    smoothedBodyLine,
-    measurement.bodyLine
-  );
-
-  smoothedTilt = smooth(
-    smoothedTilt,
-    measurement.tilt
-  );
+  const bodyMedian = pushMedian(bodyLineMedianBuf, measurement.bodyLine);
+  const tiltVal = pushMedian(tiltMedianBuf, measurement.tilt);
+  smoothedBodyLine = bodyLineFilter.filter(bodyMedian, timestamp).value;
+  smoothedTilt = tiltFilter.filter(tiltVal, timestamp).value;
 
   measurement.primaryAngle = smoothedBodyLine;
 
@@ -1065,10 +1168,16 @@ function clearDetectionUi(message) {
   secondaryMetricValue.textContent = "—";
   statusElement.textContent = message;
 
-  stableTopFrames = 0;
-  stableBottomFrames = 0;
   stableValidFrames = 0;
   plankLastTimestamp = null;
+  // Очищаем буферы фильтров: после потери позы скорость/медиана не должны
+  // «склеивать» старый и новый кадр.
+  primaryMedianBuf.length = 0;
+  bodyLineMedianBuf.length = 0;
+  tiltMedianBuf.length = 0;
+  primaryFilter.reset();
+  bodyLineFilter.reset();
+  tiltFilter.reset();
 }
 
 function processFrame(timestamp) {
@@ -1101,6 +1210,7 @@ function processFrame(timestamp) {
     inferenceTimeElement.textContent = elapsed.toFixed(1);
 
     const landmarks = result.landmarks?.[0];
+    const worldLandmarks = result.worldLandmarks?.[0];
 
     if (!landmarks) {
       clearDetectionUi("Человек не найден");
@@ -1109,8 +1219,8 @@ function processFrame(timestamp) {
 
     const measurement =
       currentExercise === "squat"
-        ? measureSquat(landmarks)
-        : measureHorizontalExercise(landmarks);
+        ? measureSquat(landmarks, worldLandmarks)
+        : measureHorizontalExercise(landmarks, worldLandmarks);
 
     if (currentExercise === "pushup") {
       measurement.primaryAngle = measurement.elbowAngle;
@@ -1136,9 +1246,9 @@ function processFrame(timestamp) {
     }
 
     if (currentExercise === "squat") {
-      analyzeSquat(measurement);
+      analyzeSquat(measurement, timestamp);
     } else if (currentExercise === "pushup") {
-      analyzePushup(measurement);
+      analyzePushup(measurement, timestamp);
     } else {
       analyzePlank(measurement, timestamp);
     }
