@@ -12,8 +12,12 @@ const WASM_ROOT =
 const MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task';
 
-const VISIBILITY_THRESHOLD = 0.55;
+const VISIBILITY_THRESHOLD = 0.5;
 const INFERENCE_INTERVAL_MS = 50;
+
+// Минимальная амплитуда (град) засчитываемого повтора — отбрасывает дрожание
+// у порога. Калибровано на размеченных видео (см. cv-improve/README.md).
+const MIN_REP_AMPLITUDE = 15;
 
 const LANDMARKS = {
   LEFT_SHOULDER: 11,
@@ -30,26 +34,22 @@ const LANDMARKS = {
   RIGHT_ANKLE: 28,
 } as const;
 
+// Откалибровано на размеченных видео (3D-углы по worldLandmarks).
 const SETTINGS = {
   squat: {
     bottom: 115,
     top: 155,
-    stableFrames: 3,
-    smoothAlpha: 0.35,
   },
   pushup: {
-    bottom: 90,
+    bottom: 110,
     top: 125,
-    bodyLine: 160,
-    maxTilt: 25,
-    stableFrames: 1,
-    smoothAlpha: 0.45,
+    bodyLine: 150,
+    maxTilt: 45,
   },
   plank: {
     bodyLine: 160,
     maxTilt: 35,
     stableFrames: 5,
-    smoothAlpha: 0.35,
   },
 } as const;
 
@@ -64,6 +64,7 @@ export interface PoseLandmark {
 
 interface PoseDetectionResult {
   landmarks?: PoseLandmark[][];
+  worldLandmarks?: PoseLandmark[][];
 }
 
 interface PoseLandmarkerInstance {
@@ -241,6 +242,8 @@ export function drawPose(
   });
 }
 
+// P1: угол в 3D. worldLandmarks несут метрическую координату z, что делает
+// угол инвариантным к ракурсу камеры. Для 2D-точек z трактуется как 0.
 function calculateAngle(
   first: PoseLandmark,
   middle: PoseLandmark,
@@ -249,14 +252,17 @@ function calculateAngle(
   const vectorA = {
     x: first.x - middle.x,
     y: first.y - middle.y,
+    z: (first.z ?? 0) - (middle.z ?? 0),
   };
   const vectorB = {
     x: last.x - middle.x,
     y: last.y - middle.y,
+    z: (last.z ?? 0) - (middle.z ?? 0),
   };
-  const dot = vectorA.x * vectorB.x + vectorA.y * vectorB.y;
-  const lengthA = Math.hypot(vectorA.x, vectorA.y);
-  const lengthB = Math.hypot(vectorB.x, vectorB.y);
+  const dot =
+    vectorA.x * vectorB.x + vectorA.y * vectorB.y + vectorA.z * vectorB.z;
+  const lengthA = Math.hypot(vectorA.x, vectorA.y, vectorA.z);
+  const lengthB = Math.hypot(vectorB.x, vectorB.y, vectorB.z);
 
   if (lengthA < 1e-6 || lengthB < 1e-6) return null;
 
@@ -264,6 +270,8 @@ function calculateAngle(
   return (Math.acos(cosine) * 180) / Math.PI;
 }
 
+// Наклон отрезка к горизонту — концепт кадра/гравитации, поэтому считается по
+// 2D-координатам изображения.
 function angleToHorizontal(
   first: PoseLandmark,
   second: PoseLandmark,
@@ -277,12 +285,62 @@ function angleToHorizontal(
   return angle;
 }
 
-function smooth(
-  previous: number | null,
-  next: number,
-  alpha: number,
-): number {
-  return previous === null ? next : alpha * next + (1 - alpha) * previous;
+// P3: One-Euro фильтр — адаптивный low-pass (мало лага на быстром движении,
+// сильное сглаживание в покое).
+class OneEuroFilter {
+  private xPrev: number | null = null;
+  private dxPrev = 0;
+  private tPrev: number | null = null;
+
+  constructor(
+    private readonly minCutoff = 1,
+    private readonly beta = 0,
+    private readonly dCutoff = 1,
+  ) {}
+
+  private static alpha(cutoff: number, dt: number): number {
+    const tau = 1 / (2 * Math.PI * cutoff);
+    return 1 / (1 + tau / dt);
+  }
+
+  reset(): void {
+    this.xPrev = null;
+    this.dxPrev = 0;
+    this.tPrev = null;
+  }
+
+  filter(value: number, timestampMs: number): number {
+    if (this.xPrev === null || this.tPrev === null) {
+      this.xPrev = value;
+      this.tPrev = timestampMs;
+      this.dxPrev = 0;
+      return value;
+    }
+
+    let dt = (timestampMs - this.tPrev) / 1000;
+    if (dt <= 0) dt = 1e-3;
+    this.tPrev = timestampMs;
+
+    const dx = (value - this.xPrev) / dt;
+    const aD = OneEuroFilter.alpha(this.dCutoff, dt);
+    const dxHat = aD * dx + (1 - aD) * this.dxPrev;
+
+    const cutoff = this.minCutoff + this.beta * Math.abs(dxHat);
+    const a = OneEuroFilter.alpha(cutoff, dt);
+    const xHat = a * value + (1 - a) * this.xPrev;
+
+    this.xPrev = xHat;
+    this.dxPrev = dxHat;
+    return xHat;
+  }
+}
+
+// Медианный фильтр окна: отбрасывает одиночные выбросы landmark'ов.
+function pushMedian(buffer: number[], value: number, size = 3): number {
+  buffer.push(value);
+  if (buffer.length > size) buffer.shift();
+  const sorted = [...buffer].sort((a, b) => a - b);
+  return sorted[(sorted.length - 1) >> 1];
 }
 
 function minVisibility(landmarks: PoseLandmark[], indices: number[]): number {
@@ -326,6 +384,7 @@ function chooseSide(
 
 function measureHorizontal(
   landmarks: PoseLandmark[],
+  worldLandmarks: PoseLandmark[] | undefined,
 ): HorizontalMeasurement {
   const leftRequired = [
     LANDMARKS.LEFT_SHOULDER,
@@ -342,16 +401,28 @@ function measureHorizontal(
     LANDMARKS.RIGHT_ANKLE,
   ];
   const choice = chooseSide(landmarks, leftRequired, rightRequired);
-  const shoulder = landmarks[choice.indices.shoulder];
-  const elbow = landmarks[choice.indices.elbow];
-  const wrist = landmarks[choice.indices.wrist];
-  const hip = landmarks[choice.indices.hip];
-  const ankle = landmarks[choice.indices.ankle];
+  const indices = choice.indices;
+
+  // 2D-точки: наклон к горизонту и проверка таза в планке.
+  const shoulder = landmarks[indices.shoulder];
+  const hip = landmarks[indices.hip];
+  const ankle = landmarks[indices.ankle];
+
+  // P1: углы — по 3D-точкам (с фолбэком на 2D, если world недоступны).
+  const angleSource = worldLandmarks ?? landmarks;
 
   return {
     visibility: choice.visibility,
-    elbowAngle: calculateAngle(shoulder, elbow, wrist),
-    bodyLine: calculateAngle(shoulder, hip, ankle),
+    elbowAngle: calculateAngle(
+      angleSource[indices.shoulder],
+      angleSource[indices.elbow],
+      angleSource[indices.wrist],
+    ),
+    bodyLine: calculateAngle(
+      angleSource[indices.shoulder],
+      angleSource[indices.hip],
+      angleSource[indices.ankle],
+    ),
     tilt: angleToHorizontal(shoulder, ankle),
     shoulder,
     hip,
@@ -363,34 +434,40 @@ export class ExerciseAnalyzer {
   private reps = 0;
   private repState: 'WAITING_FOR_TOP' | 'READY' | 'BOTTOM_REACHED' =
     'WAITING_FOR_TOP';
-  private stableTopFrames = 0;
-  private stableBottomFrames = 0;
   private stableValidFrames = 0;
-  private smoothedPrimaryAngle: number | null = null;
-  private smoothedBodyLine: number | null = null;
-  private smoothedTilt: number | null = null;
+  private minAngleInRep = Number.POSITIVE_INFINITY;
+  private maxAngleInRep = Number.NEGATIVE_INFINITY;
   private plankHoldMs = 0;
   private plankLastTimestamp: number | null = null;
   private qualityWindow: boolean[] = [];
+
+  // P3: фильтры сигналов. Первичный угол отзывчивее (beta выше), корпус и
+  // наклон — спокойнее.
+  private readonly primaryFilter = new OneEuroFilter(1.5, 0.5);
+  private readonly bodyLineFilter = new OneEuroFilter(1.0, 0.3);
+  private readonly tiltFilter = new OneEuroFilter(1.0, 0.3);
+  private primaryMedian: number[] = [];
+  private bodyLineMedian: number[] = [];
+  private tiltMedian: number[] = [];
 
   constructor(private readonly exercise: CvExercise) {}
 
   reset(): void {
     this.reps = 0;
     this.repState = 'WAITING_FOR_TOP';
-    this.stableTopFrames = 0;
-    this.stableBottomFrames = 0;
     this.stableValidFrames = 0;
-    this.smoothedPrimaryAngle = null;
-    this.smoothedBodyLine = null;
-    this.smoothedTilt = null;
+    this.minAngleInRep = Number.POSITIVE_INFINITY;
+    this.maxAngleInRep = Number.NEGATIVE_INFINITY;
     this.plankHoldMs = 0;
     this.plankLastTimestamp = null;
     this.qualityWindow = [];
+    this.resetFilters();
   }
 
   noPose(): CvAnalysis {
-    this.resetStableFrames();
+    this.stableValidFrames = 0;
+    this.plankLastTimestamp = null;
+    this.resetFilters();
     this.recordQuality(false);
     return this.result('Человек не найден в кадре', false, {
       type: 'camera',
@@ -399,15 +476,19 @@ export class ExerciseAnalyzer {
     });
   }
 
-  analyze(landmarks: PoseLandmark[], timestampMs: number): CvAnalysis {
+  analyze(
+    landmarks: PoseLandmark[],
+    worldLandmarks: PoseLandmark[] | undefined,
+    timestampMs: number,
+  ): CvAnalysis {
     if (this.exercise === 'squat') {
-      return this.analyzeSquat(landmarks);
+      return this.analyzeSquat(landmarks, worldLandmarks, timestampMs);
     }
     if (this.exercise === 'pushup') {
-      return this.analyzePushup(landmarks);
+      return this.analyzePushup(landmarks, worldLandmarks, timestampMs);
     }
     if (this.exercise === 'plank') {
-      return this.analyzePlank(landmarks, timestampMs);
+      return this.analyzePlank(landmarks, worldLandmarks, timestampMs);
     }
     return this.result('Упражнение пока не поддерживается CV', false, {
       type: 'general',
@@ -416,32 +497,35 @@ export class ExerciseAnalyzer {
     });
   }
 
-  private analyzeSquat(landmarks: PoseLandmark[]): CvAnalysis {
+  private analyzeSquat(
+    landmarks: PoseLandmark[],
+    worldLandmarks: PoseLandmark[] | undefined,
+    timestampMs: number,
+  ): CvAnalysis {
     const choice = chooseSide(
       landmarks,
       [LANDMARKS.LEFT_HIP, LANDMARKS.LEFT_KNEE, LANDMARKS.LEFT_ANKLE],
       [LANDMARKS.RIGHT_HIP, LANDMARKS.RIGHT_KNEE, LANDMARKS.RIGHT_ANKLE],
     );
+    const source = worldLandmarks ?? landmarks;
     const angle = calculateAngle(
-      landmarks[choice.indices.hip],
-      landmarks[choice.indices.knee],
-      landmarks[choice.indices.ankle],
+      source[choice.indices.hip],
+      source[choice.indices.knee],
+      source[choice.indices.ankle],
     );
 
     if (angle === null || choice.visibility < VISIBILITY_THRESHOLD) {
       return this.lowVisibility();
     }
 
-    this.smoothedPrimaryAngle = smooth(
-      this.smoothedPrimaryAngle,
-      angle,
-      SETTINGS.squat.smoothAlpha,
+    const smoothed = this.primaryFilter.filter(
+      pushMedian(this.primaryMedian, angle),
+      timestampMs,
     );
     const update = this.updateRepState(
-      this.smoothedPrimaryAngle,
+      smoothed,
       SETTINGS.squat.bottom,
       SETTINGS.squat.top,
-      SETTINGS.squat.stableFrames,
     );
     this.recordQuality(true);
 
@@ -455,12 +539,16 @@ export class ExerciseAnalyzer {
             text: 'Повтор засчитан.',
           }
         : undefined,
-      this.smoothedPrimaryAngle,
+      smoothed,
     );
   }
 
-  private analyzePushup(landmarks: PoseLandmark[]): CvAnalysis {
-    const measurement = measureHorizontal(landmarks);
+  private analyzePushup(
+    landmarks: PoseLandmark[],
+    worldLandmarks: PoseLandmark[] | undefined,
+    timestampMs: number,
+  ): CvAnalysis {
+    const measurement = measureHorizontal(landmarks, worldLandmarks);
     if (
       measurement.visibility < VISIBILITY_THRESHOLD ||
       measurement.elbowAngle === null ||
@@ -470,24 +558,23 @@ export class ExerciseAnalyzer {
       return this.lowVisibility();
     }
 
-    this.smoothedPrimaryAngle = smooth(
-      this.smoothedPrimaryAngle,
-      measurement.elbowAngle,
-      SETTINGS.pushup.smoothAlpha,
+    const elbow = this.primaryFilter.filter(
+      pushMedian(this.primaryMedian, measurement.elbowAngle),
+      timestampMs,
     );
-    this.smoothedBodyLine = smooth(
-      this.smoothedBodyLine,
-      measurement.bodyLine,
-      SETTINGS.pushup.smoothAlpha,
+    const bodyLine = this.bodyLineFilter.filter(
+      pushMedian(this.bodyLineMedian, measurement.bodyLine),
+      timestampMs,
     );
-    this.smoothedTilt = smooth(
-      this.smoothedTilt,
-      measurement.tilt,
-      SETTINGS.pushup.smoothAlpha,
+    const tilt = this.tiltFilter.filter(
+      pushMedian(this.tiltMedian, measurement.tilt),
+      timestampMs,
     );
 
-    if (this.smoothedTilt > SETTINGS.pushup.maxTilt) {
-      this.resetStableFrames();
+    if (tilt > SETTINGS.pushup.maxTilt) {
+      // Плохая форма не должна засчитываться — сбрасываем амплитуду повтора.
+      this.minAngleInRep = elbow;
+      this.maxAngleInRep = elbow;
       this.recordQuality(false);
       return this.result(
         'Расположитесь горизонтально и боком',
@@ -497,12 +584,13 @@ export class ExerciseAnalyzer {
           severity: 'warning',
           text: 'Поставьте камеру сбоку и ниже: плечи, таз и стопы должны быть видны.',
         },
-        this.smoothedPrimaryAngle,
+        elbow,
       );
     }
 
-    if (this.smoothedBodyLine < SETTINGS.pushup.bodyLine) {
-      this.resetStableFrames();
+    if (bodyLine < SETTINGS.pushup.bodyLine) {
+      this.minAngleInRep = elbow;
+      this.maxAngleInRep = elbow;
       this.recordQuality(false);
       return this.result(
         'Выпрямите корпус',
@@ -512,15 +600,14 @@ export class ExerciseAnalyzer {
           severity: 'warning',
           text: 'Держите плечи, таз и стопы на одной линии.',
         },
-        this.smoothedPrimaryAngle,
+        elbow,
       );
     }
 
     const update = this.updateRepState(
-      this.smoothedPrimaryAngle,
+      elbow,
       SETTINGS.pushup.bottom,
       SETTINGS.pushup.top,
-      SETTINGS.pushup.stableFrames,
     );
     this.recordQuality(true);
 
@@ -534,15 +621,16 @@ export class ExerciseAnalyzer {
             text: 'Чистое отжимание засчитано.',
           }
         : undefined,
-      this.smoothedPrimaryAngle,
+      elbow,
     );
   }
 
   private analyzePlank(
     landmarks: PoseLandmark[],
+    worldLandmarks: PoseLandmark[] | undefined,
     timestampMs: number,
   ): CvAnalysis {
-    const measurement = measureHorizontal(landmarks);
+    const measurement = measureHorizontal(landmarks, worldLandmarks);
     if (
       measurement.visibility < VISIBILITY_THRESHOLD ||
       measurement.bodyLine === null ||
@@ -552,22 +640,20 @@ export class ExerciseAnalyzer {
       return this.lowVisibility();
     }
 
-    this.smoothedBodyLine = smooth(
-      this.smoothedBodyLine,
-      measurement.bodyLine,
-      SETTINGS.plank.smoothAlpha,
+    const bodyLine = this.bodyLineFilter.filter(
+      pushMedian(this.bodyLineMedian, measurement.bodyLine),
+      timestampMs,
     );
-    this.smoothedTilt = smooth(
-      this.smoothedTilt,
-      measurement.tilt,
-      SETTINGS.plank.smoothAlpha,
+    const tilt = this.tiltFilter.filter(
+      pushMedian(this.tiltMedian, measurement.tilt),
+      timestampMs,
     );
 
     let feedback: CvFeedbackInput | undefined;
     let valid = true;
     let status = 'Правильная планка';
 
-    if (this.smoothedTilt > SETTINGS.plank.maxTilt) {
+    if (tilt > SETTINGS.plank.maxTilt) {
       valid = false;
       status = 'Расположитесь горизонтально';
       feedback = {
@@ -575,7 +661,7 @@ export class ExerciseAnalyzer {
         severity: 'warning',
         text: 'Повернитесь к камере боком и расположите всё тело горизонтально.',
       };
-    } else if (this.smoothedBodyLine < SETTINGS.plank.bodyLine) {
+    } else if (bodyLine < SETTINGS.plank.bodyLine) {
       valid = false;
       const expectedHipY = (measurement.shoulder.y + measurement.ankle.y) / 2;
       const hipIsLow = measurement.hip.y - expectedHipY > 0;
@@ -601,12 +687,14 @@ export class ExerciseAnalyzer {
       holding ? 'Удержание засчитывается' : status,
       valid,
       feedback,
-      this.smoothedBodyLine,
+      bodyLine,
     );
   }
 
   private lowVisibility(): CvAnalysis {
-    this.resetStableFrames();
+    this.stableValidFrames = 0;
+    this.plankLastTimestamp = null;
+    this.resetFilters();
     this.recordQuality(false);
     return this.result('Плохо видны необходимые суставы', false, {
       type: 'camera',
@@ -615,28 +703,32 @@ export class ExerciseAnalyzer {
     });
   }
 
+  // P2: state machine со счётом по гистерезис-порогам + проверкой амплитуды.
+  // Реальность движения гарантирует амплитуда (min..max), поэтому строгое
+  // подтверждение по скорости не нужно (оно теряло быстрые повторы при 50 мс).
   private updateRepState(
     primaryAngle: number,
     bottomThreshold: number,
     topThreshold: number,
-    stableFrames: number,
   ): { counted: boolean; phase: string } {
     const isTop = primaryAngle >= topThreshold;
     const isBottom = primaryAngle <= bottomThreshold;
-    this.stableTopFrames = isTop ? this.stableTopFrames + 1 : 0;
-    this.stableBottomFrames = isBottom ? this.stableBottomFrames + 1 : 0;
 
     if (this.repState === 'WAITING_FOR_TOP') {
-      if (this.stableTopFrames >= stableFrames) {
+      if (isTop) {
         this.repState = 'READY';
+        this.minAngleInRep = primaryAngle;
+        this.maxAngleInRep = primaryAngle;
         return { counted: false, phase: 'Верхняя позиция' };
       }
       return { counted: false, phase: 'Выпрямитесь' };
     }
 
     if (this.repState === 'READY') {
-      if (this.stableBottomFrames >= stableFrames) {
+      this.minAngleInRep = Math.min(this.minAngleInRep, primaryAngle);
+      if (isBottom) {
         this.repState = 'BOTTOM_REACHED';
+        this.maxAngleInRep = primaryAngle;
         return { counted: false, phase: 'Нижняя позиция' };
       }
       return {
@@ -645,19 +737,29 @@ export class ExerciseAnalyzer {
       };
     }
 
-    if (this.stableTopFrames >= stableFrames) {
-      this.reps += 1;
+    // BOTTOM_REACHED
+    this.maxAngleInRep = Math.max(this.maxAngleInRep, primaryAngle);
+    if (isTop) {
+      const amplitude = this.maxAngleInRep - this.minAngleInRep;
       this.repState = 'READY';
-      return { counted: true, phase: 'Засчитано' };
+      this.minAngleInRep = primaryAngle;
+      this.maxAngleInRep = primaryAngle;
+      if (amplitude >= MIN_REP_AMPLITUDE) {
+        this.reps += 1;
+        return { counted: true, phase: 'Засчитано' };
+      }
+      return { counted: false, phase: 'Верхняя позиция' };
     }
     return { counted: false, phase: 'Поднимайтесь' };
   }
 
-  private resetStableFrames(): void {
-    this.stableTopFrames = 0;
-    this.stableBottomFrames = 0;
-    this.stableValidFrames = 0;
-    this.plankLastTimestamp = null;
+  private resetFilters(): void {
+    this.primaryFilter.reset();
+    this.bodyLineFilter.reset();
+    this.tiltFilter.reset();
+    this.primaryMedian = [];
+    this.bodyLineMedian = [];
+    this.tiltMedian = [];
   }
 
   private recordQuality(valid: boolean): void {

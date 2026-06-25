@@ -188,12 +188,13 @@ export function useCvSession({
               performance.now(),
             );
             const landmarks = result.landmarks?.[0];
+            const worldLandmarks = result.worldLandmarks?.[0];
             if (overlayCanvas) {
               drawPose(runtime, overlayCanvas, video, landmarks);
             }
 
             const analysis = landmarks
-              ? analyzerRef.current.analyze(landmarks, timestamp)
+              ? analyzerRef.current.analyze(landmarks, worldLandmarks, timestamp)
               : analyzerRef.current.noPose();
 
             setStats((current) =>
