@@ -4,17 +4,23 @@ import { Button } from '../ui/Button.tsx';
 
 interface CameraPreviewProps {
   videoRef: React.RefObject<HTMLVideoElement>;
+  overlayCanvasRef: React.RefObject<HTMLCanvasElement>;
   status: CameraStatus;
   errorMessage: string | null;
   isSessionActive: boolean;
+  analysisStatus: string;
+  cvConnected: boolean;
   onStartCamera: () => void;
 }
 
 export function CameraPreview({
   videoRef,
+  overlayCanvasRef,
   status,
   errorMessage,
   isSessionActive,
+  analysisStatus,
+  cvConnected,
   onStartCamera,
 }: CameraPreviewProps) {
   const showVideo = status === 'active';
@@ -29,6 +35,13 @@ export function CameraPreview({
           showVideo ? 'opacity-100' : 'opacity-0'
         }`}
       />
+      <canvas
+        ref={overlayCanvasRef}
+        aria-hidden="true"
+        className={`absolute inset-0 w-full h-full object-cover scale-x-[-1] pointer-events-none ${
+          showVideo && isSessionActive ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
 
       {!showVideo && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center">
@@ -41,10 +54,13 @@ export function CameraPreview({
           </div>
           <div>
             <p className="text-white font-semibold mb-1">
-              {status === 'requesting' ? 'Подключаем камеру…' : 'Камера не активна'}
+              {status === 'requesting'
+                ? 'Подключаем камеру…'
+                : 'Камера не активна'}
             </p>
             <p className="text-white/60 text-sm max-w-xs">
-              {errorMessage ?? 'Нажмите кнопку ниже, чтобы начать трансляцию'}
+              {errorMessage ??
+                'Нажмите кнопку ниже, чтобы включить видеопоток'}
             </p>
           </div>
           {status !== 'requesting' && (
@@ -77,7 +93,13 @@ export function CameraPreview({
               </span>
             )}
             <span className="px-3 py-1 rounded-full bg-black/50 text-white/90 text-xs font-medium backdrop-blur-sm">
-              CV-превью
+              {cvConnected ? 'CV подключён' : 'CV ожидает запуска'}
+            </span>
+          </div>
+
+          <div className="absolute bottom-4 left-4 right-4 flex justify-center">
+            <span className="max-w-full px-3 py-1.5 rounded-xl bg-black/60 text-white text-xs font-medium text-center backdrop-blur-sm">
+              {analysisStatus}
             </span>
           </div>
         </>

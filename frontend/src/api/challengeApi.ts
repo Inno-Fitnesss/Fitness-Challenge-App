@@ -8,6 +8,7 @@ import type {
   ApiMeResponse,
   ApiTodayChallenge,
   ApiJoinResponse,
+  ApiSessionResponse,
 } from '../types/api.types.ts';
 
 export interface ChallengeCreatePayload {
@@ -29,6 +30,13 @@ export interface ChallengeEditPayload {
   start_date?: string;
   end_date?: string;
   exercises?: { exercise_id: number; goal: number }[];
+}
+
+export interface SessionSubmitPayload {
+  challenge_exercise_id: number;
+  total_reps: number;
+  clean_reps: number;
+  duration_seconds?: number | null;
 }
 
 export const meApi = {
@@ -100,6 +108,17 @@ export const challengeApi = {
 
   async archive(id: number): Promise<{ id: number; status: string }> {
     const { data } = await apiClient.post<{ id: number; status: string }>(`/challenges/${id}/archive`);
+    return data;
+  },
+
+  async submitSession(
+    challengeId: number,
+    payload: SessionSubmitPayload,
+  ): Promise<ApiSessionResponse> {
+    const { data } = await apiClient.post<ApiSessionResponse>(
+      `/challenges/${challengeId}/sessions`,
+      payload,
+    );
     return data;
   },
 };
