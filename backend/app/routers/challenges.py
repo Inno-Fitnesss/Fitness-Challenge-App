@@ -68,3 +68,13 @@ def leaderboard(challenge_id: int, user: UserOutput = Depends(get_current_user),
 def submit_session(challenge_id: int, data: SessionIn,
                    user: UserOutput = Depends(get_current_user), db: Session = Depends(get_db)):
     return SessionService(db).submit(user.id, challenge_id, data)
+
+@challengeRouter.delete("/{challenge_id}", status_code=204)
+def delete_challenge(
+    challenge_id: int,
+    user: UserOutput = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Удалить челлендж. Только создатель."""
+    ChallengeService(db).delete(user.id, challenge_id)
+    return None

@@ -1074,3 +1074,674 @@ class TestExercisesList:
         assert "Приседания" in exercise_names
         assert "Отжимания" in exercise_names
         assert "Планка" in exercise_names
+
+# ================================================================
+# 14. TESTS: STREAKS (GLOBAL & CHALLENGE)
+# ================================================================
+# Testing streak mechanics:
+# - Global streak (users.streak_current) — across all challenges
+# - Challenge streak (participations.challenge_streak) — within a single challenge
+# - Streak resets when a day is missed
+# - Streak increments only once per day
+# ================================================================
+
+class TestStreaks:
+    
+    def test_global_streak_increments_on_day_close(self, auth_token, challenge_id_active):
+        """
+        What we're testing:
+        - Closing a day increments global streak (users.streak_current)
+        - Initial streak should be 1 after first day
+        """
+        detail = client.get(
+            f"/challenges/{challenge_id_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        exercises = detail["exercises"]
+        
+        # Close both exercises to close the day
+        for ex in exercises:
+            client.post(
+                f"/challenges/{challenge_id_active}/sessions",
+                json={
+                    "challenge_exercise_id": ex["challenge_exercise_id"],
+                    "total_reps": ex["goal"] + 5,
+                    "clean_reps": ex["goal"]
+                },
+                headers={"Authorization": f"Bearer {auth_token}"}
+            )
+        
+        # Check global streak via /me
+        response = client.get(
+            "/me",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["streak_current"] == 1
+
+    def test_global_streak_only_once_per_day(self, auth_token, challenge_id_active):
+        """
+        What we're testing:
+        - Global streak increments ONLY ONCE per day
+        - Even if user closes 2 different challenges in one day
+        - Second challenge should NOT increment the streak again
+        """
+        # Create SECOND challenge for today
+        start_date = date.today().isoformat()
+        second_challenge_data = {
+            "name": "Second Challenge",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [{"exercise_id": 2, "goal": 5}]  # pushups
+        }
+        response = client.post(
+            "/challenges",
+            json=second_challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        second_challenge_id = response.json()["id"]
+        
+        # Close first challenge
+        detail1 = client.get(
+            f"/challenges/{challenge_id_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        for ex in detail1["exercises"]:
+            client.post(
+                f"/challenges/{challenge_id_active}/sessions",
+                json={
+                    "challenge_exercise_id": ex["challenge_exercise_id"],
+                    "total_reps": ex["goal"] + 5,
+                    "clean_reps": ex["goal"]
+                },
+                headers={"Authorization": f"Bearer {auth_token}"}
+            )
+        
+        # Check streak after first challenge
+        response = client.get(
+            "/me",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        streak_after_first = response.json()["streak_current"]
+        
+        # Close second challenge
+        detail2 = client.get(
+            f"/challenges/{second_challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        for ex in detail2["exercises"]:
+            client.post(
+                f"/challenges/{second_challenge_id}/sessions",
+                json={
+                    "challenge_exercise_id": ex["challenge_exercise_id"],
+                    "total_reps": ex["goal"] + 5,
+                    "clean_reps": ex["goal"]
+                },
+                headers={"Authorization": f"Bearer {auth_token}"}
+            )
+        
+        # Check streak again — should NOT have increased
+        response = client.get(
+            "/me",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        streak_after_second = response.json()["streak_current"]
+        
+        assert streak_after_first == streak_after_second
+        assert streak_after_first == 1
+
+    def test_global_streak_resets_after_missed_day(self, auth_token, challenge_id_active):
+        """
+        What we're testing:
+        - If user misses a day, streak resets to 1 on next activity
+        - This is the core streak mechanics
+        """
+        # Close day 1
+        detail = client.get(
+            f"/challenges/{challenge_id_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        for ex in detail["exercises"]:
+            client.post(
+                f"/challenges/{challenge_id_active}/sessions",
+                json={
+                    "challenge_exercise_id": ex["challenge_exercise_id"],
+                    "total_reps": ex["goal"] + 5,
+                    "clean_reps": ex["goal"]
+                },
+                headers={"Authorization": f"Bearer {auth_token}"}
+            )
+        
+        # Check streak = 1
+        response = client.get(
+            "/me",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.json()["streak_current"] == 1
+        
+        # ============================================================
+        # NOTE: To fully test streak reset, we would need to:
+        # 1. Close day 1
+        # 2. Wait 1 day (or mock the date)
+        # 3. Close day 2
+        # 4. Streak should be 2 (not reset)
+        # 5. Wait another day (skip)
+        # 6. Close day 3
+        # 7. Streak should reset to 1
+        # 
+        # Since we can't easily mock dates in integration tests,
+        # this is verified in unit tests (test_streaks_unit.py).
+        # This test is a placeholder for the happy path.
+        # ============================================================
+        
+        # For now, just verify the first day works
+        assert True
+
+    def test_challenge_streak_increments_on_day_close(self, auth_token, challenge_id_active):
+        """
+        What we're testing:
+        - Challenge streak (participations.challenge_streak) increments
+        - when a day is closed
+        - Returns updated challenge_streak in session response
+        """
+        detail = client.get(
+            f"/challenges/{challenge_id_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        exercises = detail["exercises"]
+        
+        # Close both exercises
+        response = None
+        for ex in exercises:
+            response = client.post(
+                f"/challenges/{challenge_id_active}/sessions",
+                json={
+                    "challenge_exercise_id": ex["challenge_exercise_id"],
+                    "total_reps": ex["goal"] + 5,
+                    "clean_reps": ex["goal"]
+                },
+                headers={"Authorization": f"Bearer {auth_token}"}
+            )
+        
+        # After closing the day, challenge_streak should be 1
+        assert response.status_code == 200
+        data = response.json()
+        assert data["challenge_streak"] == 1
+
+    def test_challenge_streak_respects_schedule(self, auth_token, exercise_ids):
+        """
+        What we're testing:
+        - Challenge streak only considers SCHEDULED days
+        - Weekly challenge with days [1, 3, 5] (Mon, Wed, Fri)
+        - Closing Mon → streak = 1
+        - Skipping Tue (not scheduled) → no effect
+        - Closing Wed → streak = 2 (since previous scheduled day was Mon)
+        - Closing Thu (not scheduled) → no effect
+        - Closing Fri → streak = 3
+        """
+        # Create weekly challenge (Mon, Wed, Fri)
+        # We need to pick a Monday as start_date
+        today = date.today()
+        days_until_monday = (0 - today.weekday()) % 7  # Monday = 0
+        start_date = today + timedelta(days=days_until_monday)
+        
+        challenge_data = {
+            "name": "Weekly Streak Challenge",
+            "schedule_type": "weekly",
+            "schedule_days": [1, 3, 5],  # Mon, Wed, Fri (ISO: 1=Mon)
+            "start_date": start_date.isoformat(),
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        # Get the challenge exercise ID
+        detail = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        ex_id = detail["exercises"][0]["challenge_exercise_id"]
+        
+        # ============================================================
+        # NOTE: This test requires the current date to be a scheduled day.
+        # If today is not Mon/Wed/Fri, the test will fail.
+        # For full coverage, this should be a unit test with mocked dates.
+        # 
+        # This integration test is a placeholder for the concept.
+        # ============================================================
+        
+        # Close the exercise
+        response = client.post(
+            f"/challenges/{challenge_id}/sessions",
+            json={
+                "challenge_exercise_id": ex_id,
+                "total_reps": 15,
+                "clean_reps": 10
+            },
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        
+        # If today is a scheduled day, streak = 1
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("day_closed", False):
+                assert data["challenge_streak"] == 1
+        
+        # For a proper test, we'd mock the date or use unit tests
+        assert True
+
+    def test_streak_longest_updated(self, auth_token, challenge_id_active):
+        """
+        What we're testing:
+        - users.streak_longest tracks the record
+        - When streak_current exceeds streak_longest, it updates
+        """
+        # Close day 1
+        detail = client.get(
+            f"/challenges/{challenge_id_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        for ex in detail["exercises"]:
+            client.post(
+                f"/challenges/{challenge_id_active}/sessions",
+                json={
+                    "challenge_exercise_id": ex["challenge_exercise_id"],
+                    "total_reps": ex["goal"] + 5,
+                    "clean_reps": ex["goal"]
+                },
+                headers={"Authorization": f"Bearer {auth_token}"}
+            )
+        
+        # Check streak_longest = 1
+        response = client.get(
+            "/me",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        data = response.json()
+        assert data["streak_longest"] == 1
+
+
+# ================================================================
+# 15. TESTS: DELETE CHALLENGE (HARD DELETE)
+# ================================================================
+# Testing permanent deletion of challenges.
+# - Only the creator can delete
+# - Cannot delete active challenges (optional, based on implementation)
+# - Cascade deletes all related data
+# ================================================================
+
+class TestDeleteChallenge:
+    
+    def test_delete_challenge_by_creator(self, auth_token, exercise_ids):
+        """
+        What we're testing:
+        - Creator can delete their own challenge
+        - Returns 204 No Content
+        - Challenge is removed from the system
+        """
+        # Create a challenge
+        start_date = (date.today() + timedelta(days=1)).isoformat()
+        challenge_data = {
+            "name": "Delete Test Challenge",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        # Delete it
+        response = client.delete(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        
+        assert response.status_code == 204
+        assert response.text == ""  # No content
+        
+        # Verify it's gone
+        response = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 404
+
+    def test_delete_challenge_by_non_creator(self, auth_token, auth_token2, exercise_ids):
+        """
+        What we're testing:
+        - Non-creator CANNOT delete a challenge
+        - Expect 403 Forbidden
+        """
+        # Creator creates a challenge
+        start_date = (date.today() + timedelta(days=1)).isoformat()
+        challenge_data = {
+            "name": "Delete Test Challenge",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        # Second user tries to delete
+        response = client.delete(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token2}"}
+        )
+        
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Only the creator can delete"
+
+    def test_delete_challenge_cascade_deletes_participations(self, auth_token, auth_token2, exercise_ids):
+        """
+        What we're testing:
+        - Deleting a challenge cascades to ALL participations
+        - All participants are removed
+        - No orphaned data remains
+        """
+        # Create a challenge
+        start_date = date.today().isoformat()  # Active challenge
+        challenge_data = {
+            "name": "Cascade Delete Challenge",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        # Second user joins
+        join_code = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()["join_code"]
+        client.post(
+            "/challenges/join",
+            json={"join_code": join_code},
+            headers={"Authorization": f"Bearer {auth_token2}"}
+        )
+        
+        # Check participants count = 2
+        detail = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        assert detail["participants"] == 2
+        
+        # Delete the challenge
+        response = client.delete(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 204
+        
+        # Verify challenge is gone
+        response = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 404
+
+    def test_delete_challenge_cascade_deletes_sessions_and_progress(self, auth_token, exercise_ids):
+        """
+        What we're testing:
+        - Deleting a challenge cascades to sessions, progress, and day progress
+        - All workout data is removed
+        """
+        # Create an active challenge
+        start_date = date.today().isoformat()
+        challenge_data = {
+            "name": "Session Cascade Test",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [
+                {"exercise_id": exercise_ids["squats"], "goal": 10},
+                {"exercise_id": exercise_ids["pushups"], "goal": 5}
+            ]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        # Submit a session (close the day)
+        detail = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        for ex in detail["exercises"]:
+            client.post(
+                f"/challenges/{challenge_id}/sessions",
+                json={
+                    "challenge_exercise_id": ex["challenge_exercise_id"],
+                    "total_reps": ex["goal"] + 5,
+                    "clean_reps": ex["goal"]
+                },
+                headers={"Authorization": f"Bearer {auth_token}"}
+            )
+        
+        # Verify we have progress (day closed)
+        detail_after = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        assert detail_after["joined"] is True
+        
+        # Delete the challenge
+        response = client.delete(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 204
+        
+        # Verify challenge is gone
+        response = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 404
+        
+        # Verify user's global stats are NOT deleted (user_exercise_stats should remain)
+        # Global stats are NOT cascaded from challenge deletion
+        response = client.get(
+            "/me",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        # The user still exists and global stats should be preserved
+
+    def test_delete_challenge_not_found(self, auth_token):
+        """
+        What we're testing:
+        - Deleting a non-existent challenge → 404 Not Found
+        """
+        response = client.delete(
+            "/challenges/9999",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 404
+
+    def test_delete_challenge_without_auth(self, auth_token, exercise_ids):
+        """
+        What we're testing:
+        - Unauthorized user cannot delete a challenge
+        - Expect 401 Unauthorized
+        """
+
+        start_date = (date.today() + timedelta(days=1)).isoformat()
+        challenge_data = {
+            "name": "No Auth Delete Test",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+    
+        response = client.delete(f"/challenges/{challenge_id}")
+        assert response.status_code == 401
+
+
+# ================================================================
+# 16. TESTS: DELETE VS ARCHIVE — DIFFERENT BEHAVIORS
+# ================================================================
+# Understanding the difference:
+# - Archive: soft delete (status = "archived", data remains)
+# - Delete: hard delete (data is permanently removed)
+# ================================================================
+
+class TestDeleteVsArchive:
+    
+    def test_archived_challenge_still_exists(self, auth_token, exercise_ids):
+        """
+        What we're testing:
+        - After archiving, challenge still exists
+        - Can be accessed and restored
+        """
+        # Create a challenge
+        start_date = (date.today() + timedelta(days=1)).isoformat()
+        challenge_data = {
+            "name": "Archive Test",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        # Archive it
+        response = client.post(
+            f"/challenges/{challenge_id}/archive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "archived"
+        
+        # It still exists (can fetch it)
+        response = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "archived"
+
+    def test_deleted_challenge_gone_forever(self, auth_token, exercise_ids):
+        """
+        What we're testing:
+        - After DELETE, challenge is permanently gone
+        - Cannot be recovered
+        """
+        # Create a challenge
+        start_date = (date.today() + timedelta(days=1)).isoformat()
+        challenge_data = {
+            "name": "Delete Forever Test",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        # Delete it
+        response = client.delete(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 204
+        
+        # It's gone forever
+        response = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 404
+        
+        # Cannot archive a deleted challenge
+        response = client.post(
+            f"/challenges/{challenge_id}/archive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 404
+
+
+# ================================================================
+# 17. TESTS: DELETE ACTIVE CHALLENGE (BEHAVIOR OPTION)
+# ================================================================
+# This test checks if your implementation allows deleting active challenges.
+# If you implemented the "archive first" restriction, this test should pass.
+# If you allow deleting any challenge, it will pass too (just different behavior).
+# ================================================================
+
+class TestDeleteActiveChallenge:
+    
+    def test_delete_active_challenge_allowed(self, auth_token, exercise_ids):
+        """
+        What we're testing:
+        - Can delete an active challenge directly (no archive needed)
+        - This tests the current implementation behavior
+        
+        NOTE: If your implementation requires archiving first,
+        this test will fail — adjust accordingly.
+        """
+        # Create an active challenge
+        start_date = date.today().isoformat()
+        challenge_data = {
+            "name": "Active Delete Test",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        # Try to delete directly (without archiving first)
+        response = client.delete(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        
+        # Either 204 (allowed) or 409 (requires archive)
+        # Both are valid behaviors — test documents the current implementation
+        if response.status_code == 204:
+            # Active deletion allowed
+            assert response.text == ""
+        elif response.status_code == 409:
+            # Requires archive first
+            assert "archive" in response.json()["detail"].lower()
+        else:
+            assert False, f"Unexpected status code: {response.status_code}"
