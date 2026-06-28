@@ -7,6 +7,7 @@ from app.routers.auth import authRouter
 from app.routers.challenges import challengeRouter
 from app.routers.exercises import exerciseRouter
 from app.routers.me import meRouter
+from app.routers.public import publicRouter
 from app.util.protectRoute import get_current_user
 from app.db.schema.user import UserOutput
 
@@ -30,6 +31,7 @@ app.include_router(router=authRouter, tags=["auth"], prefix="/auth")
 app.include_router(router=challengeRouter, tags=["challenges"], prefix="/challenges")
 app.include_router(router=exerciseRouter, tags=["exercises"], prefix="/exercises")
 app.include_router(router=meRouter, tags=["me"], prefix="/me")
+app.include_router(router=publicRouter, tags=["public"], prefix="/public")
 
 @app.get("/health")
 def health():

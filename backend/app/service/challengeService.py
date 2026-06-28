@@ -31,6 +31,12 @@ class ChallengeService:
         if not challenge:
             raise HTTPException(status_code=404, detail="Challenge not found")
         return challenge
+    
+    def _get_challenge_by_code(self, join_code: str) -> Challenge:
+        challenge = self.s.query(Challenge).filter_by(join_code=join_code, status="active").first()
+        if not challenge:
+            raise HTTPException(status_code=404, detail="Challenge not found")
+        return challenge
 
     def _exercises_of(self, challenge_id: int):
         rows = (
@@ -68,6 +74,28 @@ class ChallengeService:
             "exercises": self._exercises_of(challenge_id),
             "participants": participants,
             "joined": part is not None,
+        }
+    
+    def get_public_info(self, join_code: str):
+        challenge = self._get_challenge_by_code(join_code)
+        
+        participants = self.s.query(Participation).filter_by(challenge_id=challenge.id).count()
+        creator = self.s.query(User).filter_by(id=challenge.created_by).first()
+        
+        return {
+            "id": challenge.id,
+            "name": challenge.name,
+            "description": challenge.description,
+            "join_code": challenge.join_code,
+            "schedule_type": challenge.schedule_type,
+            "schedule_days": challenge.schedule_days,
+            "start_date": challenge.start_date,
+            "end_date": challenge.end_date,
+            "is_private": challenge.is_private,
+            "status": challenge.status,
+            "created_by": creator.username if creator else None,
+            "participants": participants,
+            "exercises": self._exercises_of(challenge.id)
         }
 
     def leaderboard(self, challenge_id: int):
@@ -250,3 +278,4 @@ class ChallengeService:
         self.s.commit()
     
         return {"id": c.id, "status": c.status}
+    
