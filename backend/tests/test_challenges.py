@@ -1745,3 +1745,284 @@ class TestDeleteActiveChallenge:
             assert "archive" in response.json()["detail"].lower()
         else:
             assert False, f"Unexpected status code: {response.status_code}"
+
+# ================================================================
+# 18. TESTS: UNARCHIVE (RESTORE FROM ARCHIVE)
+# ================================================================
+
+class TestUnarchive:
+    
+    def test_unarchive_challenge_by_creator(self, auth_token, exercise_ids):
+        """
+        What we're testing:
+        - Creator can restore an archived challenge
+        - Status changes from archived to active
+        - archived_at becomes None
+        """
+        # Create a challenge
+        start_date = (date.today() + timedelta(days=1)).isoformat()
+        challenge_data = {
+            "name": "Unarchive Test Challenge",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        # Archive it
+        response = client.post(
+            f"/challenges/{challenge_id}/archive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "archived"
+        
+        # Unarchive it
+        response = client.post(
+            f"/challenges/{challenge_id}/unarchive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == challenge_id
+        assert data["status"] == "active"
+        
+        # Verify it's active in details
+        detail = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        assert detail["status"] == "active"
+        assert detail["status"] == "active"
+    
+    def test_unarchive_challenge_by_non_creator(self, auth_token, auth_token2, exercise_ids):
+        """
+        What we're testing:
+        - Non-creator CANNOT unarchive a challenge
+        - Expect 403 Forbidden
+        """
+        # Creator creates and archives
+        start_date = (date.today() + timedelta(days=1)).isoformat()
+        challenge_data = {
+            "name": "Unarchive Permissions Test",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        client.post(
+            f"/challenges/{challenge_id}/archive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        
+        # Second user tries to unarchive
+        response = client.post(
+            f"/challenges/{challenge_id}/unarchive",
+            headers={"Authorization": f"Bearer {auth_token2}"}
+        )
+        
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Only the creator can unarchive"
+    
+    def test_unarchive_active_challenge_fails(self, auth_token, exercise_ids):
+        """
+        What we're testing:
+        - Cannot unarchive a challenge that is already active
+        - Expect 409 Conflict
+        """
+        # Create an active challenge
+        start_date = (date.today() + timedelta(days=1)).isoformat()
+        challenge_data = {
+            "name": "Already Active Test",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        # Try to unarchive without archiving first
+        response = client.post(
+            f"/challenges/{challenge_id}/unarchive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        
+        assert response.status_code == 409
+        assert "only archived" in response.json()["detail"].lower()
+    
+    def test_unarchive_nonexistent_challenge(self, auth_token):
+        """
+        What we're testing:
+        - Unarchiving a non-existent challenge → 404 Not Found
+        """
+        response = client.post(
+            "/challenges/9999/unarchive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 404
+    
+    def test_unarchive_without_auth(self, auth_token, exercise_ids):
+        """
+        What we're testing:
+        - Unauthorized user cannot unarchive a challenge
+        - Expect 401 Unauthorized
+        """
+        # Create and archive a challenge
+        start_date = (date.today() + timedelta(days=1)).isoformat()
+        challenge_data = {
+            "name": "No Auth Unarchive Test",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        client.post(
+            f"/challenges/{challenge_id}/archive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        
+        # Try to unarchive without token
+        response = client.post(f"/challenges/{challenge_id}/unarchive")
+        assert response.status_code == 401
+    
+    def test_unarchive_restores_join_code_visibility(self, auth_token, auth_token2, exercise_ids):
+        """
+        What we're testing:
+        - After unarchiving, the challenge becomes joinable again
+        - join_code is visible to the creator
+        """
+        # Create a challenge
+        start_date = (date.today() + timedelta(days=1)).isoformat()
+        challenge_data = {
+            "name": "Restore Join Test",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        # Get join_code from creator
+        detail = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        join_code = detail["join_code"]
+        
+        # Archive it
+        client.post(
+            f"/challenges/{challenge_id}/archive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        
+        # Unarchive it
+        client.post(
+            f"/challenges/{challenge_id}/unarchive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        
+        # Second user can join again
+        response = client.post(
+            "/challenges/join",
+            json={"join_code": join_code},
+            headers={"Authorization": f"Bearer {auth_token2}"}
+        )
+        
+        assert response.status_code == 201
+        assert response.json()["challenge_id"] == challenge_id
+    
+    def test_unarchive_preserves_progress(self, auth_token, exercise_ids):
+        """
+        What we're testing:
+        - Unarchiving preserves all participant data and progress
+        - Nothing is lost during archive/unarchive cycle
+        """
+        # Create an active challenge
+        start_date = date.today().isoformat()
+        challenge_data = {
+            "name": "Progress Preserve Test",
+            "schedule_type": "daily",
+            "start_date": start_date,
+            "exercises": [
+                {"exercise_id": exercise_ids["squats"], "goal": 10},
+                {"exercise_id": exercise_ids["pushups"], "goal": 5}
+            ]
+        }
+        response = client.post(
+            "/challenges",
+            json=challenge_data,
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        challenge_id = response.json()["id"]
+        
+        # Submit sessions to close a day
+        detail = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        for ex in detail["exercises"]:
+            client.post(
+                f"/challenges/{challenge_id}/sessions",
+                json={
+                    "challenge_exercise_id": ex["challenge_exercise_id"],
+                    "total_reps": ex["goal"] + 5,
+                    "clean_reps": ex["goal"]
+                },
+                headers={"Authorization": f"Bearer {auth_token}"}
+            )
+        
+        # Get stats before archive
+        me_before = client.get("/me", headers={"Authorization": f"Bearer {auth_token}"}).json()
+        streak_before = me_before["streak_current"]
+        
+        # Archive it
+        client.post(
+            f"/challenges/{challenge_id}/archive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        
+        # Unarchive it
+        client.post(
+            f"/challenges/{challenge_id}/unarchive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        
+        # Check that progress is preserved
+        detail_after = client.get(
+            f"/challenges/{challenge_id}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        
+        # Creator still joined, exercises still there
+        assert detail_after["joined"] is True
+        assert len(detail_after["exercises"]) == 2
+        
+        # Global streak preserved
+        me_after = client.get("/me", headers={"Authorization": f"Bearer {auth_token}"}).json()
+        assert me_after["streak_current"] == streak_before

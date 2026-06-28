@@ -78,3 +78,11 @@ def delete_challenge(
     """Удалить челлендж. Только создатель."""
     ChallengeService(db).delete(user.id, challenge_id)
     return None
+
+@challengeRouter.post("/{challenge_id}/unarchive")
+def unarchive_challenge(
+    challenge_id: int,
+    user: UserOutput = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return ChallengeService(db).unarchive(user.id, challenge_id)
