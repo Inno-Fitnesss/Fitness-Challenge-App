@@ -32,6 +32,8 @@ export interface ProtectedResponse {
   data: UserOutput;
 }
 
+import type { FitnessLevel } from '../constants/fitnessLevels.ts';
+
 /** Доменная модель пользователя на фронтенде (camelCase) */
 export interface User {
   id: number;
@@ -39,8 +41,23 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  heightCm?: number;
+  weightKg?: number;
+  fitnessLevel?: FitnessLevel;
   streakCurrent?: number;
   streakLongest?: number;
+}
+
+export interface ProfileUpdateData {
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  fitnessLevel?: FitnessLevel | null;
+  newPassword?: string;
+  confirmPassword?: string;
 }
 
 export interface LoginCredentials {
@@ -61,10 +78,11 @@ export interface AuthContextValue {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (credentials: LoginCredentials, redirectTo?: string) => Promise<void>;
+  register: (data: RegisterData, redirectTo?: string) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 export interface ApiError {

@@ -11,14 +11,14 @@ import { FieldError } from '../ui/FieldError.tsx';
 import type { ApiError } from '../../types/auth.types.ts';
 
 interface SignUpFormProps {
-  onSuccess: () => void;
+  redirectTo?: string;
 }
 
 const fieldClass = 'auth-field';
 const inputClass = 'py-2.5 px-4 text-sm rounded-xl';
 const labelClass = 'mb-1 text-xs';
 
-export function SignUpForm({ onSuccess }: SignUpFormProps) {
+export function SignUpForm({ redirectTo = '/dashboard' }: SignUpFormProps) {
   const { register: registerUser } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -44,14 +44,16 @@ export function SignUpForm({ onSuccess }: SignUpFormProps) {
   const onSubmit = async (values: SignUpFormValues) => {
     setApiError(null);
     try {
-      await registerUser({
-        username: values.username,
-        email: values.email,
-        password: values.password,
-        firstName: values.firstName || undefined,
-        lastName: values.lastName || undefined,
-      });
-      onSuccess();
+      await registerUser(
+        {
+          username: values.username,
+          email: values.email,
+          password: values.password,
+          firstName: values.firstName || undefined,
+          lastName: values.lastName || undefined,
+        },
+        redirectTo,
+      );
     } catch (error) {
       const apiErr = error as ApiError;
       setApiError(apiErr.message ?? 'Не удалось зарегистрироваться. Попробуйте снова.');

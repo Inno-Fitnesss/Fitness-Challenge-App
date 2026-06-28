@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.tsx';
+import { meApi } from '../api/challengeApi.ts';
 import { PageContainer } from '../components/layout/PageContainer.tsx';
 import { WeeklyCalendar } from '../components/dashboard/WeeklyCalendar.tsx';
 import { StreakWidget } from '../components/dashboard/StreakWidget.tsx';
@@ -22,35 +24,39 @@ function getDisplayName(username?: string, email?: string): string {
 }
 
 export function Dashboard() {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, refreshProfile } = useAuth();
   const displayName = getDisplayName(user?.username, user?.email);
   const [selectedChallengeId, setSelectedChallengeId] = useState<number | null>(null);
   const [todayPlan, setTodayPlan] = useState<TodayPlanItem[]>([]);
+  const [completedDates, setCompletedDates] = useState<string[]>([]);
+  const [streakDays, setStreakDays] = useState(user?.streakCurrent ?? 0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadDashboard = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    try {
+      const [, week, items] = await Promise.all([
+        refreshProfile(),
+        meApi.getWeekActivity(),
+        fetchTodayPlan(),
+      ]);
+      setCompletedDates(week.completed_dates);
+      setStreakDays(week.streak_current);
+      setTodayPlan(items);
+    } catch (err) {
+      const apiErr = err as { message?: string };
+      setError(apiErr.message ?? 'Не удалось загрузить данные');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [refreshProfile]);
 
-    fetchTodayPlan()
-      .then((items) => {
-        if (!cancelled) setTodayPlan(items);
-      })
-      .catch((err: { message?: string }) => {
-        if (!cancelled) setError(err.message ?? 'Не удалось загрузить план на сегодня');
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const streakDays = user?.streakCurrent ?? 0;
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard]);
 
   return (
     <PageContainer>
@@ -61,7 +67,7 @@ export function Dashboard() {
       </header>
 
       <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-8 sm:mb-10">
-        <WeeklyCalendar />
+        <WeeklyCalendar completedDates={completedDates} />
         <StreakWidget days={streakDays} />
       </div>
 
@@ -98,6 +104,11 @@ export function Dashboard() {
         <ChallengeDetailModal
           challengeId={selectedChallengeId}
           onClose={() => setSelectedChallengeId(null)}
+          onEdit={(id) => {
+            setSelectedChallengeId(null);
+            navigate(`/challenges?tab=mine&edit=${id}`);
+          }}
+          returnTarget={{ type: 'dashboard' }}
         />
       )}
     </PageContainer>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { Dumbbell } from 'lucide-react';
 import { Tabs } from '../components/ui/Tabs.tsx';
 import { Toast } from '../components/ui/Toast.tsx';
@@ -15,7 +15,10 @@ const AUTH_TABS = [
 
 export function AuthPage() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState('signin');
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') ?? '/dashboard';
+  const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [toast, setToast] = useState<string | null>(null);
   const isSignUp = activeTab === 'signup';
 
@@ -32,13 +35,8 @@ export function AuthPage() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={redirectTo} replace />;
   }
-
-  const handleRegisterSuccess = () => {
-    setToast('Аккаунт успешно создан! Войдите в систему.');
-    setActiveTab('signin');
-  };
 
   return (
     <div className="min-h-screen bg-neutral-card flex flex-col lg:flex-row lg:h-screen lg:overflow-hidden">
@@ -101,9 +99,9 @@ export function AuthPage() {
               aria-labelledby={`tab-${activeTab}`}
             >
               {isSignUp ? (
-                <SignUpForm onSuccess={handleRegisterSuccess} />
+                <SignUpForm redirectTo={redirectTo} />
               ) : (
-                <SignInForm />
+                <SignInForm redirectTo={redirectTo} />
               )}
             </div>
           </div>

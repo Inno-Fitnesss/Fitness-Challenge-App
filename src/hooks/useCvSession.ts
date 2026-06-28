@@ -5,6 +5,7 @@ import {
   drawPose,
   ExerciseAnalyzer,
   getInferenceIntervalMs,
+  preloadPoseRuntime,
   type CvFeedbackInput,
   type PoseRuntime,
 } from '../cv/poseCvEngine.ts';
@@ -14,6 +15,7 @@ import type {
   ExerciseMetric,
   SessionStatus,
 } from '../types/session.types.ts';
+import { generateId } from '../utils/generateId.ts';
 
 interface UseCvSessionOptions {
   exerciseName: string;
@@ -42,7 +44,7 @@ const EMPTY_STATS: CvSessionStats = {
 function createFeedback(message: CvFeedbackInput): CvFeedbackMessage {
   return {
     ...message,
-    id: crypto.randomUUID(),
+    id: generateId(),
     timestamp: Date.now(),
   };
 }
@@ -83,6 +85,10 @@ export function useCvSession({
     'Нажмите «Начать», чтобы запустить анализ',
   );
   const [cvConnected, setCvConnected] = useState(false);
+
+  useEffect(() => {
+    preloadPoseRuntime();
+  }, []);
 
   const emitFeedback = useCallback((message: CvFeedbackInput) => {
     const now = Date.now();
@@ -242,14 +248,6 @@ export function useCvSession({
         ?.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     };
   }, [emitFeedback, ensureRuntime, exercise, isRunning, videoRef]);
-
-  useEffect(
-    () => () => {
-      runtimeRef.current?.landmarker.close?.();
-      runtimeRef.current = null;
-    },
-    [],
-  );
 
   return {
     stats,

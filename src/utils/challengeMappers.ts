@@ -11,6 +11,8 @@ import type {
   LeaderboardEntry,
   TodayPlanItem,
 } from '../types/challenge.ts';
+import { pluralizeRuWithCount } from './russianPlural.ts';
+import { formatScheduleLabel } from './scheduleFormat.ts';
 
 const MONTHS_SHORT = [
   'янв', 'фев', 'мар', 'апр', 'май', 'июн',
@@ -44,11 +46,7 @@ export function formatExerciseTag(name: string, goal: number, metric: string): s
 }
 
 export function formatParticipants(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${count} участник`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${count} участника`;
-  return `${count} участников`;
+  return pluralizeRuWithCount(count, ['участник', 'участника', 'участников']);
 }
 
 const AVATAR_COLORS = [
@@ -75,6 +73,8 @@ export function mapChallengeDetailToListItem(detail: ApiChallengeDetail): Challe
     startDate: detail.start_date,
     endDate: detail.end_date ?? '',
     scheduleType: detail.schedule_type,
+    scheduleDays: detail.schedule_days ?? [],
+    scheduleLabel: formatScheduleLabel(detail.schedule_type, detail.schedule_days),
     status: detail.status === 'archived' ? 'archived' : 'active',
     participantCount: detail.participants,
     isUnlimited: !detail.end_date,
@@ -162,6 +162,9 @@ export function mapPresetToDiscovery(
     title: detail.name,
     description: detail.description ?? preset.description ?? '',
     isUnlimited: !detail.end_date,
+    scheduleType: detail.schedule_type,
+    scheduleDays: detail.schedule_days ?? [],
+    scheduleLabel: formatScheduleLabel(detail.schedule_type, detail.schedule_days),
     exerciseTags: detail.exercises.map((ex) => formatExerciseTag(ex.name, ex.goal, ex.metric)),
     participantCount: detail.participants,
   };

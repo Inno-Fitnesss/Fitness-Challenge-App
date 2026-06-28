@@ -141,6 +141,8 @@ interface HorizontalMeasurement {
 }
 
 let visionModulePromise: Promise<VisionModule> | null = null;
+let poseRuntimePromise: Promise<PoseRuntime> | null = null;
+let poseRuntimeInstance: PoseRuntime | null = null;
 
 function loadVisionModule(): Promise<VisionModule> {
   if (!visionModulePromise) {
@@ -151,7 +153,7 @@ function loadVisionModule(): Promise<VisionModule> {
   return visionModulePromise;
 }
 
-export async function createPoseRuntime(): Promise<PoseRuntime> {
+async function buildPoseRuntime(): Promise<PoseRuntime> {
   const visionModule = await loadVisionModule();
   const vision = await visionModule.FilesetResolver.forVisionTasks(WASM_ROOT);
   const commonOptions = {
@@ -185,6 +187,27 @@ export async function createPoseRuntime(): Promise<PoseRuntime> {
     poseConnections: visionModule.PoseLandmarker.POSE_CONNECTIONS,
     DrawingUtils: visionModule.DrawingUtils,
   };
+}
+
+/** Запускает загрузку WASM и модели в фоне (после входа в приложение). */
+export function preloadPoseRuntime(): void {
+  if (poseRuntimeInstance || poseRuntimePromise) return;
+  poseRuntimePromise = buildPoseRuntime()
+    .then((runtime) => {
+      poseRuntimeInstance = runtime;
+      return runtime;
+    })
+    .catch((error) => {
+      poseRuntimePromise = null;
+      console.warn('CV preload failed', error);
+      throw error;
+    });
+}
+
+export async function createPoseRuntime(): Promise<PoseRuntime> {
+  if (poseRuntimeInstance) return poseRuntimeInstance;
+  if (!poseRuntimePromise) preloadPoseRuntime();
+  return poseRuntimePromise!;
 }
 
 export function getInferenceIntervalMs(): number {

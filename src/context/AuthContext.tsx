@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../api/authApi.ts';
+import { preloadPoseRuntime } from '../cv/poseCvEngine.ts';
 import { STORAGE_KEYS } from '../constants/storage.ts';
 import type {
   ApiError,
@@ -33,6 +34,14 @@ function persistSession(token: string, user: User, rememberMe: boolean): void {
   localStorage.setItem(STORAGE_KEYS.TOKEN, token);
   localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
   localStorage.setItem(STORAGE_KEYS.REMEMBER_ME, String(rememberMe));
+}
+
+function warmUpCvModel(): void {
+  try {
+    preloadPoseRuntime();
+  } catch {
+    // CV preload is best-effort and should not block auth.
+  }
 }
 
 function clearSession(): void {
@@ -65,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const freshUser = await authApi.getCurrentUser();
       setUser(freshUser);
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(freshUser));
+      warmUpCvModel();
     } catch (error) {
       const apiError = error as ApiError;
       if (apiError.status === 401) {
@@ -81,22 +91,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void checkAuth();
   }, [checkAuth]);
 
-  const login = useCallback(
-    async (credentials: LoginCredentials) => {
-      const { token: authToken } = await authApi.login(credentials);
+  const completeSession = useCallback(
+    async (authToken: string, redirectTo: string) => {
       localStorage.setItem(STORAGE_KEYS.TOKEN, authToken);
 
       const currentUser = await authApi.getCurrentUser();
       persistSession(authToken, currentUser, true);
       setToken(authToken);
       setUser(currentUser);
-      navigate('/dashboard');
+      warmUpCvModel();
+      navigate(redirectTo);
     },
     [navigate],
   );
 
-  const register = useCallback(async (data: RegisterData) => {
-    await authApi.register(data);
+  const login = useCallback(
+    async (credentials: LoginCredentials, redirectTo = '/dashboard') => {
+      const { token: authToken } = await authApi.login(credentials);
+      await completeSession(authToken, redirectTo);
+    },
+    [completeSession],
+  );
+
+  const register = useCallback(
+    async (data: RegisterData, redirectTo = '/dashboard') => {
+      await authApi.register(data);
+      const { token: authToken } = await authApi.login({
+        email: data.email,
+        password: data.password,
+      });
+      await completeSession(authToken, redirectTo);
+    },
+    [completeSession],
+  );
+
+  const refreshProfile = useCallback(async () => {
+    const storedToken = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    if (!storedToken) return;
+
+    try {
+      const freshUser = await authApi.getCurrentUser();
+      setUser(freshUser);
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(freshUser));
+    } catch {
+      // Keep cached profile if refresh fails.
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -116,8 +155,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       checkAuth,
+      refreshProfile,
     }),
-    [user, token, isLoading, login, register, logout, checkAuth],
+    [user, token, isLoading, login, register, logout, checkAuth, refreshProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

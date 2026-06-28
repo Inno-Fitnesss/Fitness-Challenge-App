@@ -1,6 +1,7 @@
 import { apiClient } from './axios.ts';
 import type {
   LoginCredentials,
+  ProfileUpdateData,
   ProtectedResponse,
   RegisterData,
   User,
@@ -9,6 +10,7 @@ import type {
   UserWithToken,
 } from '../types/auth.types.ts';
 import type { ApiMeResponse } from '../types/api.types.ts';
+import type { FitnessLevel } from '../constants/fitnessLevels.ts';
 import { mapRegisterDataToApi, mapUserOutputToUser } from '../utils/userMapper.ts';
 
 function mapMeToUser(data: ApiMeResponse): User {
@@ -16,8 +18,31 @@ function mapMeToUser(data: ApiMeResponse): User {
     id: data.id,
     username: data.username,
     email: data.email,
+    firstName: data.first_name ?? undefined,
+    lastName: data.last_name ?? undefined,
+    heightCm: data.height_cm ?? undefined,
+    weightKg: data.weight_kg ?? undefined,
+    fitnessLevel: (data.fitness_level as FitnessLevel | null) ?? undefined,
     streakCurrent: data.streak_current,
     streakLongest: data.streak_longest,
+  };
+}
+
+function mapProfileUpdateToApi(data: ProfileUpdateData) {
+  return {
+    username: data.username,
+    email: data.email,
+    first_name: data.firstName?.trim() || null,
+    last_name: data.lastName?.trim() || null,
+    height_cm: data.heightCm ?? null,
+    weight_kg: data.weightKg ?? null,
+    fitness_level: data.fitnessLevel ?? null,
+    ...(data.newPassword
+      ? {
+          new_password: data.newPassword,
+          confirm_password: data.confirmPassword,
+        }
+      : {}),
   };
 }
 
@@ -44,6 +69,12 @@ export const authApi = {
   /** GET /me — профиль со стриком и объёмом */
   async getCurrentUser(): Promise<User> {
     const { data } = await apiClient.get<ApiMeResponse>('/me');
+    return mapMeToUser(data);
+  },
+
+  /** PATCH /me — обновление профиля */
+  async updateProfile(payload: ProfileUpdateData): Promise<User> {
+    const { data } = await apiClient.patch<ApiMeResponse>('/me', mapProfileUpdateToApi(payload));
     return mapMeToUser(data);
   },
 

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Pause, Play, Square } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { challengeApi } from '../api/challengeApi.ts';
+import { useAuth } from '../context/AuthContext.tsx';
+import { resolveExerciseReturnPath } from '../utils/exerciseNavigation.ts';
 import { AiFeedbackPanel } from '../components/session/AiFeedbackPanel.tsx';
 import { CameraPreview } from '../components/session/CameraPreview.tsx';
 import { SessionStatsCard } from '../components/session/SessionStatsCard.tsx';
@@ -47,6 +49,8 @@ function SessionHeader({
 
 export function ExerciseSessionPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { refreshProfile } = useAuth();
   const { challengeId, challengeExerciseId } = useParams<{
     challengeId: string;
     challengeExerciseId: string;
@@ -64,6 +68,11 @@ export function ExerciseSessionPage() {
 
   const parsedChallengeId = Number(challengeId);
   const parsedExerciseId = Number(challengeExerciseId);
+
+  const returnPath = useMemo(
+    () => resolveExerciseReturnPath(searchParams, parsedChallengeId),
+    [parsedChallengeId, searchParams],
+  );
 
   const {
     stats,
@@ -151,8 +160,8 @@ export function ExerciseSessionPage() {
 
   const handleBack = useCallback(() => {
     stopCamera();
-    navigate(`/challenges/${parsedChallengeId}`);
-  }, [navigate, parsedChallengeId, stopCamera]);
+    navigate(returnPath);
+  }, [navigate, returnPath, stopCamera]);
 
   const handleToggleSession = useCallback(() => {
     setSaveError(null);
@@ -188,8 +197,9 @@ export function ExerciseSessionPage() {
           context.metric === 'seconds' ? stats.elapsedSeconds : null,
       });
 
+      await refreshProfile();
       stopCamera();
-      navigate(`/challenges/${context.challengeId}`);
+      navigate(returnPath);
     } catch (error) {
       const message =
         error instanceof Error
@@ -206,10 +216,8 @@ export function ExerciseSessionPage() {
     }
   }, [
     context,
-    navigate,
-    stats.cleanReps,
-    stats.elapsedSeconds,
-    stats.reps,
+    returnPath,
+    refreshProfile,
     stopCamera,
   ]);
 
@@ -230,8 +238,8 @@ export function ExerciseSessionPage() {
     return (
       <div className="min-h-screen bg-neutral-card flex flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-red-500 text-sm" role="alert">{loadError ?? 'Сессия недоступна'}</p>
-        <Button variant="secondary" onClick={() => navigate(`/challenges/${parsedChallengeId}?tab=archive`)}>
-          К челленджу
+        <Button variant="secondary" onClick={() => navigate(returnPath)}>
+          Назад
         </Button>
       </div>
     );

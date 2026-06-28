@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { challengeApi, exerciseApi } from '../../api/challengeApi.ts';
 import { parseApiError } from '../../utils/parseApiError.ts';
-import { displayToIso, formatDateInput, isoToDisplay } from '../../utils/dateFormat.ts';
+import { isValidIsoDate, todayIso } from '../../utils/dateFormat.ts';
+import { DateField } from '../ui/DateField.tsx';
 import type { ApiExercise } from '../../types/api.types.ts';
 import {
   ChallengeExerciseRow,
@@ -11,6 +12,8 @@ import {
   type ExerciseRowData,
 } from './ChallengeExerciseRow.tsx';
 import { SchedulePicker, type ScheduleMode } from './SchedulePicker.tsx';
+import { generateId } from '../../utils/generateId.ts';
+import { CHALLENGE_NAME_MAX_LENGTH } from '../../constants/challengeLimits.ts';
 import type { AxiosError } from 'axios';
 
 interface ChallengeFormModalProps {
@@ -20,33 +23,115 @@ interface ChallengeFormModalProps {
   onSuccess: () => void;
 }
 
+interface FormSnapshot {
+  name: string;
+  startDate: string;
+  endDate: string;
+  isUnlimited: boolean;
+  description: string;
+  scheduleMode: ScheduleMode;
+  scheduleDays: number[];
+  rows: Array<{ exerciseId: number | null; goal: number }>;
+}
+
 function isFormValid(
   name: string,
   startDate: string,
   endDate: string,
+  isUnlimited: boolean,
   rows: ExerciseRowData[],
+  exercises: ApiExercise[],
   scheduleMode: ScheduleMode,
   scheduleDays: number[],
 ): boolean {
-  if (!name.trim()) return false;
-  const startIso = displayToIso(startDate);
-  const endIso = displayToIso(endDate);
-  if (!startIso || !endIso) return false;
-  if (endIso < startIso) return false;
+  if (!name.trim() || name.trim().length > CHALLENGE_NAME_MAX_LENGTH) return false;
+  if (!isValidIsoDate(startDate)) return false;
+  if (!isUnlimited) {
+    if (!isValidIsoDate(endDate)) return false;
+    if (endDate < startDate) return false;
+  }
   if (scheduleMode === 'weekly' && scheduleDays.length === 0) return false;
-  const validRows = rows.filter(isExerciseRowValid);
+  const validRows = rows.filter((row) => isExerciseRowValid(row, exercises));
   if (validRows.length === 0) return false;
   const ids = validRows.map((r) => r.exerciseId);
   return new Set(ids).size === ids.length;
 }
 
+function getDefaultFormState() {
+  return {
+    name: '',
+    startDate: todayIso(),
+    endDate: '',
+    isUnlimited: false,
+    description: '',
+    scheduleMode: 'daily' as ScheduleMode,
+    scheduleDays: [] as number[],
+    rows: [createEmptyExerciseRow()],
+  };
+}
+
+function snapshotFromState(
+  name: string,
+  startDate: string,
+  endDate: string,
+  isUnlimited: boolean,
+  description: string,
+  scheduleMode: ScheduleMode,
+  scheduleDays: number[],
+  rows: ExerciseRowData[],
+): FormSnapshot {
+  return {
+    name,
+    startDate,
+    endDate,
+    isUnlimited,
+    description,
+    scheduleMode,
+    scheduleDays: [...scheduleDays].sort((a, b) => a - b),
+    rows: rows.map((row) => ({ exerciseId: row.exerciseId, goal: row.goal })),
+  };
+}
+
+function snapshotsEqual(a: FormSnapshot, b: FormSnapshot): boolean {
+  if (
+    a.name !== b.name ||
+    a.startDate !== b.startDate ||
+    a.endDate !== b.endDate ||
+    a.isUnlimited !== b.isUnlimited ||
+    a.description !== b.description ||
+    a.scheduleMode !== b.scheduleMode
+  ) {
+    return false;
+  }
+
+  if (a.scheduleDays.length !== b.scheduleDays.length) return false;
+  if (a.scheduleDays.some((day, index) => day !== b.scheduleDays[index])) return false;
+
+  if (a.rows.length !== b.rows.length) return false;
+  return a.rows.every(
+    (row, index) =>
+      row.exerciseId === b.rows[index].exerciseId && row.goal === b.rows[index].goal,
+  );
+}
+
+function hasUnsavedCreateContent(snapshot: FormSnapshot): boolean {
+  if (snapshot.name.trim()) return true;
+  if (snapshot.description.trim()) return true;
+  if (snapshot.isUnlimited) return true;
+  if (snapshot.endDate) return true;
+  if (snapshot.scheduleMode === 'weekly' && snapshot.scheduleDays.length > 0) return true;
+  return snapshot.rows.some((row) => row.exerciseId !== null || row.goal > 0);
+}
+
 export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: ChallengeFormModalProps) {
   const isEdit = mode === 'edit';
   const overlayRef = useRef<HTMLDivElement>(null);
+  const initialSnapshotRef = useRef<FormSnapshot | null>(null);
 
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [isUnlimited, setIsUnlimited] = useState(false);
   const [description, setDescription] = useState('');
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('daily');
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
@@ -55,10 +140,45 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
   const [isLoading, setIsLoading] = useState(isEdit);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+
+  const currentSnapshot = useMemo(
+    () =>
+      snapshotFromState(
+        name,
+        startDate,
+        endDate,
+        isUnlimited,
+        description,
+        scheduleMode,
+        scheduleDays,
+        rows,
+      ),
+    [name, startDate, endDate, isUnlimited, description, scheduleMode, scheduleDays, rows],
+  );
+
+  const hasUnsavedChanges = useMemo(() => {
+    if (isLoading) return false;
+    if (isEdit) {
+      if (!initialSnapshotRef.current) return false;
+      return !snapshotsEqual(currentSnapshot, initialSnapshotRef.current);
+    }
+    return hasUnsavedCreateContent(currentSnapshot);
+  }, [currentSnapshot, isEdit, isLoading]);
 
   const valid = useMemo(
-    () => isFormValid(name, startDate, endDate, rows, scheduleMode, scheduleDays),
-    [name, startDate, endDate, rows, scheduleMode, scheduleDays],
+    () =>
+      isFormValid(
+        name,
+        startDate,
+        endDate,
+        isUnlimited,
+        rows,
+        exercises,
+        scheduleMode,
+        scheduleDays,
+      ),
+    [name, startDate, endDate, isUnlimited, rows, exercises, scheduleMode, scheduleDays],
   );
 
   const usedExerciseIds = useMemo(() => {
@@ -69,13 +189,32 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
     return ids;
   }, [rows]);
 
+  const confirmClose = useCallback(() => {
+    setShowDiscardConfirm(false);
+    onClose();
+  }, [onClose]);
+
+  const requestClose = useCallback(() => {
+    if (isSubmitting) return;
+    if (hasUnsavedChanges) {
+      setShowDiscardConfirm(true);
+      return;
+    }
+    onClose();
+  }, [hasUnsavedChanges, isSubmitting, onClose]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isSubmitting) onClose();
+      if (e.key !== 'Escape' || isSubmitting) return;
+      if (showDiscardConfirm) {
+        setShowDiscardConfirm(false);
+        return;
+      }
+      requestClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, isSubmitting]);
+  }, [isSubmitting, requestClose, showDiscardConfirm]);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,21 +229,45 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
           const detail = await challengeApi.getDetail(challengeId);
           if (cancelled) return;
 
-          setName(detail.name);
-          setDescription(detail.description ?? '');
-          setStartDate(isoToDisplay(detail.start_date));
-          setEndDate(detail.end_date ? isoToDisplay(detail.end_date) : '');
-          setScheduleMode(detail.schedule_type);
-          setScheduleDays(detail.schedule_days ?? []);
-          setRows(
+          const loadedName = detail.name.slice(0, CHALLENGE_NAME_MAX_LENGTH);
+          const loadedDescription = detail.description ?? '';
+          const loadedStartDate = detail.start_date;
+          const loadedIsUnlimited = !detail.end_date;
+          const loadedEndDate = detail.end_date ?? '';
+          const loadedScheduleMode = detail.schedule_type;
+          const loadedScheduleDays = detail.schedule_days ?? [];
+          const loadedRows =
             detail.exercises.length > 0
               ? detail.exercises.map((ex) => ({
-                  rowId: crypto.randomUUID(),
+                  rowId: generateId(),
                   exerciseId: ex.exercise_id,
                   goal: ex.goal,
                 }))
-              : [createEmptyExerciseRow()],
+              : [createEmptyExerciseRow()];
+
+          setName(loadedName);
+          setDescription(loadedDescription);
+          setStartDate(loadedStartDate);
+          setIsUnlimited(loadedIsUnlimited);
+          setEndDate(loadedEndDate);
+          setScheduleMode(loadedScheduleMode);
+          setScheduleDays(loadedScheduleDays);
+          setRows(loadedRows);
+
+          initialSnapshotRef.current = snapshotFromState(
+            loadedName,
+            loadedStartDate,
+            loadedEndDate,
+            loadedIsUnlimited,
+            loadedDescription,
+            loadedScheduleMode,
+            loadedScheduleDays,
+            loadedRows,
           );
+        } else {
+          const defaults = getDefaultFormState();
+          setStartDate(defaults.startDate);
+          initialSnapshotRef.current = null;
         }
       } catch (err) {
         if (!cancelled) {
@@ -122,7 +285,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
   }, [isEdit, challengeId]);
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === overlayRef.current && !isSubmitting) onClose();
+    if (e.target === overlayRef.current && !isSubmitting) requestClose();
   };
 
   const updateRow = useCallback((rowId: string, patch: Partial<ExerciseRowData>) => {
@@ -142,14 +305,26 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
     if (next === 'daily') setScheduleDays([]);
   };
 
+  const handleStartDateChange = (iso: string) => {
+    setStartDate(iso);
+    if (!isUnlimited && endDate && iso && endDate < iso) {
+      setEndDate('');
+    }
+  };
+
+  const handleUnlimitedChange = (checked: boolean) => {
+    setIsUnlimited(checked);
+    if (checked) setEndDate('');
+  };
+
   const handleSubmit = async () => {
     if (!valid || isSubmitting) return;
 
-    const startIso = displayToIso(startDate)!;
-    const endIso = displayToIso(endDate)!;
     const exercisePayload = rows
-      .filter(isExerciseRowValid)
+      .filter((row) => isExerciseRowValid(row, exercises))
       .map((r) => ({ exercise_id: r.exerciseId!, goal: r.goal }));
+
+    const endDatePayload = isUnlimited ? null : endDate;
 
     setIsSubmitting(true);
     setError(null);
@@ -161,8 +336,8 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
           description: description.trim() || null,
           schedule_type: scheduleMode,
           schedule_days: scheduleMode === 'weekly' ? scheduleDays : null,
-          start_date: startIso,
-          end_date: endIso,
+          start_date: startDate,
+          end_date: endDatePayload,
           exercises: exercisePayload,
         });
       } else {
@@ -171,8 +346,8 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
           description: description.trim() || null,
           schedule_type: scheduleMode,
           schedule_days: scheduleMode === 'weekly' ? scheduleDays : undefined,
-          start_date: startIso,
-          end_date: endIso,
+          start_date: startDate,
+          end_date: endDatePayload,
           is_private: true,
           exercises: exercisePayload,
         });
@@ -194,11 +369,11 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
     <>
       <button
         type="button"
-        onClick={onClose}
+        onClick={requestClose}
         disabled={isSubmitting}
         className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 bg-brand text-white text-sm font-semibold rounded-2xl hover:bg-brand-hover transition-colors disabled:opacity-50"
       >
-        Отменить
+        {isEdit ? 'Отменить' : 'Закрыть'}
       </button>
       <button
         type="button"
@@ -225,28 +400,68 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
       onClick={handleOverlayClick}
     >
       <div
-        className="w-full sm:max-w-3xl bg-white rounded-t-3xl sm:rounded-3xl shadow-modal animate-slide-up sm:animate-scale-in
+        className="relative w-full sm:max-w-3xl bg-white rounded-t-3xl sm:rounded-3xl shadow-modal animate-slide-up sm:animate-scale-in
           max-h-[92dvh] sm:max-h-[calc(100dvh-3rem)] flex flex-col sm:my-8"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {showDiscardConfirm && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center p-4 bg-black/30 rounded-t-3xl sm:rounded-3xl">
+            <div
+              role="alertdialog"
+              aria-labelledby="discard-title"
+              aria-describedby="discard-desc"
+              className="w-full max-w-sm bg-white rounded-2xl shadow-modal p-5 sm:p-6"
+            >
+              <h3 id="discard-title" className="text-base font-bold text-neutral-text mb-2">
+                Выйти без сохранения?
+              </h3>
+              <p id="discard-desc" className="text-sm text-neutral-secondary mb-5">
+                Вы не сохранили челлендж — введённые данные не будут сохранены.
+              </p>
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowDiscardConfirm(false)}
+                  className="px-4 py-2.5 text-sm font-semibold text-neutral-text bg-neutral-card rounded-xl hover:bg-neutral-border/60 transition-colors"
+                >
+                  Остаться
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmClose}
+                  className="px-4 py-2.5 text-sm font-semibold text-white bg-brand rounded-xl hover:bg-brand-hover transition-colors"
+                >
+                  Выйти
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex-shrink-0 p-4 sm:p-6 sm:pb-4 border-b border-neutral-border/60 sm:border-0">
           <div className="w-10 h-1 bg-neutral-border rounded-full mx-auto mb-4 sm:hidden" aria-hidden />
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Название"
-              disabled={isLoading}
-              className="flex-1 min-w-0 px-4 py-3 border border-neutral-border rounded-2xl text-sm sm:text-base text-neutral-text placeholder:text-neutral-muted focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 disabled:bg-neutral-card"
-              autoFocus
-            />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 min-w-0">
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) =>
+                  setName(e.target.value.slice(0, CHALLENGE_NAME_MAX_LENGTH))
+                }
+                placeholder="Название"
+                disabled={isLoading}
+                maxLength={CHALLENGE_NAME_MAX_LENGTH}
+                className="w-full min-w-0 px-4 py-3 border border-neutral-border rounded-2xl text-sm sm:text-base text-neutral-text placeholder:text-neutral-muted focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 disabled:bg-neutral-card truncate"
+                autoFocus
+              />
+              <p className="mt-1 text-xs text-neutral-muted text-right">
+                {name.length}/{CHALLENGE_NAME_MAX_LENGTH}
+              </p>
+            </div>
             <div className="hidden sm:flex gap-3 flex-shrink-0">{actionButtons}</div>
           </div>
         </div>
 
-        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 sm:py-2">
           {error && (
             <p role="alert" className="mb-4 text-sm text-red-500">
@@ -260,37 +475,45 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
             <div className="space-y-6 sm:space-y-8 pb-2">
               <section>
                 <h2 className="text-sm font-bold text-neutral-text mb-3">Длительность</h2>
-                <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="start-date" className="block text-xs text-neutral-secondary mb-1.5">
-                      Дата начала
-                    </label>
+                <div className="space-y-4">
+                  <DateField
+                    id="start-date"
+                    label="Дата начала"
+                    value={startDate}
+                    onChange={handleStartDateChange}
+                    disabled={isLoading}
+                    required
+                  />
+
+                  <label className="flex items-start gap-3 p-4 rounded-2xl border border-neutral-border bg-neutral-card/40 cursor-pointer hover:border-brand/30 transition-colors">
                     <input
-                      id="start-date"
-                      type="text"
-                      inputMode="numeric"
-                      value={startDate}
-                      onChange={(e) => setStartDate(formatDateInput(e.target.value))}
-                      placeholder="дд.мм.гггг"
-                      maxLength={10}
-                      className="w-full px-4 py-2.5 border border-neutral-border rounded-xl text-sm text-neutral-text placeholder:text-neutral-muted focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                      type="checkbox"
+                      checked={isUnlimited}
+                      onChange={(e) => handleUnlimitedChange(e.target.checked)}
+                      disabled={isLoading}
+                      className="mt-0.5 w-5 h-5 rounded-md border-2 border-neutral-border text-brand focus:ring-2 focus:ring-brand/20 cursor-pointer"
                     />
-                  </div>
-                  <div>
-                    <label htmlFor="end-date" className="block text-xs text-neutral-secondary mb-1.5">
-                      Дата окончания
-                    </label>
-                    <input
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-neutral-text">
+                        Бессрочный челлендж
+                      </span>
+                      <span className="block text-xs text-neutral-muted mt-0.5">
+                        Без даты окончания — завершите вручную, когда захотите
+                      </span>
+                    </span>
+                  </label>
+
+                  {!isUnlimited && (
+                    <DateField
                       id="end-date"
-                      type="text"
-                      inputMode="numeric"
+                      label="Дата окончания"
                       value={endDate}
-                      onChange={(e) => setEndDate(formatDateInput(e.target.value))}
-                      placeholder="дд.мм.гггг"
-                      maxLength={10}
-                      className="w-full px-4 py-2.5 border border-neutral-border rounded-xl text-sm text-neutral-text placeholder:text-neutral-muted focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                      onChange={setEndDate}
+                      min={startDate && isValidIsoDate(startDate) ? startDate : undefined}
+                      disabled={isLoading}
+                      required
                     />
-                  </div>
+                  )}
                 </div>
               </section>
 
@@ -307,6 +530,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={4}
+                  placeholder="Необязательно"
                   className="w-full px-4 py-3 border border-neutral-border rounded-2xl text-sm text-neutral-text placeholder:text-neutral-muted resize-none focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
                 />
               </section>
@@ -343,7 +567,6 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
           )}
         </div>
 
-        {/* Mobile sticky footer */}
         <div className="flex-shrink-0 sm:hidden flex gap-2 p-4 border-t border-neutral-border bg-white pb-[max(1rem,env(safe-area-inset-bottom))]">
           {actionButtons}
         </div>

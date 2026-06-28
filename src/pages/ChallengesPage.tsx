@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { Button } from '../components/ui/Button.tsx';
@@ -8,7 +8,11 @@ import { ChallengeCard } from '../components/challenges/ChallengeCard.tsx';
 import { DiscoveryCard } from '../components/challenges/DiscoveryCard.tsx';
 import { ChallengeDetailModal } from '../components/challenges/ChallengeDetailModal.tsx';
 import { ChallengeFormModal } from '../components/challenges/ChallengeFormModal.tsx';
+import { ChallengeInviteModal } from '../components/challenges/ChallengeInviteModal.tsx';
 import { challengeApi } from '../api/challengeApi.ts';
+import { parseApiError } from '../utils/parseApiError.ts';
+import { buildChallengeInviteUrl } from '../utils/inviteUrl.ts';
+import type { AxiosError } from 'axios';
 import {
   fetchChallengeListItems,
   fetchDiscoveryChallenges,
@@ -29,6 +33,45 @@ function filterByTab(items: ChallengeListItem[], tab: ChallengeTab): ChallengeLi
   if (tab === 'archive') return items;
   if (tab === 'mine') return items.filter((c) => c.isOwner);
   return items.filter((c) => !c.isOwner);
+}
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  return parseApiError(err as AxiosError).message ?? fallback;
+}
+
+function JoinByCodePanel({ onJoin }: { onJoin: (code: string) => void }) {
+  const [code, setCode] = useState('');
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    onJoin(trimmed);
+    setCode('');
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="mb-6 p-4 bg-white rounded-2xl border border-neutral-border"
+    >
+      <p className="text-sm font-medium text-neutral-text mb-2">Вступить по коду приглашения</p>
+      <div className="flex flex-col xs:flex-row gap-2">
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          placeholder="AB12CD34"
+          maxLength={8}
+          aria-label="Код приглашения"
+          className="flex-1 px-4 py-2.5 text-sm font-medium tracking-widest uppercase border border-neutral-border rounded-xl focus:outline-none focus:border-brand"
+        />
+        <Button type="submit" variant="secondary" size="md" className="xs:w-auto" disabled={!code.trim()}>
+          Вступить
+        </Button>
+      </div>
+    </form>
+  );
 }
 
 function DiscoverySection({
@@ -71,6 +114,7 @@ export function ChallengesPage() {
   const editIdParam = searchParams.get('edit');
   const editChallengeId =
     editIdParam && !Number.isNaN(Number(editIdParam)) ? Number(editIdParam) : null;
+  const inviteCode = searchParams.get('invite')?.trim().toUpperCase() ?? null;
 
   const openCreateModal = () => {
     setSearchParams({ tab: activeTab, create: '1' });
@@ -87,6 +131,12 @@ export function ChallengesPage() {
   const closeEditModal = () => {
     setSearchParams({ tab: activeTab });
   };
+
+  const closeInvite = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('invite');
+    setSearchParams(next);
+  }, [searchParams, setSearchParams]);
 
   const [activeChallenges, setActiveChallenges] = useState<ChallengeListItem[]>([]);
   const [archivedChallenges, setArchivedChallenges] = useState<ChallengeListItem[]>([]);
@@ -166,12 +216,20 @@ export function ChallengesPage() {
 
   const handleCopyLink = async (challenge: ChallengeListItem) => {
     if (!challenge.joinCode) return;
+    const inviteUrl = buildChallengeInviteUrl(challenge.joinCode);
     try {
-      await navigator.clipboard.writeText(challenge.joinCode);
-      showToast('Код приглашения скопирован');
+      await navigator.clipboard.writeText(inviteUrl);
+      showToast('Ссылка-приглашение скопирована');
     } catch {
-      showToast(`Код: ${challenge.joinCode}`);
+      showToast(inviteUrl);
     }
+  };
+
+  const handleInviteJoined = async (challengeId: number) => {
+    closeInvite();
+    showToast('Вы присоединились к челленджу');
+    await loadData();
+    openChallenge(challengeId);
   };
 
   const handleArchive = async (id: number) => {
@@ -180,7 +238,36 @@ export function ChallengesPage() {
       showToast('Челлендж перемещён в архив');
       await loadData();
     } catch (err) {
-      showToast((err as { message?: string }).message ?? 'Не удалось архивировать');
+      showToast(getErrorMessage(err, 'Не удалось архивировать'));
+    }
+  };
+
+  const handleResume = async (id: number) => {
+    try {
+      await challengeApi.resume(id);
+      showToast('Челлендж возобновлён');
+      if (selectedChallengeId === id) {
+        closeChallenge();
+      }
+      await loadData();
+    } catch (err) {
+      showToast(getErrorMessage(err, 'Не удалось возобновить челлендж'));
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Удалить челлендж безвозвратно? Это действие нельзя отменить.')) {
+      return;
+    }
+    try {
+      await challengeApi.delete(id);
+      if (selectedChallengeId === id) {
+        closeChallenge();
+      }
+      showToast('Челлендж удалён');
+      await loadData();
+    } catch (err) {
+      showToast(getErrorMessage(err, 'Не удалось удалить челлендж'));
     }
   };
 
@@ -190,7 +277,7 @@ export function ChallengesPage() {
       showToast('Вы покинули челлендж');
       await loadData();
     } catch (err) {
-      showToast((err as { message?: string }).message ?? 'Не удалось покинуть челлендж');
+      showToast(getErrorMessage(err, 'Не удалось покинуть челлендж'));
     }
   };
 
@@ -200,8 +287,14 @@ export function ChallengesPage() {
       showToast('Вы присоединились к челленджу');
       await loadData();
     } catch (err) {
-      showToast((err as { message?: string }).message ?? 'Не удалось присоединиться');
+      showToast(getErrorMessage(err, 'Не удалось присоединиться'));
     }
+  };
+
+  const handleJoinByCode = (code: string) => {
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) return;
+    setSearchParams({ tab: activeTab, invite: trimmed });
   };
 
   const sourceList = activeTab === 'archive' ? archivedChallenges : activeChallenges;
@@ -232,6 +325,8 @@ export function ChallengesPage() {
             className="mb-6 sm:mb-8"
           />
 
+          <JoinByCodePanel onJoin={(code) => void handleJoinByCode(code)} />
+
           {isLoading && <p className="text-neutral-muted text-sm py-8">Загрузка...</p>}
 
           {error && (
@@ -246,13 +341,11 @@ export function ChallengesPage() {
                   challenge={challenge}
                   tab={activeTab}
                   onOpen={openChallenge}
-                  onEdit={openEditModal}
                   onCopyLink={() => void handleCopyLink(challenge)}
-                  onLeaderboard={openChallenge}
                   onArchive={(cid) => void handleArchive(cid)}
-                  onDelete={() => showToast('Удаление пока не поддерживается API')}
+                  onDelete={(cid) => void handleDelete(cid)}
                   onLeave={(cid) => void handleLeave(cid)}
-                  onResume={() => showToast('Возобновление пока не поддерживается API')}
+                  onResume={(cid) => void handleResume(cid)}
                 />
               ))}
 
@@ -303,11 +396,24 @@ export function ChallengesPage() {
         />
       )}
 
+      {inviteCode && (
+        <ChallengeInviteModal
+          joinCode={inviteCode}
+          onClose={closeInvite}
+          onJoined={(id) => void handleInviteJoined(id)}
+        />
+      )}
+
       {selectedChallengeId != null && (
         <ChallengeDetailModal
           challengeId={selectedChallengeId}
           onClose={closeChallenge}
-          onResume={() => showToast('Возобновление пока не поддерживается API')}
+          onResume={(cid) => void handleResume(cid)}
+          onEdit={(cid) => {
+            closeChallenge();
+            openEditModal(cid);
+          }}
+          returnTarget={{ type: 'challenge', challengeId: selectedChallengeId, tab: activeTab }}
         />
       )}
 

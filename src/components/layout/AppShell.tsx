@@ -1,12 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutGrid, BarChart3, User, LogOut } from 'lucide-react';
+import { LayoutGrid, BarChart3, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { BrandLogoLink } from '../ui/BrandLogoLink.tsx';
 
 const navItems = [
   { to: '/dashboard', label: 'Главная', icon: LayoutGrid, end: true },
   { to: '/challenges', label: 'Челленджи', icon: BarChart3, end: false },
-  { to: '/settings', label: 'Профиль', icon: User, end: false },
+  { to: '/settings', label: 'Профиль', icon: Settings, end: false },
 ];
 
 function getDisplayName(username?: string, email?: string): string {

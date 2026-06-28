@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Calendar, Target, Users, Lock, Globe, TrendingUp, Zap } from 'lucide-react';
-import type { ChallengeFormValues, Exercise } from '../types/challenge.ts';
+import { pluralizeRu } from '../utils/russianPlural.ts';
 
 interface ChallengePreviewProps {
   data: Partial<ChallengeFormValues>;
@@ -102,7 +102,7 @@ export function ChallengePreview({ data, exercises }: ChallengePreviewProps) {
         {durationDays && (
           <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-success/40 rounded-xl">
             <Zap size={13} className="text-green-600" />
-            <span className="text-xs font-semibold text-green-700">{durationDays} {durationDays === 1 ? 'день' : durationDays < 5 ? 'дня' : 'дней'}</span>
+            <span className="text-xs font-semibold text-green-700">{durationDays} {pluralizeRu(durationDays, ['день', 'дня', 'дней'])}</span>
             <span className="text-xs text-neutral-secondary">продолжительность</span>
           </div>
         )}

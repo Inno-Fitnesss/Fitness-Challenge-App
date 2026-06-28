@@ -66,14 +66,42 @@ export interface ApiMeResponse {
   id: number;
   username: string;
   email: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  fitness_level?: string | null;
   streak_current: number;
   streak_longest: number;
   volume: { exercise: string; metric: string; total: number }[];
 }
 
+export interface ApiWeekActivity {
+  week_start: string;
+  week_end: string;
+  completed_dates: string[];
+  streak_current: number;
+}
+
 export interface ApiJoinResponse {
   participation_id: number;
   challenge_id: number;
+}
+
+export interface ApiPublicChallenge {
+  id: number;
+  name: string;
+  description: string | null;
+  join_code: string;
+  schedule_type: 'daily' | 'weekly';
+  schedule_days: number[] | null;
+  start_date: string;
+  end_date: string | null;
+  is_private: boolean;
+  status: string;
+  participants: number;
+  exercises: ApiChallengeExercise[];
+  leaderboard: ApiLeaderboardEntry[];
 }
 
 export interface ApiSessionResponse {

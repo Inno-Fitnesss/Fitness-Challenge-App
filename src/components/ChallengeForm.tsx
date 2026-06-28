@@ -6,46 +6,21 @@ import { Plus, AlertCircle, Dumbbell } from 'lucide-react';
 import type { Resolver } from 'react-hook-form';
 import { ExerciseCard } from './ExerciseCard.tsx';
 import { ExerciseSelectorModal } from './ExerciseSelectorModal.tsx';
+import { DateField } from './ui/DateField.tsx';
+import {
+  DATE_MAX_ISO,
+  isValidIsoDate,
+  todayIso,
+} from '../utils/dateFormat.ts';
 import type { Exercise, ChallengeFormValues, ExerciseTemplate } from '../types/challenge.ts';
-
-const CURRENT_YEAR = new Date().getFullYear();
-const MAX_DATE_YEAR = CURRENT_YEAR + 10;
-
-function formatDateInput(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function getDateBounds() {
-  return {
-    today: formatDateInput(new Date()),
-    maxDate: `${MAX_DATE_YEAR}-12-31`,
-  };
-}
-
-function isValidCalendarDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-
-  const [y, m, d] = value.split('-').map(Number);
-  if (y < CURRENT_YEAR || y > MAX_DATE_YEAR) return false;
-
-  const date = new Date(y, m - 1, d);
-  return (
-    date.getFullYear() === y &&
-    date.getMonth() === m - 1 &&
-    date.getDate() === d
-  );
-}
 
 const dateSchema = (label: string) =>
   z
     .string()
     .min(1, `Укажите ${label}`)
     .refine(
-      isValidCalendarDate,
-      `Введите корректную дату (год от ${CURRENT_YEAR} до ${MAX_DATE_YEAR})`,
+      isValidIsoDate,
+      'Введите корректную дату',
     );
 
 const schema = z.object({
@@ -161,9 +136,9 @@ export function ChallengeForm({ onValuesChange, onExercisesChange, onSubmit, isS
 
   const descValue = watch('description') ?? '';
   const startDateValue = watch('startDate');
-  const { today, maxDate } = getDateBounds();
+  const today = todayIso();
   const endDateMin =
-    startDateValue && isValidCalendarDate(startDateValue) ? startDateValue : today;
+    startDateValue && isValidIsoDate(startDateValue) ? startDateValue : today;
 
   const handleFormSubmit = (status: 'draft' | 'published') => {
     handleSubmit((values) => onSubmit(values, exercises, status))();
@@ -207,60 +182,36 @@ export function ChallengeForm({ onValuesChange, onExercisesChange, onSubmit, isS
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="startDate" required>Дата начала</Label>
               <Controller
                 name="startDate"
                 control={control}
                 render={({ field }) => (
-                  <input
+                  <DateField
                     id="startDate"
-                    type="date"
+                    label="Дата начала"
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
                     min={today}
-                    max={maxDate}
-                    value={field.value}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (!value || isValidCalendarDate(value)) {
-                        field.onChange(value);
-                      }
-                    }}
-                    onBlur={(e) => {
-                      field.onBlur();
-                      if (e.target.value && !isValidCalendarDate(e.target.value)) {
-                        field.onChange('');
-                      }
-                    }}
-                    className={inputClass(!!errors.startDate)}
+                    max={DATE_MAX_ISO}
+                    required
                   />
                 )}
               />
               <FieldError message={errors.startDate?.message} />
             </div>
             <div>
-              <Label htmlFor="endDate" required>Дата окончания</Label>
               <Controller
                 name="endDate"
                 control={control}
                 render={({ field }) => (
-                  <input
+                  <DateField
                     id="endDate"
-                    type="date"
+                    label="Дата окончания"
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
                     min={endDateMin}
-                    max={maxDate}
-                    value={field.value}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (!value || isValidCalendarDate(value)) {
-                        field.onChange(value);
-                      }
-                    }}
-                    onBlur={(e) => {
-                      field.onBlur();
-                      if (e.target.value && !isValidCalendarDate(e.target.value)) {
-                        field.onChange('');
-                      }
-                    }}
-                    className={inputClass(!!errors.endDate)}
+                    max={DATE_MAX_ISO}
+                    required
                   />
                 )}
               />

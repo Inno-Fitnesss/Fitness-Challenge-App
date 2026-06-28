@@ -1,7 +1,9 @@
 import { Clock } from 'lucide-react';
 import { Badge } from '../ui/Badge.tsx';
 import { ProgressBar } from '../ui/ProgressBar.tsx';
+import { ChallengeScheduleBadge } from '../challenges/ChallengeScheduleBadge.tsx';
 import type { TodayPlanItem } from '../../types/challenge.ts';
+import { formatParticipants } from '../../utils/challengeMappers.ts';
 
 interface TodayPlanCardProps {
   item: TodayPlanItem;
@@ -21,12 +23,13 @@ export function TodayPlanCard({ item, onClick }: TodayPlanCardProps) {
     >
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <h3 className="text-base sm:text-lg font-bold text-neutral-text mb-2">{challenge.title}</h3>
+          <h3 className="text-base sm:text-lg font-bold text-neutral-text mb-2 truncate" title={challenge.title}>{challenge.title}</h3>
           <div className="flex flex-wrap gap-2">
             <Badge variant="orange" icon={<Clock size={12} />}>
               {challenge.dateLabel}
             </Badge>
-            <Badge variant="grey">{challenge.participantCount} участника</Badge>
+            <ChallengeScheduleBadge label={challenge.scheduleLabel} />
+            <Badge variant="grey">{formatParticipants(challenge.participantCount)}</Badge>
           </div>
         </div>
         {isCompleted && (
