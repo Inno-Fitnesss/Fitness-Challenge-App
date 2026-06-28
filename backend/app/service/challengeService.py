@@ -225,3 +225,12 @@ class ChallengeService:
         self.s.delete(part)
         self.s.commit()
         return {"left": True}
+    
+    def delete(self, user_id: int, challenge_id: int):
+        """Полное удаление челленджа. Только создатель."""
+        c = self._get_challenge(challenge_id)
+        if c.created_by != user_id:
+            raise HTTPException(status_code=403, detail="Only the creator can delete")
+        self.s.delete(c)
+        self.s.commit()
+        return {"deleted": True, "challenge_id": challenge_id}
