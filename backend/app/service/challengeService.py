@@ -234,3 +234,19 @@ class ChallengeService:
         self.s.delete(c)
         self.s.commit()
         return {"deleted": True, "challenge_id": challenge_id}
+    
+    def unarchive(self, user_id: int, challenge_id: int):
+
+        c = self._get_challenge(challenge_id)
+    
+        if c.created_by != user_id:
+            raise HTTPException(status_code=403, detail="Only the creator can unarchive")
+    
+        if c.status != "archived":
+            raise HTTPException(status_code=409, detail="Only archived challenges can be unarchived")
+    
+        c.status = "active"
+        c.archived_at = None
+        self.s.commit()
+    
+        return {"id": c.id, "status": c.status}
