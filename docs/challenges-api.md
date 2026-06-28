@@ -30,11 +30,11 @@
 | GET | /api/challenges/presets | готовые пресеты приложения | auth |
 | GET | /api/exercises | каталог упражнений (присед/отжим/планка) | auth |
 
-### Участие
+### Public, Участие
 | Метод | Путь | Назначение |
 |---|---|---|
-| POST | /api/challenges/join | вступить по {join_code} |
-| POST | /api/challenges/{id}/join | вступить в пресет / по id |
+| GET | /api/public/challenge/{join_code} | публичный просмотр челленджа по коду (для шеринга) |
+| POST | /api/public/challenge/{join_code}/join | присоединиться по публичной ссылке (требует авторизацию) |
 | POST | /api/challenges/{id}/leave | выйти (удалить своё участие) |
 
 ### Сессии и «я»
@@ -95,3 +95,15 @@
 
 ## Что нужно для мерджа с JWT
 Текущая auth-модель `User` (id, first_name, last_name, email, password, таблица "Users") -> привести к v2: добавить `username`, `password_hash` вместо `password`, `streak_*`, `last_activity_date`, `timezone`, `created_at/updated_at`; таблицу назвать `users`; email в нижнем регистре. После этого auth и челленджи сидят на одной таблице `users`.
+
+## Сценарий шеринга
+1. При создании челленджа сервер генерирует join_code (например, "AB12CD")
+
+2. Фронтенд формирует ссылку: https://app.com/challenge/{join_code}
+
+3. При переходе по ссылке фронтенд делает GET /api/public/challenge/{join_code}
+
+4. Показывается страница-превью с описанием челленджа
+
+5. При нажатии "Присоединиться" делается POST /api/public/challenge/{join_code}/join (с JWT)
+

@@ -250,6 +250,14 @@ class ChallengeService:
         part = self.s.query(Participation).filter_by(user_id=user_id, challenge_id=challenge_id).first()
         if not part:
             raise HTTPException(status_code=404, detail="Not a participant")
+        
+        challenge = self._get_challenge(challenge_id)
+        if challenge.created_by == user_id:
+            raise HTTPException(
+                status_code=403, 
+                detail="Creator cannot leave the challenge. You can archive or delete it instead."
+            )
+    
         self.s.delete(part)
         self.s.commit()
         return {"left": True}
