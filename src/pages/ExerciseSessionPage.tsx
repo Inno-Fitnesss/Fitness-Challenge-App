@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Pause, Play, Square } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { challengeApi } from '../api/challengeApi.ts';
@@ -88,6 +88,11 @@ export function ExerciseSessionPage() {
     videoRef,
   });
 
+  const statsRef = useRef(stats);
+  useEffect(() => {
+    statsRef.current = stats;
+  }, [stats]);
+
   useEffect(() => {
     if (!Number.isFinite(parsedChallengeId) || !Number.isFinite(parsedExerciseId)) {
       setLoadError('Неверная ссылка на упражнение');
@@ -175,6 +180,8 @@ export function ExerciseSessionPage() {
   const handleFinish = useCallback(async () => {
     if (!context) return;
 
+    const currentStats = statsRef.current;
+
     setIsFinishing(true);
     setIsRunning(false);
     setSaveError(null);
@@ -182,19 +189,19 @@ export function ExerciseSessionPage() {
     try {
       const measuredValue =
         context.metric === 'seconds'
-          ? stats.elapsedSeconds
-          : stats.reps;
+          ? currentStats.elapsedSeconds
+          : currentStats.reps;
       const cleanValue =
         context.metric === 'seconds'
-          ? stats.elapsedSeconds
-          : stats.cleanReps;
+          ? currentStats.elapsedSeconds
+          : currentStats.cleanReps;
 
       await challengeApi.submitSession(context.challengeId, {
         challenge_exercise_id: context.challengeExerciseId,
         total_reps: measuredValue,
         clean_reps: cleanValue,
         duration_seconds:
-          context.metric === 'seconds' ? stats.elapsedSeconds : null,
+          context.metric === 'seconds' ? currentStats.elapsedSeconds : null,
       });
 
       await refreshProfile();
@@ -216,6 +223,7 @@ export function ExerciseSessionPage() {
     }
   }, [
     context,
+    navigate,
     returnPath,
     refreshProfile,
     stopCamera,
