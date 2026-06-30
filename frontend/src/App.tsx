@@ -7,7 +7,8 @@ import { Dashboard } from './pages/Dashboard.tsx';
 import { ChallengesPage } from './pages/ChallengesPage.tsx';
 import { ChallengeCreatePage } from './pages/ChallengeCreatePage.tsx';
 import { ChallengeEditPage } from './pages/ChallengeEditPage.tsx';
-import { SettingsPage } from './pages/SettingsPage.tsx';
+import { ProfilePage } from './pages/ProfilePage.tsx';
+import { InviteRedirectPage } from './pages/InviteRedirectPage.tsx';
 import { ExerciseSessionPage } from './pages/ExerciseSessionPage.tsx';
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/invite/:joinCode" element={<InviteRedirectPage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route
@@ -28,7 +30,7 @@ function App() {
               <Route path="/challenges/create" element={<ChallengeCreatePage />} />
               <Route path="/challenges/:id/edit" element={<ChallengeEditPage />} />
               <Route path="/challenges/:id" element={<ChallengesPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/settings" element={<ProfilePage />} />
             </Route>
           </Route>
 

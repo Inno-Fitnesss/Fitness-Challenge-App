@@ -128,6 +128,22 @@ def exercise_ids():
     return {"squats": 1, "pushups": 2, "plank": 3}
 
 
+def _backdate_start(challenge_id, days=1):
+    """Move a challenge's start_date into the past directly in the DB.
+
+    The API now rejects creating challenges that start in the past, so tests
+    that need an already-started ("active") challenge create it for today and
+    then backdate it here, bypassing the create-time validation.
+    """
+    db = TestingSessionLocal()
+    try:
+        ch = db.get(Challenge, challenge_id)
+        ch.start_date = date.today() - timedelta(days=days)
+        db.commit()
+    finally:
+        db.close()
+
+
 # ================================================================
 # 3. FIXTURES WITH DIFFERENT DATES
 # ================================================================
@@ -181,14 +197,11 @@ def challenge_id_active(auth_token, exercise_ids):
     the test machine's local date — a start_date of "today" would then be
     treated as not-yet-started and drop out of /me/today.
     """
-    start_date = (date.today() - timedelta(days=1)).isoformat()
-    
     challenge_data = {
         "name": "Active Challenge",
         "description": "Active test challenge",
         "schedule_type": "daily",
-        "start_date": start_date,
-        "is_private": True,
+        "start_date": date.today().isoformat(),
         "exercises": [
             {"exercise_id": exercise_ids["squats"], "goal": 20},
             {"exercise_id": exercise_ids["pushups"], "goal": 10}
@@ -199,7 +212,9 @@ def challenge_id_active(auth_token, exercise_ids):
         json=challenge_data,
         headers={"Authorization": f"Bearer {auth_token}"}
     )
-    return response.json()["id"]
+    challenge_id = response.json()["id"]
+    _backdate_start(challenge_id, days=1)
+    return challenge_id
 
 
 @pytest.fixture
@@ -207,17 +222,15 @@ def public_challenge_active(auth_token, exercise_ids):
     """
     Creates an active daily challenge (started YESTERDAY) and makes it PUBLIC.
     Used in JOIN tests: only public challenges can be joined by other users.
-    A challenge is always created private, then opened via /make-public.
+    A challenge is always created private, then opened via /publish.
 
     Uses a yesterday start_date for the same timezone-safety reason as
     challenge_id_active.
     """
-    start_date = (date.today() - timedelta(days=1)).isoformat()
-
     challenge_data = {
         "name": "Public Active Challenge",
         "schedule_type": "daily",
-        "start_date": start_date,
+        "start_date": date.today().isoformat(),
         "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
     }
     response = client.post(
@@ -226,8 +239,9 @@ def public_challenge_active(auth_token, exercise_ids):
         headers={"Authorization": f"Bearer {auth_token}"}
     )
     challenge_id = response.json()["id"]
+    _backdate_start(challenge_id, days=1)
     client.post(
-        f"/challenges/{challenge_id}/make-public",
+        f"/challenges/{challenge_id}/publish",
         headers={"Authorization": f"Bearer {auth_token}"}
     )
     return challenge_id
@@ -625,11 +639,12 @@ class TestJoinLeave:
         assert response.status_code == 201
         assert response.json()["challenge_id"] == public_challenge_active
 
-    def test_join_by_code_private_forbidden(self, auth_token2, challenge_id_active, auth_token):
+    def test_join_private_by_code_allowed(self, auth_token2, challenge_id_active, auth_token):
         """
         What we're testing:
-        - A private (un-published) challenge cannot be joined, even with the code
-        - Expect 403 Forbidden
+        - A private challenge CAN be joined via its invite code (the invite flow),
+          even though it cannot be joined by id
+        - Expect 201 Created
         """
         join_code = client.get(
             f"/challenges/{challenge_id_active}",
@@ -641,7 +656,8 @@ class TestJoinLeave:
             json={"join_code": join_code},
             headers={"Authorization": f"Bearer {auth_token2}"}
         )
-        assert response.status_code == 403
+        assert response.status_code == 201
+        assert response.json()["challenge_id"] == challenge_id_active
 
     def test_join_by_code_invalid(self, auth_token2):
         """
@@ -1198,7 +1214,7 @@ class TestTodayEdgeCases:
             "name": "Weekly Off-day Challenge",
             "schedule_type": "weekly",
             "schedule_days": other_days,
-            "start_date": (date.today() - timedelta(days=3)).isoformat(),
+            "start_date": date.today().isoformat(),
             "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 20}],
         }
         response = client.post(
@@ -1284,7 +1300,7 @@ class TestVisibilityAndDeletion:
     def test_make_public_success(self, auth_token, challenge_id_future):
         """Creator can publish; afterwards it is public and editing is locked."""
         response = client.post(
-            f"/challenges/{challenge_id_future}/make-public",
+            f"/challenges/{challenge_id_future}/publish",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         assert response.status_code == 200
@@ -1295,7 +1311,7 @@ class TestVisibilityAndDeletion:
     def test_make_public_only_creator(self, auth_token2, challenge_id_future):
         """A non-creator cannot publish someone else's challenge."""
         response = client.post(
-            f"/challenges/{challenge_id_future}/make-public",
+            f"/challenges/{challenge_id_future}/publish",
             headers={"Authorization": f"Bearer {auth_token2}"}
         )
         assert response.status_code == 403
@@ -1303,11 +1319,11 @@ class TestVisibilityAndDeletion:
     def test_make_public_twice_conflict(self, auth_token, challenge_id_future):
         """Publishing an already-public challenge is a conflict."""
         client.post(
-            f"/challenges/{challenge_id_future}/make-public",
+            f"/challenges/{challenge_id_future}/publish",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         response = client.post(
-            f"/challenges/{challenge_id_future}/make-public",
+            f"/challenges/{challenge_id_future}/publish",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         assert response.status_code == 409
@@ -1315,7 +1331,7 @@ class TestVisibilityAndDeletion:
     def test_edit_locked_after_public(self, auth_token, challenge_id_future):
         """Once public, the creator can no longer edit the challenge."""
         client.post(
-            f"/challenges/{challenge_id_future}/make-public",
+            f"/challenges/{challenge_id_future}/publish",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         response = client.patch(
@@ -1325,14 +1341,14 @@ class TestVisibilityAndDeletion:
         )
         assert response.status_code == 409
 
-    def test_unarchive_restores_active(self, auth_token, challenge_id_active):
-        """Archive then unarchive returns the participation to active."""
+    def test_resume_restores_active(self, auth_token, challenge_id_active):
+        """Archive then resume returns the participation to active."""
         client.post(
             f"/challenges/{challenge_id_active}/archive",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         response = client.post(
-            f"/challenges/{challenge_id_active}/unarchive",
+            f"/challenges/{challenge_id_active}/resume",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         assert response.status_code == 200
@@ -1409,3 +1425,111 @@ class TestVisibilityAndDeletion:
             headers={"Authorization": f"Bearer {auth_token2}"}
         )
         assert response.status_code == 404
+
+    def test_archived_participant_stays_on_leaderboard(
+        self, auth_token, auth_token2, public_challenge_active
+    ):
+        """Archiving keeps the user counted in participants and on the leaderboard
+        (frozen); deleting removes them from both."""
+        join_code = client.get(
+            f"/challenges/{public_challenge_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()["join_code"]
+        client.post("/challenges/join", json={"join_code": join_code},
+                    headers={"Authorization": f"Bearer {auth_token2}"})
+
+        # second user archives — still present
+        client.post(f"/challenges/{public_challenge_active}/archive",
+                    headers={"Authorization": f"Bearer {auth_token2}"})
+        lb = client.get(f"/challenges/{public_challenge_active}/leaderboard",
+                        headers={"Authorization": f"Bearer {auth_token}"}).json()
+        assert len(lb) == 2
+        detail = client.get(f"/challenges/{public_challenge_active}",
+                            headers={"Authorization": f"Bearer {auth_token}"}).json()
+        assert detail["participants"] == 2
+
+        # second user deletes — gone from both
+        client.delete(f"/challenges/{public_challenge_active}",
+                      headers={"Authorization": f"Bearer {auth_token2}"})
+        lb = client.get(f"/challenges/{public_challenge_active}/leaderboard",
+                        headers={"Authorization": f"Bearer {auth_token}"}).json()
+        assert len(lb) == 1
+
+
+# ================================================================
+# 16. TESTS: PUBLIC INVITE FLOW + PROFILE (PATCH /me, /me/week)
+# ================================================================
+
+class TestPublicAndProfile:
+
+    def test_public_challenge_view(self, auth_token, challenge_id_active):
+        """Anyone (no auth) can preview a challenge by its invite code."""
+        join_code = client.get(
+            f"/challenges/{challenge_id_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()["join_code"]
+
+        response = client.get(f"/public/challenge/{join_code}")  # no auth
+        assert response.status_code == 200
+        data = response.json()
+        assert data["join_code"] == join_code
+        assert "leaderboard" in data
+        assert "exercises" in data
+
+    def test_public_join_by_code(self, auth_token, auth_token2, challenge_id_active):
+        """A user can join via the public invite endpoint."""
+        join_code = client.get(
+            f"/challenges/{challenge_id_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()["join_code"]
+
+        response = client.post(
+            f"/public/challenge/{join_code}/join",
+            headers={"Authorization": f"Bearer {auth_token2}"}
+        )
+        assert response.status_code == 201
+        assert response.json()["challenge_id"] == challenge_id_active
+
+    def test_patch_me_updates_profile(self, auth_token):
+        """PATCH /me updates username and physical stats."""
+        response = client.patch(
+            "/me",
+            json={"username": "renamed", "height_cm": 180, "weight_kg": 75,
+                  "fitness_level": "intermediate"},
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["username"] == "renamed"
+        assert data["height_cm"] == 180
+        assert data["fitness_level"] == "intermediate"
+
+    def test_patch_me_change_password(self, auth_token):
+        """PATCH /me can change the password; the new one then works for login."""
+        response = client.patch(
+            "/me",
+            json={"new_password": "NewPass123", "confirm_password": "NewPass123"},
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        login = client.post("/auth/login",
+                            json={"email": "test@example.com", "password": "NewPass123"})
+        assert login.status_code == 200
+
+    def test_patch_me_password_mismatch(self, auth_token):
+        """Mismatched password confirmation is rejected."""
+        response = client.patch(
+            "/me",
+            json={"new_password": "NewPass123", "confirm_password": "Other123"},
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 422
+
+    def test_me_week_shape(self, auth_token):
+        """GET /me/week returns the week window and completed dates."""
+        response = client.get("/me/week", headers={"Authorization": f"Bearer {auth_token}"})
+        assert response.status_code == 200
+        data = response.json()
+        assert "week_start" in data and "week_end" in data
+        assert isinstance(data["completed_dates"], list)
+        assert "streak_current" in data

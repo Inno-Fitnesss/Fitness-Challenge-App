@@ -1,6 +1,8 @@
 import { Camera, CameraOff, Loader2 } from 'lucide-react';
 import type { CameraStatus } from '../../hooks/useCameraStream.ts';
+import type { CvFeedbackMessage } from '../../types/session.types.ts';
 import { Button } from '../ui/Button.tsx';
+import { CameraSetupOverlay } from './CameraSetupOverlay.tsx';
 
 interface CameraPreviewProps {
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -10,6 +12,7 @@ interface CameraPreviewProps {
   isSessionActive: boolean;
   analysisStatus: string;
   cvConnected: boolean;
+  activeWarning: CvFeedbackMessage | null;
   onStartCamera: () => void;
 }
 
@@ -21,9 +24,11 @@ export function CameraPreview({
   isSessionActive,
   analysisStatus,
   cvConnected,
+  activeWarning,
   onStartCamera,
 }: CameraPreviewProps) {
   const showVideo = status === 'active';
+  const showPoseOverlay = showVideo && cvConnected;
 
   return (
     <div className="relative w-full aspect-[4/3] sm:aspect-video rounded-3xl overflow-hidden bg-neutral-text shadow-card">
@@ -39,8 +44,13 @@ export function CameraPreview({
         ref={overlayCanvasRef}
         aria-hidden="true"
         className={`absolute inset-0 w-full h-full object-cover scale-x-[-1] pointer-events-none ${
-          showVideo && isSessionActive ? 'opacity-100' : 'opacity-0'
+          showPoseOverlay ? 'opacity-100' : 'opacity-0'
         }`}
+      />
+
+      <CameraSetupOverlay
+        message={activeWarning?.text ?? null}
+        type={activeWarning?.type}
       />
 
       {!showVideo && (

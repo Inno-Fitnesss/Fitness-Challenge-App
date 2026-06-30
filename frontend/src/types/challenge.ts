@@ -1,4 +1,4 @@
-export type ChallengeTab = 'mine' | 'participating' | 'archive';
+export type ChallengeTab = 'individual' | 'group' | 'archive';
 export type ExerciseStatus = 'not_started' | 'in_progress' | 'completed';
 export type ChallengeStatus = 'active' | 'archived' | 'completed';
 
@@ -55,6 +55,8 @@ export interface ChallengeListItem {
   startDate: string;
   endDate: string;
   scheduleType: 'daily' | 'weekly';
+  scheduleDays: number[];
+  scheduleLabel: string;
   status: ChallengeStatus;
   participantCount: number;
   isUnlimited: boolean;
@@ -78,6 +80,9 @@ export interface DiscoveryChallenge {
   title: string;
   description: string;
   isUnlimited: boolean;
+  scheduleType: 'daily' | 'weekly';
+  scheduleDays: number[];
+  scheduleLabel: string;
   exerciseTags: string[];
   participantCount: number;
 }

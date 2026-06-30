@@ -6,11 +6,21 @@ const ERROR_TRANSLATIONS: Record<string, string> = {
   'Please check your Credentials': 'Неверный пароль. Проверьте данные и попробуйте снова.',
   'Unable to process request': 'Не удалось обработать запрос. Попробуйте позже.',
   'Invalid Authentication Credentials': 'Сессия истекла. Войдите снова.',
-  'Username already taken': 'Это имя пользователя уже занято. Выберите другое.',
+  'Email already taken': 'Этот email уже используется.',
+  'passwords do not match': 'Пароли не совпадают.',
+  'both password fields are required': 'Заполните оба поля пароля.',
   'Already joined': 'Вы уже участвуете в этом челлендже.',
   'Challenge not found': 'Челлендж не найден.',
   'Invalid code': 'Неверный код приглашения.',
   'Only the creator can archive': 'Только создатель может архивировать челлендж.',
+  'Only the creator can resume': 'Только создатель может возобновить челлендж.',
+  'Only the creator can delete': 'Только создатель может удалить челлендж.',
+  'Only the creator can publish': 'Только создатель может опубликовать челлендж.',
+  'Public challenges cannot be edited': 'Публичный челлендж нельзя редактировать.',
+  'Challenge is already public': 'Челлендж уже публичный.',
+  'Challenge is not archived': 'Челлендж не в архиве.',
+  'Cannot delete preset challenge': 'Нельзя удалить готовый челлендж приложения.',
+  'Challenge is not active': 'Челлендж не активен.',
   'Not a participant': 'Вы не участвуете в этом челлендже.',
   'Validation Error': 'Проверьте правильность заполнения полей.',
 };
@@ -43,17 +53,27 @@ export function parseApiError(error: AxiosError): { message: string; status?: nu
   if (!error.response) {
     return {
       message:
-        'Не удалось подключиться к серверу. Убедитесь, что backend запущен (uvicorn на порту 8000) и перезапустите frontend (npm run dev).',
+        'Не удалось подключиться к серверу. Проверьте интернет или попробуйте позже.',
     };
   }
 
+  const status = error.response.status;
   const rawMessage = extractRawMessage(error.response.data);
+
+  if (status === 422) {
+    return {
+      message:
+        rawMessage ??
+        'Проверьте данные: название, даты, количество повторений или длительность планки.',
+      status,
+    };
+  }
   const message = translateApiMessage(
     rawMessage ?? error.message ?? 'Произошла непредвиденная ошибка',
   );
 
   return {
     message,
-    status: error.response?.status,
+    status,
   };
 }

@@ -1,15 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Pause, Play, Square } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { challengeApi } from '../api/challengeApi.ts';
-import { AiFeedbackPanel } from '../components/session/AiFeedbackPanel.tsx';
+import { useAuth } from '../context/AuthContext.tsx';
+import { resolveExerciseReturnPath } from '../utils/exerciseNavigation.ts';
+import { todayIso } from '../utils/dateFormat.ts';
 import { CameraPreview } from '../components/session/CameraPreview.tsx';
+import { ExerciseTechniqueModal } from '../components/session/ExerciseTechniqueModal.tsx';
 import { SessionStatsCard } from '../components/session/SessionStatsCard.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { BrandLogoLink } from '../components/ui/BrandLogoLink.tsx';
+import { getExerciseTechniqueContent } from '../data/exerciseTechnique.ts';
 import { useCameraStream } from '../hooks/useCameraStream.ts';
 import { useCvSession } from '../hooks/useCvSession.ts';
 import type { ExerciseSessionContext } from '../types/session.types.ts';
+import {
+  isExerciseOnboardingDismissed,
+  setExerciseOnboardingDismissed,
+} from '../utils/exerciseOnboardingStorage.ts';
 
 function SessionHeader({
   title,
@@ -47,6 +55,8 @@ function SessionHeader({
 
 export function ExerciseSessionPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { refreshProfile } = useAuth();
   const { challengeId, challengeExerciseId } = useParams<{
     challengeId: string;
     challengeExerciseId: string;
@@ -58,6 +68,7 @@ export function ExerciseSessionPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isTechniqueOpen, setIsTechniqueOpen] = useState(false);
 
   const { videoRef, status: cameraStatus, errorMessage, startCamera, stopCamera } =
     useCameraStream();
@@ -65,9 +76,22 @@ export function ExerciseSessionPage() {
   const parsedChallengeId = Number(challengeId);
   const parsedExerciseId = Number(challengeExerciseId);
 
+  const returnPath = useMemo(
+    () => resolveExerciseReturnPath(searchParams, parsedChallengeId),
+    [parsedChallengeId, searchParams],
+  );
+
+  const techniqueContent = useMemo(
+    () =>
+      context
+        ? getExerciseTechniqueContent(context.exerciseName, context.metric)
+        : null,
+    [context],
+  );
+
   const {
     stats,
-    feedback,
+    activeWarning,
     analysisStatus,
     cvConnected,
     overlayCanvasRef,
@@ -76,8 +100,14 @@ export function ExerciseSessionPage() {
     exerciseName: context?.exerciseName ?? '',
     metric: context?.metric ?? 'reps',
     isRunning,
+    cameraActive: cameraStatus === 'active',
     videoRef,
   });
+
+  const statsRef = useRef(stats);
+  useEffect(() => {
+    statsRef.current = stats;
+  }, [stats]);
 
   useEffect(() => {
     if (!Number.isFinite(parsedChallengeId) || !Number.isFinite(parsedExerciseId)) {
@@ -104,6 +134,11 @@ export function ExerciseSessionPage() {
 
         if (detail.status === 'archived') {
           setLoadError('Челлендж в архиве. Сначала возобновите его, чтобы начать выполнение.');
+          return;
+        }
+
+        if (detail.end_date && detail.end_date < todayIso()) {
+          setLoadError('Срок челленджа истёк. Челлендж должен быть в архиве.');
           return;
         }
 
@@ -135,6 +170,26 @@ export function ExerciseSessionPage() {
     startCamera();
   }, [startCamera]);
 
+  useEffect(() => {
+    if (!techniqueContent || isLoading) return;
+    if (isExerciseOnboardingDismissed(techniqueContent.exerciseKey)) return;
+    setIsTechniqueOpen(true);
+  }, [techniqueContent, isLoading]);
+
+  const handleCloseTechnique = useCallback(
+    (dontShowAgain: boolean) => {
+      if (techniqueContent && dontShowAgain) {
+        setExerciseOnboardingDismissed(techniqueContent.exerciseKey, true);
+      }
+      setIsTechniqueOpen(false);
+    },
+    [techniqueContent],
+  );
+
+  const handleShowTechnique = useCallback(() => {
+    setIsTechniqueOpen(true);
+  }, []);
+
   const goalReached = useMemo(() => {
     if (!context) return false;
     if (context.metric === 'seconds') {
@@ -151,8 +206,8 @@ export function ExerciseSessionPage() {
 
   const handleBack = useCallback(() => {
     stopCamera();
-    navigate(`/challenges/${parsedChallengeId}`);
-  }, [navigate, parsedChallengeId, stopCamera]);
+    navigate(returnPath);
+  }, [navigate, returnPath, stopCamera]);
 
   const handleToggleSession = useCallback(() => {
     setSaveError(null);
@@ -166,6 +221,8 @@ export function ExerciseSessionPage() {
   const handleFinish = useCallback(async () => {
     if (!context) return;
 
+    const currentStats = statsRef.current;
+
     setIsFinishing(true);
     setIsRunning(false);
     setSaveError(null);
@@ -173,23 +230,29 @@ export function ExerciseSessionPage() {
     try {
       const measuredValue =
         context.metric === 'seconds'
-          ? stats.elapsedSeconds
-          : stats.reps;
-      const cleanValue =
+          ? currentStats.elapsedSeconds
+          : currentStats.reps;
+      const goalMet =
         context.metric === 'seconds'
-          ? stats.elapsedSeconds
-          : stats.cleanReps;
+          ? currentStats.elapsedSeconds >= context.goal
+          : currentStats.cleanReps >= context.goal;
+      const cleanValue = goalMet
+        ? context.metric === 'seconds'
+          ? currentStats.elapsedSeconds
+          : currentStats.cleanReps
+        : 0;
 
       await challengeApi.submitSession(context.challengeId, {
         challenge_exercise_id: context.challengeExerciseId,
         total_reps: measuredValue,
         clean_reps: cleanValue,
         duration_seconds:
-          context.metric === 'seconds' ? stats.elapsedSeconds : null,
+          context.metric === 'seconds' ? currentStats.elapsedSeconds : null,
       });
 
+      await refreshProfile();
       stopCamera();
-      navigate(`/challenges/${context.challengeId}`);
+      navigate(returnPath);
     } catch (error) {
       const message =
         error instanceof Error
@@ -207,9 +270,8 @@ export function ExerciseSessionPage() {
   }, [
     context,
     navigate,
-    stats.cleanReps,
-    stats.elapsedSeconds,
-    stats.reps,
+    returnPath,
+    refreshProfile,
     stopCamera,
   ]);
 
@@ -230,8 +292,8 @@ export function ExerciseSessionPage() {
     return (
       <div className="min-h-screen bg-neutral-card flex flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-red-500 text-sm" role="alert">{loadError ?? 'Сессия недоступна'}</p>
-        <Button variant="secondary" onClick={() => navigate(`/challenges/${parsedChallengeId}?tab=archive`)}>
-          К челленджу
+        <Button variant="secondary" onClick={() => navigate(returnPath)}>
+          Назад
         </Button>
       </div>
     );
@@ -256,6 +318,7 @@ export function ExerciseSessionPage() {
               isSessionActive={isRunning}
               analysisStatus={analysisStatus}
               cvConnected={cvConnected}
+              activeWarning={activeWarning}
               onStartCamera={startCamera}
             />
 
@@ -315,10 +378,9 @@ export function ExerciseSessionPage() {
                 completedToday={context.completedToday}
                 stats={stats}
                 isRunning={isRunning}
+                onShowTechnique={handleShowTechnique}
               />
             </div>
-
-            <AiFeedbackPanel messages={feedback} cvConnected={cvConnected} />
           </div>
 
           <aside className="hidden lg:block space-y-5">
@@ -329,14 +391,15 @@ export function ExerciseSessionPage() {
               completedToday={context.completedToday}
               stats={stats}
               isRunning={isRunning}
+              onShowTechnique={handleShowTechnique}
             />
 
             <div className="rounded-3xl bg-white border border-neutral-border/60 shadow-card p-5 text-sm text-neutral-secondary space-y-3">
-              <p className="font-semibold text-neutral-text">Перед началом</p>
-              <ul className="space-y-2 text-xs leading-relaxed">
-                <li>• В кадре должны быть видны ключевые точки тела</li>
-                <li>• Избегайте сильной подсветки сзади</li>
+              <p className="font-semibold text-neutral-text">Важно!</p>
+              <ul className="space-y-2 text-xs leading-relaxed text-red-500">
                 <li>• Держите телефон или ноутбук на стабильной поверхности</li>
+                <li>• Убедитесь, что вас хорошо видно</li>
+                <li>• Следуйте подсказкам на экране камеры</li>
               </ul>
               <button
                 type="button"
@@ -349,6 +412,13 @@ export function ExerciseSessionPage() {
           </aside>
         </div>
       </main>
+
+      {isTechniqueOpen && techniqueContent && (
+        <ExerciseTechniqueModal
+          content={techniqueContent}
+          onClose={handleCloseTechnique}
+        />
+      )}
     </div>
   );
 }

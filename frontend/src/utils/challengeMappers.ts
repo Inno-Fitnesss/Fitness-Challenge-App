@@ -11,6 +11,8 @@ import type {
   LeaderboardEntry,
   TodayPlanItem,
 } from '../types/challenge.ts';
+import { pluralizeRuWithCount } from './russianPlural.ts';
+import { formatScheduleLabel } from './scheduleFormat.ts';
 
 const MONTHS_SHORT = [
   'янв', 'фев', 'мар', 'апр', 'май', 'июн',
@@ -44,11 +46,7 @@ export function formatExerciseTag(name: string, goal: number, metric: string): s
 }
 
 export function formatParticipants(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${count} участник`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${count} участника`;
-  return `${count} участников`;
+  return pluralizeRuWithCount(count, ['участник', 'участника', 'участников']);
 }
 
 const AVATAR_COLORS = [
@@ -75,6 +73,8 @@ export function mapChallengeDetailToListItem(detail: ApiChallengeDetail): Challe
     startDate: detail.start_date,
     endDate: detail.end_date ?? '',
     scheduleType: detail.schedule_type,
+    scheduleDays: detail.schedule_days ?? [],
+    scheduleLabel: formatScheduleLabel(detail.schedule_type, detail.schedule_days),
     status: detail.status === 'archived' ? 'archived' : 'active',
     participantCount: detail.participants,
     isUnlimited: !detail.end_date,
@@ -91,9 +91,8 @@ export function mapChallengeDetailToListItem(detail: ApiChallengeDetail): Challe
 export function calcExerciseProgressPercent(exercises: ApiChallengeExercise[]): number {
   if (exercises.length === 0) return 0;
   const sum = exercises.reduce((acc, ex) => {
-    const clean = ex.clean_today ?? 0;
-    const ratio = ex.goal > 0 ? Math.min(clean / ex.goal, 1) : 0;
-    return acc + ratio;
+    if (!ex.closed) return acc;
+    return acc + 1;
   }, 0);
   return Math.round((sum / exercises.length) * 100);
 }
@@ -116,21 +115,18 @@ export function mapExerciseProgress(
   exercises: ApiChallengeExercise[],
 ): ExerciseProgress[] {
   return exercises.map((ex) => {
-    const clean = ex.clean_today ?? 0;
     const isSeconds = ex.metric === 'seconds';
-    const completed = isSeconds && ex.goal >= 60 ? Math.floor(clean / 60) : clean;
     const goal = isSeconds && ex.goal >= 60 ? Math.floor(ex.goal / 60) : ex.goal;
     const unit = isSeconds && ex.goal >= 60 ? 'minutes' as const : isSeconds ? 'seconds' as const : 'reps' as const;
 
     let status: ExerciseProgress['status'] = 'not_started';
     if (ex.closed) status = 'completed';
-    else if (clean > 0) status = 'in_progress';
 
     return {
       exerciseId: String(ex.challenge_exercise_id),
       name: ex.name,
       goal,
-      completed: ex.closed ? goal : unit === 'minutes' ? completed : clean,
+      completed: ex.closed ? goal : 0,
       unit: unit === 'seconds' ? 'reps' : unit,
       status,
     };
@@ -162,6 +158,9 @@ export function mapPresetToDiscovery(
     title: detail.name,
     description: detail.description ?? preset.description ?? '',
     isUnlimited: !detail.end_date,
+    scheduleType: detail.schedule_type,
+    scheduleDays: detail.schedule_days ?? [],
+    scheduleLabel: formatScheduleLabel(detail.schedule_type, detail.schedule_days),
     exerciseTags: detail.exercises.map((ex) => formatExerciseTag(ex.name, ex.goal, ex.metric)),
     participantCount: detail.participants,
   };

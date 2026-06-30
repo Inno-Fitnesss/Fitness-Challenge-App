@@ -664,7 +664,7 @@ class TestJWTWithChallengeAPI:
 
         # Open the challenge so other users may join (created private by default)
         client.post(
-            f"/challenges/{challenge_id}/make-public",
+            f"/challenges/{challenge_id}/publish",
             headers={"Authorization": f"Bearer {token}"}
         )
 
@@ -825,6 +825,55 @@ class TestTokenLifecycle:
             headers={"Authorization": f"Bearer {token}"}
         )
         assert protected_response.status_code == 200
+
+
+# ================================================================
+# 8b. TESTS: REFRESH TOKEN
+# ================================================================
+
+class TestRefreshToken:
+
+    def _login(self, test_user_data):
+        client.post("/auth/signup", json=test_user_data)
+        return client.post("/auth/login", json={
+            "email": test_user_data["email"],
+            "password": test_user_data["password"],
+        }).json()
+
+    def test_login_returns_access_and_refresh(self, test_user_data):
+        """Login issues both an access token and a refresh token."""
+        data = self._login(test_user_data)
+        assert data["token"]
+        assert data["refresh_token"]
+        assert data["token"] != data["refresh_token"]
+
+    def test_refresh_returns_new_access_token(self, test_user_data):
+        """A valid refresh token yields a fresh, working access token."""
+        data = self._login(test_user_data)
+        resp = client.post("/auth/refresh", json={"refresh_token": data["refresh_token"]})
+        assert resp.status_code == 200
+        new_access = resp.json()["token"]
+        # the new access token works on a protected route
+        protected = client.get("/protected", headers={"Authorization": f"Bearer {new_access}"})
+        assert protected.status_code == 200
+
+    def test_access_token_cannot_be_used_to_refresh(self, test_user_data):
+        """An access token is rejected by /auth/refresh (type is pinned)."""
+        data = self._login(test_user_data)
+        resp = client.post("/auth/refresh", json={"refresh_token": data["token"]})
+        assert resp.status_code == 401
+
+    def test_refresh_token_rejected_as_bearer(self, test_user_data):
+        """A refresh token cannot be used as a bearer credential on protected routes."""
+        data = self._login(test_user_data)
+        resp = client.get("/protected",
+                          headers={"Authorization": f"Bearer {data['refresh_token']}"})
+        assert resp.status_code == 401
+
+    def test_refresh_with_garbage_token(self, test_user_data):
+        """A malformed refresh token is rejected with 401."""
+        resp = client.post("/auth/refresh", json={"refresh_token": "not-a-jwt"})
+        assert resp.status_code == 401
 
 
 # ================================================================

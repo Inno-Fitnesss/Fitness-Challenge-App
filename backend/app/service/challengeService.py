@@ -147,6 +147,8 @@ class ChallengeService:
     # --- writes ---
     def create(self, user_id: int, data: ChallengeCreate):
         user = self.s.get(User, user_id)
+        if data.start_date and data.start_date < local_today(user.timezone):
+            raise HTTPException(status_code=422, detail="start_date cannot be in the past")
         challenge = Challenge(
             name=data.name, description=data.description, created_by=user_id,
             schedule_type=data.schedule_type, schedule_days=data.schedule_days,
@@ -231,8 +233,10 @@ class ChallengeService:
         self.s.commit()
         return {"id": challenge_id, "status": part.status}
 
-    def unarchive(self, user_id: int, challenge_id: int):
-        """Move a personally-archived challenge back to active."""
+    def resume(self, user_id: int, challenge_id: int):
+        """Move a personally-archived challenge back to active (un-archive).
+        The participant stays on the leaderboard the whole time; this only
+        flips their own view back to active."""
         part = self._participation(user_id, challenge_id)
         part.status = "active"
         part.archived_at = None
@@ -240,14 +244,17 @@ class ChallengeService:
         return {"id": challenge_id, "status": part.status}
 
     def delete(self, user_id: int, challenge_id: int):
-        """Remove the caller's participation. Archiving is NOT deletion. When the
-        last participation is gone, the challenge itself is purged from the DB."""
+        """Remove the caller's participation entirely — they vanish from the
+        challenge (gone from participants and the leaderboard). Archiving is NOT
+        deletion. When the last participation is gone, the challenge itself is
+        purged from the DB (presets are kept)."""
         part = self._participation(user_id, challenge_id)
         self._remove_participation(part)
         remaining = self.s.query(Participation).filter_by(challenge_id=challenge_id).count()
-        challenge_removed = remaining == 0
+        challenge = self._get_challenge(challenge_id)
+        challenge_removed = remaining == 0 and not challenge.is_preset
         if challenge_removed:
-            self.s.delete(self._get_challenge(challenge_id))
+            self.s.delete(challenge)
         self.s.commit()
         return {"deleted": True, "challenge_removed": challenge_removed}
 
@@ -271,12 +278,15 @@ class ChallengeService:
         return self._join(user_id, c)
 
     def join_by_id(self, user_id: int, challenge_id: int):
+        # Joining straight by id is only for openly discoverable challenges
+        # (presets or published/public ones). Personal challenges are joined
+        # through their invite link/code instead.
         c = self._get_challenge(challenge_id)
+        if not (c.is_public or c.is_preset):
+            raise HTTPException(status_code=403, detail="Private challenge, join by invite link")
         return self._join(user_id, c)
 
     def _join(self, user_id: int, c: Challenge):
-        if not c.is_public:
-            raise HTTPException(status_code=403, detail="Challenge is private")
         if c.status != "active":
             raise HTTPException(status_code=409, detail="Challenge is not active")
         if self.s.query(Participation).filter_by(user_id=user_id, challenge_id=c.id).first():
@@ -285,3 +295,21 @@ class ChallengeService:
         self.s.add(part)
         self.s.commit()
         return {"participation_id": part.id, "challenge_id": c.id}
+
+    def public_view(self, join_code: str):
+        """Unauthenticated view of a challenge by its invite code (for invite
+        landing pages). Includes the leaderboard but no per-user state."""
+        c = self.s.query(Challenge).filter_by(join_code=join_code).first()
+        if not c:
+            raise HTTPException(status_code=404, detail="Challenge not found")
+        participants = self.s.query(Participation).filter_by(challenge_id=c.id).count()
+        return {
+            "id": c.id, "name": c.name, "description": c.description,
+            "join_code": c.join_code,
+            "schedule_type": c.schedule_type, "schedule_days": c.schedule_days,
+            "start_date": c.start_date, "end_date": c.end_date,
+            "is_private": not c.is_public, "status": c.status,
+            "participants": participants,
+            "exercises": self._exercises_of(c.id),
+            "leaderboard": self.leaderboard(c.id),
+        }

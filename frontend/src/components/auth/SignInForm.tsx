@@ -10,7 +10,11 @@ import { Label } from '../ui/Label.tsx';
 import { FieldError } from '../ui/FieldError.tsx';
 import type { ApiError } from '../../types/auth.types.ts';
 
-export function SignInForm() {
+interface SignInFormProps {
+  redirectTo?: string;
+}
+
+export function SignInForm({ redirectTo = '/settings' }: SignInFormProps) {
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -31,7 +35,7 @@ export function SignInForm() {
   const onSubmit = async (values: SignInFormValues) => {
     setApiError(null);
     try {
-      await login({ email: values.email, password: values.password });
+      await login({ email: values.email, password: values.password }, redirectTo);
     } catch (error) {
       const apiErr = error as ApiError;
       setApiError(apiErr.message ?? 'Не удалось войти. Попробуйте снова.');

@@ -1,4 +1,4 @@
-from pydantic import EmailStr, BaseModel
+from pydantic import EmailStr, BaseModel, Field, model_validator
 from typing import Optional
 
 class UserInCreate(BaseModel):
@@ -22,6 +22,24 @@ class UserInLogin(BaseModel):
 class UserWithToken(BaseModel):
     token: str
     refresh_token: Optional[str] = None
+
+class MeUpdate(BaseModel):
+    """Partial profile update (PATCH /me). All fields optional."""
+    username: Optional[str] = Field(default=None, min_length=3, max_length=50)
+    email: Optional[EmailStr] = None
+    first_name: Optional[str] = Field(default=None, max_length=50)
+    last_name: Optional[str] = Field(default=None, max_length=100)
+    height_cm: Optional[int] = Field(default=None, ge=0, le=300)
+    weight_kg: Optional[int] = Field(default=None, ge=0, le=500)
+    fitness_level: Optional[str] = Field(default=None, max_length=20)
+    new_password: Optional[str] = Field(default=None, min_length=8)
+    confirm_password: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _passwords_match(self):
+        if self.new_password and self.new_password != self.confirm_password:
+            raise ValueError("passwords do not match")
+        return self
 
 class RefreshIn(BaseModel):
     refresh_token: str

@@ -11,7 +11,6 @@ authRouter = APIRouter()
 def refresh(body: RefreshIn, session: Session = Depends(get_db)):
     return UserService(session=session).refresh(refresh_token=body.refresh_token)
 
-
 @authRouter.post("/login", status_code=200, response_model=UserWithToken)
 def login(loginDetails: UserInLogin, session: Session = Depends(get_db)):
     try:

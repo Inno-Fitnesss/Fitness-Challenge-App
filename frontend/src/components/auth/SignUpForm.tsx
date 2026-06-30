@@ -11,14 +11,14 @@ import { FieldError } from '../ui/FieldError.tsx';
 import type { ApiError } from '../../types/auth.types.ts';
 
 interface SignUpFormProps {
-  onSuccess: () => void;
+  redirectTo?: string;
 }
 
 const fieldClass = 'auth-field';
 const inputClass = 'py-2.5 px-4 text-sm rounded-xl';
 const labelClass = 'mb-1 text-xs';
 
-export function SignUpForm({ onSuccess }: SignUpFormProps) {
+export function SignUpForm({ redirectTo = '/settings' }: SignUpFormProps) {
   const { register: registerUser } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -32,8 +32,6 @@ export function SignUpForm({ onSuccess }: SignUpFormProps) {
     resolver: zodResolver(signUpSchema),
     defaultValues: {
       username: '',
-      firstName: '',
-      lastName: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -44,14 +42,14 @@ export function SignUpForm({ onSuccess }: SignUpFormProps) {
   const onSubmit = async (values: SignUpFormValues) => {
     setApiError(null);
     try {
-      await registerUser({
-        username: values.username,
-        email: values.email,
-        password: values.password,
-        firstName: values.firstName || undefined,
-        lastName: values.lastName || undefined,
-      });
-      onSuccess();
+      await registerUser(
+        {
+          username: values.username,
+          email: values.email,
+          password: values.password,
+        },
+        redirectTo,
+      );
     } catch (error) {
       const apiErr = error as ApiError;
       setApiError(apiErr.message ?? 'Не удалось зарегистрироваться. Попробуйте снова.');
@@ -105,38 +103,6 @@ export function SignUpForm({ onSuccess }: SignUpFormProps) {
             {...register('email')}
           />
           <FieldError id="signup-email-error" message={errors.email?.message} />
-        </div>
-
-        <div className={fieldClass}>
-          <Label htmlFor="signup-firstname" className={labelClass}>
-            Имя
-          </Label>
-          <Input
-            id="signup-firstname"
-            type="text"
-            autoComplete="given-name"
-            placeholder="Иван"
-            hasError={!!errors.firstName}
-            className={inputClass}
-            {...register('firstName')}
-          />
-          <FieldError id="signup-firstname-error" message={errors.firstName?.message} />
-        </div>
-
-        <div className={fieldClass}>
-          <Label htmlFor="signup-lastname" className={labelClass}>
-            Фамилия
-          </Label>
-          <Input
-            id="signup-lastname"
-            type="text"
-            autoComplete="family-name"
-            placeholder="Иванов"
-            hasError={!!errors.lastName}
-            className={inputClass}
-            {...register('lastName')}
-          />
-          <FieldError id="signup-lastname-error" message={errors.lastName?.message} />
         </div>
 
         <div className={fieldClass}>

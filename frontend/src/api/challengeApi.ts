@@ -6,6 +6,7 @@ import type {
   ApiExercise,
   ApiLeaderboardEntry,
   ApiMeResponse,
+  ApiWeekActivity,
   ApiTodayChallenge,
   ApiJoinResponse,
   ApiSessionResponse,
@@ -17,7 +18,7 @@ export interface ChallengeCreatePayload {
   schedule_type: 'daily' | 'weekly';
   schedule_days?: number[] | null;
   start_date?: string;
-  end_date?: string;
+  end_date?: string | null;
   is_private?: boolean;
   exercises: { exercise_id: number; goal: number }[];
 }
@@ -28,7 +29,7 @@ export interface ChallengeEditPayload {
   schedule_type?: 'daily' | 'weekly';
   schedule_days?: number[] | null;
   start_date?: string;
-  end_date?: string;
+  end_date?: string | null;
   exercises?: { exercise_id: number; goal: number }[];
 }
 
@@ -55,6 +56,19 @@ export const meApi = {
       params: { status },
     });
     return data;
+  },
+
+  async getWeekActivity(weekStart?: string): Promise<ApiWeekActivity> {
+    try {
+      const { data } = await apiClient.get<ApiWeekActivity>('/me/week', {
+        params: weekStart ? { week_start: weekStart } : undefined,
+      });
+      return data;
+    } catch (error) {
+      if (!weekStart) throw error;
+      const { data } = await apiClient.get<ApiWeekActivity>('/me/week');
+      return data;
+    }
   },
 };
 
@@ -106,8 +120,23 @@ export const challengeApi = {
     return data;
   },
 
+  async publish(id: number): Promise<ApiChallengeDetail> {
+    const { data } = await apiClient.post<ApiChallengeDetail>(`/challenges/${id}/publish`);
+    return data;
+  },
+
   async archive(id: number): Promise<{ id: number; status: string }> {
     const { data } = await apiClient.post<{ id: number; status: string }>(`/challenges/${id}/archive`);
+    return data;
+  },
+
+  async resume(id: number): Promise<{ id: number; status: string }> {
+    const { data } = await apiClient.post<{ id: number; status: string }>(`/challenges/${id}/resume`);
+    return data;
+  },
+
+  async delete(id: number): Promise<{ deleted: boolean }> {
+    const { data } = await apiClient.delete<{ deleted: boolean }>(`/challenges/${id}`);
     return data;
   },
 

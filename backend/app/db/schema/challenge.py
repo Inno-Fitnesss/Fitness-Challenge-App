@@ -11,12 +11,12 @@ class ExerciseOut(BaseModel):
 
 class ChallengeExerciseIn(BaseModel):
     exercise_id: int
-    goal: int = Field(gt=0)
+    goal: int = Field(gt=0, le=100_000)  # cap to avoid absurd values (e.g. 1e18 reps)
 
 
 class ChallengeCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=255)
-    description: Optional[str] = None
+    name: str = Field(min_length=1, max_length=50)
+    description: Optional[str] = Field(default=None, max_length=200)
     schedule_type: Literal["daily", "weekly"]
     schedule_days: Optional[List[int]] = None
     start_date: Optional[date] = None
@@ -46,8 +46,8 @@ class ChallengeCreate(BaseModel):
 
 
 class ChallengeEdit(BaseModel):
-    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    description: Optional[str] = None
+    name: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    description: Optional[str] = Field(default=None, max_length=200)
     schedule_type: Optional[Literal["daily", "weekly"]] = None
     schedule_days: Optional[List[int]] = None
     start_date: Optional[date] = None

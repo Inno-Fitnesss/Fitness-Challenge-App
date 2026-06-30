@@ -1,12 +1,13 @@
-import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutGrid, BarChart3, User, LogOut } from 'lucide-react';
+import { Link, NavLink, Outlet } from 'react-router-dom';
+import { LayoutGrid, BarChart3, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { BrandLogoLink } from '../ui/BrandLogoLink.tsx';
+import { ProfileAvatar } from '../profile/ProfileAvatar.tsx';
 
 const navItems = [
   { to: '/dashboard', label: 'Главная', icon: LayoutGrid, end: true },
   { to: '/challenges', label: 'Челленджи', icon: BarChart3, end: false },
-  { to: '/settings', label: 'Профиль', icon: User, end: false },
+  { to: '/settings', label: 'Профиль', icon: Settings, end: false },
 ];
 
 function getDisplayName(username?: string, email?: string): string {
@@ -84,10 +85,14 @@ export function AppShell() {
 
         <div className="px-4 py-6 border-t border-neutral-border">
           <div className="flex items-center gap-3 px-2">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-light to-accent flex items-center justify-center text-sm font-bold text-brand flex-shrink-0">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-            <span className="text-sm font-semibold text-neutral-text flex-1 truncate">{displayName}</span>
+            <Link
+              to="/settings"
+              className="flex items-center gap-3 flex-1 min-w-0 rounded-xl px-1 py-1 -mx-1 hover:bg-neutral-card transition-colors"
+              aria-label="Профиль"
+            >
+              <ProfileAvatar userId={user?.id ?? 0} username={displayName} size="md" />
+              <span className="text-sm font-semibold text-neutral-text flex-1 truncate">{displayName}</span>
+            </Link>
             <button
               type="button"
               onClick={logout}
@@ -108,9 +113,16 @@ export function AppShell() {
           className="inline-flex items-center gap-2.5 min-w-0 flex-shrink hover:opacity-90 transition-opacity"
         />
         <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-xs font-semibold text-neutral-secondary truncate max-w-[80px]">
-            {displayName}
-          </span>
+          <Link
+            to="/settings"
+            className="flex items-center gap-2 rounded-xl px-1 py-1 hover:bg-neutral-card transition-colors min-w-0"
+            aria-label="Профиль"
+          >
+            <ProfileAvatar userId={user?.id ?? 0} username={displayName} size="sm" />
+            <span className="text-xs font-semibold text-neutral-secondary truncate max-w-[80px]">
+              {displayName}
+            </span>
+          </Link>
           <button
             type="button"
             onClick={logout}

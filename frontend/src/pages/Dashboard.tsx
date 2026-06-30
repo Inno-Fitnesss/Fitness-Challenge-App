@@ -1,12 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.tsx';
+import { meApi } from '../api/challengeApi.ts';
 import { PageContainer } from '../components/layout/PageContainer.tsx';
 import { WeeklyCalendar } from '../components/dashboard/WeeklyCalendar.tsx';
 import { StreakWidget } from '../components/dashboard/StreakWidget.tsx';
 import { TodayPlanCard } from '../components/dashboard/TodayPlanCard.tsx';
 import { ChallengeDetailModal } from '../components/challenges/ChallengeDetailModal.tsx';
-import { fetchTodayPlan } from '../api/challengeQueries.ts';
+import { Button } from '../components/ui/Button.tsx';
+import { fetchChallengeListItems, fetchTodayPlan } from '../api/challengeQueries.ts';
+import {
+  buildWeekDays,
+  formatWeekRangeLabel,
+  getWeekEnd,
+  getWeekStart,
+  isCurrentWeek,
+  toIsoDate,
+} from '../utils/dashboardCalendar.ts';
 import type { TodayPlanItem } from '../types/challenge.ts';
+import type { ChallengeListItem } from '../types/challenge.ts';
+import type { ApiTodayChallenge } from '../types/api.types.ts';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -22,35 +36,79 @@ function getDisplayName(username?: string, email?: string): string {
 }
 
 export function Dashboard() {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, refreshProfile } = useAuth();
   const displayName = getDisplayName(user?.username, user?.email);
   const [selectedChallengeId, setSelectedChallengeId] = useState<number | null>(null);
   const [todayPlan, setTodayPlan] = useState<TodayPlanItem[]>([]);
+  const [activeChallenges, setActiveChallenges] = useState<ChallengeListItem[]>([]);
+  const [todayChallenges, setTodayChallenges] = useState<ApiTodayChallenge[]>([]);
+  const [completedDates, setCompletedDates] = useState<string[]>([]);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [isWeekLoading, setIsWeekLoading] = useState(false);
+  const [streakDays, setStreakDays] = useState(user?.streakCurrent ?? 0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadDashboard = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    try {
+      await refreshProfile();
+      const [items, active, todayRaw] = await Promise.all([
+        fetchTodayPlan(),
+        fetchChallengeListItems('active'),
+        meApi.getToday(),
+      ]);
+      setTodayPlan(items);
+      setActiveChallenges(active);
+      setTodayChallenges(todayRaw);
+    } catch (err) {
+      const apiErr = err as { message?: string };
+      setError(apiErr.message ?? 'Не удалось загрузить данные');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [refreshProfile]);
 
-    fetchTodayPlan()
-      .then((items) => {
-        if (!cancelled) setTodayPlan(items);
-      })
-      .catch((err: { message?: string }) => {
-        if (!cancelled) setError(err.message ?? 'Не удалось загрузить план на сегодня');
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
+  const loadWeekActivity = useCallback(async (offset: number) => {
+    setIsWeekLoading(true);
+    setCalendarError(null);
+    try {
+      const week = await meApi.getWeekActivity(toIsoDate(getWeekStart(new Date(), offset)));
+      setCompletedDates(week.completed_dates);
+      if (offset === 0) {
+        setStreakDays(week.streak_current);
+      }
+    } catch (err) {
+      const apiErr = err as { message?: string };
+      setCalendarError(apiErr.message ?? 'Не удалось загрузить календарь');
+    } finally {
+      setIsWeekLoading(false);
+    }
   }, []);
 
-  const streakDays = user?.streakCurrent ?? 0;
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard]);
+
+  useEffect(() => {
+    void loadWeekActivity(weekOffset);
+  }, [weekOffset, loadWeekActivity]);
+
+  const viewedWeekStart = useMemo(() => getWeekStart(new Date(), weekOffset), [weekOffset]);
+  const viewedWeekEnd = useMemo(() => getWeekEnd(viewedWeekStart), [viewedWeekStart]);
+
+  const calendarDays = useMemo(
+    () => buildWeekDays(viewedWeekStart, activeChallenges, completedDates, todayChallenges),
+    [viewedWeekStart, activeChallenges, completedDates, todayChallenges],
+  );
+
+  const weekLabel = formatWeekRangeLabel(viewedWeekStart, viewedWeekEnd);
+  const showingCurrentWeek = isCurrentWeek(viewedWeekStart);
+
+  const hasActiveChallenges = activeChallenges.length > 0;
 
   return (
     <PageContainer>
@@ -61,7 +119,20 @@ export function Dashboard() {
       </header>
 
       <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-8 sm:mb-10">
-        <WeeklyCalendar />
+        <div className="flex-1 min-w-0">
+          <WeeklyCalendar
+            days={calendarDays}
+            weekLabel={weekLabel}
+            isCurrentWeek={showingCurrentWeek}
+            onPrevWeek={() => setWeekOffset((prev) => prev - 1)}
+            onNextWeek={() => setWeekOffset((prev) => prev + 1)}
+            onGoToToday={() => setWeekOffset(0)}
+            isWeekLoading={isWeekLoading}
+          />
+          {calendarError && (
+            <p className="text-red-500 text-xs mt-2 px-1" role="alert">{calendarError}</p>
+          )}
+        </div>
         <StreakWidget days={streakDays} />
       </div>
 
@@ -76,10 +147,30 @@ export function Dashboard() {
 
         {!isLoading && !error && todayPlan.length === 0 && (
           <div className="bg-white rounded-3xl shadow-card p-6 sm:p-8 text-center">
-            <p className="text-neutral-secondary mb-1">На сегодня нет активных челленджей</p>
-            <p className="text-sm text-neutral-muted">
-              Создайте челлендж или присоединитесь к готовому в разделе «Челленджи»
-            </p>
+            {!hasActiveChallenges ? (
+              <>
+                <p className="text-neutral-secondary mb-1">У вас пока нет активных челленджей</p>
+                <p className="text-sm text-neutral-muted mb-5">
+                  Создайте первый челлендж, чтобы начать отслеживать прогресс
+                </p>
+                <Button
+                  variant="primary"
+                  size="md"
+                  className="mx-auto"
+                  onClick={() => navigate('/challenges?tab=individual&create=1')}
+                >
+                  <Plus size={18} />
+                  Создать челлендж
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-neutral-secondary mb-1">На сегодня нет запланированных челленджей</p>
+                <p className="text-sm text-neutral-muted">
+                  Отдыхайте или загляните в раздел «Челленджи» — возможно, завтра снова в дело
+                </p>
+              </>
+            )}
           </div>
         )}
 
@@ -98,6 +189,11 @@ export function Dashboard() {
         <ChallengeDetailModal
           challengeId={selectedChallengeId}
           onClose={() => setSelectedChallengeId(null)}
+          onEdit={(id) => {
+            setSelectedChallengeId(null);
+            navigate(`/challenges?tab=individual&edit=${id}`);
+          }}
+          returnTarget={{ type: 'dashboard' }}
         />
       )}
     </PageContainer>

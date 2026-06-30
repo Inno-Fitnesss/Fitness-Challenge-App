@@ -25,12 +25,15 @@ export interface UserOutput {
 /** DTO ответа с токеном — UserWithToken */
 export interface UserWithToken {
   token: string;
+  refresh_token?: string;
 }
 
 /** DTO ответа защищённого маршрута — GET /protected */
 export interface ProtectedResponse {
   data: UserOutput;
 }
+
+import type { FitnessLevel } from '../constants/fitnessLevels.ts';
 
 /** Доменная модель пользователя на фронтенде (camelCase) */
 export interface User {
@@ -39,8 +42,24 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  heightCm?: number;
+  weightKg?: number;
+  fitnessLevel?: FitnessLevel;
   streakCurrent?: number;
   streakLongest?: number;
+  volume?: { exercise: string; metric: string; total: number }[];
+}
+
+export interface ProfileUpdateData {
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  fitnessLevel?: FitnessLevel | null;
+  newPassword?: string;
+  confirmPassword?: string;
 }
 
 export interface LoginCredentials {
@@ -61,10 +80,11 @@ export interface AuthContextValue {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (credentials: LoginCredentials, redirectTo?: string) => Promise<void>;
+  register: (data: RegisterData, redirectTo?: string) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 export interface ApiError {
