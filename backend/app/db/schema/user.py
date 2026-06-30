@@ -21,3 +21,7 @@ class UserInLogin(BaseModel):
 
 class UserWithToken(BaseModel):
     token: str
+    refresh_token: Optional[str] = None
+
+class RefreshIn(BaseModel):
+    refresh_token: str
