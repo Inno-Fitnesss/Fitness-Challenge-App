@@ -1,13 +1,5 @@
 import { z } from 'zod';
 
-const optionalName = (label: string, max: number) =>
-  z
-    .string()
-    .max(max, `${label} не должно превышать ${max} символов`)
-    .refine((val) => val === '' || val.length >= 2, {
-      message: `${label} должно содержать минимум 2 символа`,
-    });
-
 export const signInSchema = z.object({
   email: z
     .string()
@@ -28,8 +20,6 @@ export const signUpSchema = z
       .min(3, 'Минимум 3 символа')
       .max(50, 'Максимум 50 символов')
       .regex(/^[a-zA-Z0-9_]+$/, 'Только латиница, цифры и подчёркивание'),
-    firstName: optionalName('Имя', 50),
-    lastName: optionalName('Фамилия', 100),
     email: z
       .string()
       .min(1, 'Email обязателен')

@@ -1,14 +1,22 @@
-import { Clock, Trash2 } from 'lucide-react';
+import { Clock, Globe, Trash2 } from 'lucide-react';
 import { Badge } from '../ui/Badge.tsx';
 import { ChallengeScheduleBadge } from './ChallengeScheduleBadge.tsx';
 import type { ChallengeListItem, ChallengeTab } from '../../types/challenge.ts';
 import { formatParticipants } from '../../utils/challengeMappers.ts';
+import {
+  canArchiveChallenge,
+  canDeleteChallenge,
+  canInviteToChallenge,
+  canLeaveChallenge,
+  canPublishChallenge,
+} from '../../utils/challengePermissions.ts';
 
 interface ChallengeCardProps {
   challenge: ChallengeListItem;
   tab: ChallengeTab;
   onOpen: (id: number) => void;
   onCopyLink?: (id: number) => void;
+  onPublish?: (id: number) => void;
   onArchive?: (id: number) => void;
   onDelete?: (id: number) => void;
   onLeave?: (id: number) => void;
@@ -19,6 +27,7 @@ function ActionBar({
   challenge,
   tab,
   onCopyLink,
+  onPublish,
   onArchive,
   onDelete,
   onLeave,
@@ -30,38 +39,83 @@ function ActionBar({
 
   const divider = <span className="w-px h-6 bg-neutral-border self-center flex-shrink-0" />;
 
-  if (tab === 'mine') {
+  if (tab === 'individual') {
+    const actions = [
+      canInviteToChallenge(challenge) && (
+        <button key="link" type="button" className={`${btnClass} sm:flex-1`} onClick={() => onCopyLink?.(challengeId)}>
+          <span className="hidden sm:inline">Скопировать ссылку</span>
+          <span className="sm:hidden">Ссылка</span>
+        </button>
+      ),
+      canPublishChallenge(challenge) && (
+        <button
+          key="publish"
+          type="button"
+          className={`${btnClass} sm:flex-1 flex items-center justify-center gap-1 text-lime-hover`}
+          onClick={() => onPublish?.(challengeId)}
+        >
+          <Globe size={14} />
+          Сделать публичным
+        </button>
+      ),
+      canArchiveChallenge(challenge) && (
+        <button key="archive" type="button" className={`${btnClass} sm:flex-1`} onClick={() => onArchive?.(challengeId)}>
+          В архив
+        </button>
+      ),
+      canDeleteChallenge(challenge) && (
+        <button
+          key="delete"
+          type="button"
+          className={`${btnClass} sm:flex-1 flex items-center justify-center gap-1 text-red-400 hover:text-red-500`}
+          onClick={() => onDelete?.(challengeId)}
+        >
+          <Trash2 size={14} />
+          Удалить
+        </button>
+      ),
+    ].filter(Boolean);
+
+    if (actions.length === 0) return null;
+
     return (
       <div className="border-t border-neutral-border bg-neutral-card/80 rounded-b-3xl overflow-x-auto">
         <div className="flex items-center min-w-max sm:min-w-0 sm:w-full">
-          <button type="button" className={`${btnClass} sm:flex-1`} onClick={() => onCopyLink?.(challengeId)}>
-            <span className="hidden sm:inline">Скопировать ссылку</span>
-            <span className="sm:hidden">Ссылка</span>
-          </button>
-          {divider}
-          <button type="button" className={`${btnClass} sm:flex-1`} onClick={() => onArchive?.(challengeId)}>
-            В архив
-          </button>
-          {divider}
-          <button
-            type="button"
-            className={`${btnClass} sm:flex-1 flex items-center justify-center gap-1 text-red-400 hover:text-red-500`}
-            onClick={() => onDelete?.(challengeId)}
-          >
-            <Trash2 size={14} />
-            Удалить
-          </button>
+          {actions.map((action, index) => (
+            <span key={index} className="contents">
+              {index > 0 && divider}
+              {action}
+            </span>
+          ))}
         </div>
       </div>
     );
   }
 
-  if (tab === 'participating') {
-    return (
-      <div className="flex border-t border-neutral-border bg-neutral-card/80 rounded-b-3xl overflow-hidden">
-        <button type="button" className={`${btnClass} flex-1`} onClick={() => onLeave?.(challengeId)}>
+  if (tab === 'group') {
+    const actions = [
+      canInviteToChallenge(challenge) && (
+        <button key="link" type="button" className={`${btnClass} flex-1`} onClick={() => onCopyLink?.(challengeId)}>
+          Пригласить по ссылке
+        </button>
+      ),
+      canLeaveChallenge(challenge) && (
+        <button key="leave" type="button" className={`${btnClass} flex-1`} onClick={() => onLeave?.(challengeId)}>
           Покинуть
         </button>
+      ),
+    ].filter(Boolean);
+
+    if (actions.length === 0) return null;
+
+    return (
+      <div className="flex border-t border-neutral-border bg-neutral-card/80 rounded-b-3xl overflow-hidden">
+        {actions.map((action, index) => (
+          <span key={index} className="contents">
+            {index > 0 && divider}
+            {action}
+          </span>
+        ))}
       </div>
     );
   }
@@ -72,7 +126,7 @@ function ActionBar({
         <button type="button" className={`${btnClass} flex-1`} onClick={() => onResume?.(challengeId)}>
           Возобновить
         </button>
-        {challenge.isOwner && (
+        {challenge.isOwner && challenge.isPrivate && (
           <>
             {divider}
             <button
@@ -113,6 +167,9 @@ export function ChallengeCard(props: ChallengeCardProps) {
           </Badge>
           <ChallengeScheduleBadge label={challenge.scheduleLabel} />
           <Badge variant="grey">{formatParticipants(challenge.participantCount)}</Badge>
+          {tab === 'group' && !challenge.isPrivate && (
+            <Badge variant="green">Публичный</Badge>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">

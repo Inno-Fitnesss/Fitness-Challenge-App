@@ -13,7 +13,7 @@ import {
 } from './ChallengeExerciseRow.tsx';
 import { SchedulePicker, type ScheduleMode } from './SchedulePicker.tsx';
 import { generateId } from '../../utils/generateId.ts';
-import { CHALLENGE_NAME_MAX_LENGTH } from '../../constants/challengeLimits.ts';
+import { CHALLENGE_NAME_MAX_LENGTH, CHALLENGE_DESCRIPTION_MAX_LENGTH } from '../../constants/challengeLimits.ts';
 import type { AxiosError } from 'axios';
 
 interface ChallengeFormModalProps {
@@ -39,13 +39,17 @@ function isFormValid(
   startDate: string,
   endDate: string,
   isUnlimited: boolean,
+  description: string,
   rows: ExerciseRowData[],
   exercises: ApiExercise[],
   scheduleMode: ScheduleMode,
   scheduleDays: number[],
+  isCreate: boolean,
 ): boolean {
   if (!name.trim() || name.trim().length > CHALLENGE_NAME_MAX_LENGTH) return false;
+  if (description.length > CHALLENGE_DESCRIPTION_MAX_LENGTH) return false;
   if (!isValidIsoDate(startDate)) return false;
+  if (isCreate && startDate < todayIso()) return false;
   if (!isUnlimited) {
     if (!isValidIsoDate(endDate)) return false;
     if (endDate < startDate) return false;
@@ -173,12 +177,14 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
         startDate,
         endDate,
         isUnlimited,
+        description,
         rows,
         exercises,
         scheduleMode,
         scheduleDays,
+        !isEdit,
       ),
-    [name, startDate, endDate, isUnlimited, rows, exercises, scheduleMode, scheduleDays],
+    [name, startDate, endDate, isUnlimited, description, rows, exercises, scheduleMode, scheduleDays, isEdit],
   );
 
   const usedExerciseIds = useMemo(() => {
@@ -228,9 +234,13 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
         if (isEdit && challengeId != null) {
           const detail = await challengeApi.getDetail(challengeId);
           if (cancelled) return;
+          if (!detail.is_private) {
+            setError('Публичный челлендж нельзя редактировать');
+            return;
+          }
 
           const loadedName = detail.name.slice(0, CHALLENGE_NAME_MAX_LENGTH);
-          const loadedDescription = detail.description ?? '';
+          const loadedDescription = (detail.description ?? '').slice(0, CHALLENGE_DESCRIPTION_MAX_LENGTH);
           const loadedStartDate = detail.start_date;
           const loadedIsUnlimited = !detail.end_date;
           const loadedEndDate = detail.end_date ?? '';
@@ -306,8 +316,12 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
   };
 
   const handleStartDateChange = (iso: string) => {
-    setStartDate(iso);
-    if (!isUnlimited && endDate && iso && endDate < iso) {
+    let next = iso;
+    if (!isEdit && next && isValidIsoDate(next) && next < todayIso()) {
+      next = todayIso();
+    }
+    setStartDate(next);
+    if (!isUnlimited && endDate && next && endDate < next) {
       setEndDate('');
     }
   };
@@ -401,7 +415,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
     >
       <div
         className="relative w-full sm:max-w-3xl bg-white rounded-t-3xl sm:rounded-3xl shadow-modal animate-slide-up sm:animate-scale-in
-          max-h-[92dvh] sm:max-h-[calc(100dvh-3rem)] flex flex-col sm:my-8"
+          max-h-[92dvh] sm:max-h-[calc(100dvh-3rem)] flex flex-col sm:my-8 min-w-0 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {showDiscardConfirm && (
@@ -451,7 +465,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
                 placeholder="Название"
                 disabled={isLoading}
                 maxLength={CHALLENGE_NAME_MAX_LENGTH}
-                className="w-full min-w-0 px-4 py-3 border border-neutral-border rounded-2xl text-sm sm:text-base text-neutral-text placeholder:text-neutral-muted focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 disabled:bg-neutral-card truncate"
+                className="w-full min-w-0 max-w-full px-4 py-3 border border-neutral-border rounded-2xl text-sm sm:text-base text-neutral-text placeholder:text-neutral-muted focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 disabled:bg-neutral-card break-words"
                 autoFocus
               />
               <p className="mt-1 text-xs text-neutral-muted text-right">
@@ -464,7 +478,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 sm:py-2">
           {error && (
-            <p role="alert" className="mb-4 text-sm text-red-500">
+            <p role="alert" className="mb-4 text-sm text-red-500 break-words">
               {error}
             </p>
           )}
@@ -481,8 +495,10 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
                     label="Дата начала"
                     value={startDate}
                     onChange={handleStartDateChange}
+                    min={isEdit ? undefined : todayIso()}
                     disabled={isLoading}
                     required
+                    hint={!isEdit ? 'Не раньше сегодняшнего дня' : undefined}
                   />
 
                   <label className="flex items-start gap-3 p-4 rounded-2xl border border-neutral-border bg-neutral-card/40 cursor-pointer hover:border-brand/30 transition-colors">
@@ -528,11 +544,17 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
                 <h2 className="text-sm font-bold text-neutral-text mb-3">Описание</h2>
                 <textarea
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) =>
+                    setDescription(e.target.value.slice(0, CHALLENGE_DESCRIPTION_MAX_LENGTH))
+                  }
+                  maxLength={CHALLENGE_DESCRIPTION_MAX_LENGTH}
                   rows={4}
                   placeholder="Необязательно"
-                  className="w-full px-4 py-3 border border-neutral-border rounded-2xl text-sm text-neutral-text placeholder:text-neutral-muted resize-none focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                  className="w-full min-w-0 max-w-full px-4 py-3 border border-neutral-border rounded-2xl text-sm text-neutral-text placeholder:text-neutral-muted resize-none break-words overflow-x-hidden focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
                 />
+                <p className="mt-1 text-xs text-neutral-muted text-right">
+                  {description.length}/{CHALLENGE_DESCRIPTION_MAX_LENGTH}
+                </p>
               </section>
 
               <section className="border border-neutral-border rounded-2xl p-4 sm:p-5">

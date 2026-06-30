@@ -91,9 +91,8 @@ export function mapChallengeDetailToListItem(detail: ApiChallengeDetail): Challe
 export function calcExerciseProgressPercent(exercises: ApiChallengeExercise[]): number {
   if (exercises.length === 0) return 0;
   const sum = exercises.reduce((acc, ex) => {
-    const clean = ex.clean_today ?? 0;
-    const ratio = ex.goal > 0 ? Math.min(clean / ex.goal, 1) : 0;
-    return acc + ratio;
+    if (!ex.closed) return acc;
+    return acc + 1;
   }, 0);
   return Math.round((sum / exercises.length) * 100);
 }
@@ -116,21 +115,18 @@ export function mapExerciseProgress(
   exercises: ApiChallengeExercise[],
 ): ExerciseProgress[] {
   return exercises.map((ex) => {
-    const clean = ex.clean_today ?? 0;
     const isSeconds = ex.metric === 'seconds';
-    const completed = isSeconds && ex.goal >= 60 ? Math.floor(clean / 60) : clean;
     const goal = isSeconds && ex.goal >= 60 ? Math.floor(ex.goal / 60) : ex.goal;
     const unit = isSeconds && ex.goal >= 60 ? 'minutes' as const : isSeconds ? 'seconds' as const : 'reps' as const;
 
     let status: ExerciseProgress['status'] = 'not_started';
     if (ex.closed) status = 'completed';
-    else if (clean > 0) status = 'in_progress';
 
     return {
       exerciseId: String(ex.challenge_exercise_id),
       name: ex.name,
       goal,
-      completed: ex.closed ? goal : unit === 'minutes' ? completed : clean,
+      completed: ex.closed ? goal : 0,
       unit: unit === 'seconds' ? 'reps' : unit,
       status,
     };

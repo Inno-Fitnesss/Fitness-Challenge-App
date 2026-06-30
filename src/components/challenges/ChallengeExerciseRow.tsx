@@ -3,6 +3,8 @@ import type { ApiExercise } from '../../types/api.types.ts';
 import {
   clampRepsGoal,
   combinePlankGoal,
+  DEFAULT_PLANK_SECONDS,
+  DEFAULT_REPS_GOAL,
   MAX_PLANK_MINUTES,
   MAX_PLANK_TOTAL_SECONDS,
   MAX_REPS_GOAL,
@@ -40,11 +42,14 @@ export function ChallengeExerciseRow({
   const selected = exercises.find((e) => e.id === row.exerciseId);
   const metric = selected?.metric;
   const plankParts =
-    metric === 'seconds' && row.goal > 0 ? splitPlankGoal(row.goal) : { minutes: 2, seconds: 0 };
+    metric === 'seconds' && row.goal > 0
+      ? splitPlankGoal(row.goal)
+      : { minutes: 0, seconds: DEFAULT_PLANK_SECONDS };
 
   const handleExerciseChange = (exerciseId: number) => {
     const exercise = exercises.find((e) => e.id === exerciseId);
-    const defaultGoal = exercise?.metric === 'seconds' ? 120 : 50;
+    const defaultGoal =
+      exercise?.metric === 'seconds' ? DEFAULT_PLANK_SECONDS : DEFAULT_REPS_GOAL;
     onChange(row.rowId, { exerciseId, goal: defaultGoal });
   };
 

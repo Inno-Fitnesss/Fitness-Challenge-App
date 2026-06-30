@@ -1,5 +1,14 @@
-/** Совпадает с backend ChallengeCreate.name max_length */
-export const CHALLENGE_NAME_MAX_LENGTH = 255;
+/** Лимит на фронте; на бэке сейчас 255 — попросить выставить 50 в ChallengeCreate/Edit */
+export const CHALLENGE_NAME_MAX_LENGTH = 50;
+
+/** Лимит описания на фронте; на бэке лимита нет — попросить max_length=200 */
+export const CHALLENGE_DESCRIPTION_MAX_LENGTH = 200;
+
+/** Дефолтная цель при добавлении упражнения в форме челленджа */
+export const DEFAULT_REPS_GOAL = 10;
+
+/** Дефолтная длительность планки (секунды) */
+export const DEFAULT_PLANK_SECONDS = 30;
 
 /** Максимум повторений для reps-упражнений */
 export const MAX_REPS_GOAL = 9_999;

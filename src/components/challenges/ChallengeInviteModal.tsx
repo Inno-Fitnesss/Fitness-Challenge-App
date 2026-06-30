@@ -2,12 +2,10 @@ import { Clock, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Badge } from '../ui/Badge.tsx';
 import { Button } from '../ui/Button.tsx';
-import { ProgressBar } from '../ui/ProgressBar.tsx';
 import { publicApi } from '../../api/publicApi.ts';
 import { challengeApi } from '../../api/challengeApi.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import type { ApiPublicChallenge } from '../../types/api.types.ts';
-import type { LeaderboardEntry } from '../../types/challenge.ts';
 import {
   formatDateLabel,
   formatParticipants,
@@ -17,6 +15,7 @@ import { formatScheduleLabel } from '../../utils/scheduleFormat.ts';
 import { pluralizeRu } from '../../utils/russianPlural.ts';
 import { parseApiError } from '../../utils/parseApiError.ts';
 import { ChallengeScheduleBadge } from './ChallengeScheduleBadge.tsx';
+import { LeaderboardList } from './LeaderboardList.tsx';
 import type { AxiosError } from 'axios';
 
 interface ChallengeInviteModalProps {
@@ -43,43 +42,6 @@ function formatExerciseGoal(name: string, goal: number, metric: string): { name:
     name,
     goal: `${goal} ${pluralizeRu(goal, ['повторение', 'повторения', 'повторений'])}`,
   };
-}
-
-function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
-  const medalColors: Record<number, string> = {
-    1: 'text-amber-500',
-    2: 'text-neutral-muted',
-    3: 'text-amber-700',
-  };
-
-  return (
-    <div
-      className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-2xl ${
-        entry.isCurrentUser ? 'bg-brand-light' : ''
-      }`}
-    >
-      <span
-        className={`text-base sm:text-lg font-bold w-5 sm:w-6 text-center flex-shrink-0 ${
-          medalColors[entry.rank] ?? 'text-neutral-muted'
-        }`}
-      >
-        {entry.rank}
-      </span>
-      <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex-shrink-0 ${entry.avatarColor}`} />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-neutral-text truncate">{entry.username}</p>
-        <p className="text-xs text-neutral-muted flex items-center gap-1">
-          🔥 {entry.streakDays} {pluralizeRu(entry.streakDays, ['день', 'дня', 'дней'])}
-        </p>
-      </div>
-      <div className="w-16 sm:w-24 flex-shrink-0">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-neutral-muted">{entry.progressPercent}%</span>
-        </div>
-        <ProgressBar value={entry.progressPercent} color="orange" />
-      </div>
-    </div>
-  );
 }
 
 export function ChallengeInviteModal({ joinCode, onClose, onJoined }: ChallengeInviteModalProps) {
@@ -281,15 +243,7 @@ export function ChallengeInviteModal({ joinCode, onClose, onJoined }: ChallengeI
                     <h3 className="text-base font-bold text-neutral-text">Лидерборд</h3>
                     <span className="text-xs text-brand font-medium">регулярность</span>
                   </div>
-                  {leaderboard.length === 0 ? (
-                    <p className="text-sm text-neutral-muted">Пока нет участников</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {leaderboard.map((entry) => (
-                        <LeaderboardRow key={`${entry.rank}-${entry.username}`} entry={entry} />
-                      ))}
-                    </div>
-                  )}
+                  <LeaderboardList entries={leaderboard} />
                 </section>
               </div>
             </>

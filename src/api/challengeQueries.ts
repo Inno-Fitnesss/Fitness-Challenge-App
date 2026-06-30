@@ -7,6 +7,22 @@ import {
 } from '../utils/challengeMappers.ts';
 import { meApi, challengeApi } from './challengeApi.ts';
 import type { ChallengeListItem, DiscoveryChallenge, TodayPlanItem } from '../types/challenge.ts';
+import { todayIso } from '../utils/dateFormat.ts';
+
+async function archiveExpiredOwnedChallenges(items: ChallengeListItem[]): Promise<ChallengeListItem[]> {
+  const today = todayIso();
+  const expiredIds = items
+    .filter((c) => c.isOwner && c.endDate && c.endDate < today)
+    .map((c) => c.id);
+
+  if (expiredIds.length === 0) return items;
+
+  await Promise.all(
+    expiredIds.map((id) => challengeApi.archive(id).catch(() => undefined)),
+  );
+
+  return items.filter((c) => !expiredIds.includes(c.id));
+}
 
 export async function fetchChallengeListItems(
   status: 'active' | 'archived',
@@ -17,7 +33,13 @@ export async function fetchChallengeListItems(
   const details = await Promise.all(
     summaries.map((s) => challengeApi.getDetail(s.id)),
   );
-  return details.map(mapChallengeDetailToListItem);
+  const items = details.map(mapChallengeDetailToListItem);
+
+  if (status === 'active') {
+    return archiveExpiredOwnedChallenges(items);
+  }
+
+  return items;
 }
 
 export async function fetchDiscoveryChallenges(): Promise<DiscoveryChallenge[]> {

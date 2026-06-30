@@ -46,6 +46,7 @@ export interface User {
   fitnessLevel?: FitnessLevel;
   streakCurrent?: number;
   streakLongest?: number;
+  volume?: { exercise: string; metric: string; total: number }[];
 }
 
 export interface ProfileUpdateData {

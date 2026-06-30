@@ -5,8 +5,8 @@ export function ChallengeEditPage() {
   const challengeId = id && !Number.isNaN(Number(id)) ? id : null;
 
   if (!challengeId) {
-    return <Navigate to="/challenges?tab=mine" replace />;
+    return <Navigate to="/challenges?tab=individual" replace />;
   }
 
-  return <Navigate to={`/challenges?tab=mine&edit=${challengeId}`} replace />;
+  return <Navigate to={`/challenges?tab=individual&edit=${challengeId}`} replace />;
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  checkVideoLighting,
   createPoseRuntime,
   detectExercise,
   drawPose,
@@ -21,12 +22,14 @@ interface UseCvSessionOptions {
   exerciseName: string;
   metric: ExerciseMetric;
   isRunning: boolean;
+  cameraActive: boolean;
   videoRef: React.RefObject<HTMLVideoElement>;
 }
 
 interface UseCvSessionResult {
   stats: CvSessionStats;
   feedback: CvFeedbackMessage[];
+  activeWarning: CvFeedbackMessage | null;
   status: SessionStatus;
   analysisStatus: string;
   cvConnected: boolean;
@@ -65,6 +68,7 @@ export function useCvSession({
   exerciseName,
   metric,
   isRunning,
+  cameraActive,
   videoRef,
 }: UseCvSessionOptions): UseCvSessionResult {
   const exercise = useMemo(
@@ -80,6 +84,7 @@ export function useCvSession({
   );
   const [stats, setStats] = useState<CvSessionStats>(EMPTY_STATS);
   const [feedback, setFeedback] = useState<CvFeedbackMessage[]>([]);
+  const [activeWarning, setActiveWarning] = useState<CvFeedbackMessage | null>(null);
   const [status, setStatus] = useState<SessionStatus>('idle');
   const [analysisStatus, setAnalysisStatus] = useState(
     'Нажмите «Начать», чтобы запустить анализ',
@@ -120,6 +125,7 @@ export function useCvSession({
     analyzerRef.current.reset();
     setStats(EMPTY_STATS);
     setFeedback([]);
+    setActiveWarning(null);
     setStatus('idle');
     setAnalysisStatus('Счётчик сброшен');
     lastFeedbackRef.current = null;
@@ -144,7 +150,8 @@ export function useCvSession({
   }, [exercise, emitFeedback]);
 
   useEffect(() => {
-    if (!isRunning) {
+    if (!cameraActive) {
+      setActiveWarning(null);
       setStatus((current) => (current === 'running' ? 'paused' : current));
       return;
     }
@@ -158,17 +165,20 @@ export function useCvSession({
     let frameId = 0;
     let lastVideoTime = -1;
     let lastInferenceAt = 0;
+    let lastLightingCheckAt = 0;
     const overlayCanvas = overlayCanvasRef.current;
 
     const run = async () => {
-      setStatus('calibrating');
-      setAnalysisStatus('Загрузка MediaPipe и модели…');
+      setStatus(isRunning ? 'calibrating' : 'idle');
+      setAnalysisStatus(
+        isRunning ? 'Загрузка MediaPipe и модели…' : 'Проверяем положение в кадре…',
+      );
 
       try {
         const runtime = await ensureRuntime();
         if (cancelled) return;
 
-        setStatus('running');
+        setStatus(isRunning ? 'running' : 'idle');
         setAnalysisStatus('Ищу человека в кадре');
 
         const loop = (timestamp: number) => {
@@ -189,6 +199,8 @@ export function useCvSession({
           lastInferenceAt = timestamp;
 
           try {
+            analyzerRef.current.setCountingEnabled(isRunning);
+
             const result = runtime.landmarker.detectForVideo(
               video,
               performance.now(),
@@ -203,13 +215,31 @@ export function useCvSession({
               ? analyzerRef.current.analyze(landmarks, worldLandmarks, timestamp)
               : analyzerRef.current.noPose();
 
-            setStats((current) =>
-              statsAreEqual(current, analysis.stats)
-                ? current
-                : analysis.stats,
-            );
+            if (isRunning) {
+              setStats((current) =>
+                statsAreEqual(current, analysis.stats)
+                  ? current
+                  : analysis.stats,
+              );
+            }
+
+            let warningFeedback = analysis.feedback;
+            if (timestamp - lastLightingCheckAt > 1000) {
+              lastLightingCheckAt = timestamp;
+              const lightingFeedback = checkVideoLighting(video);
+              if (lightingFeedback) {
+                warningFeedback = lightingFeedback;
+              }
+            }
+
             setAnalysisStatus(analysis.status);
-            if (analysis.feedback) emitFeedback(analysis.feedback);
+            if (warningFeedback?.severity === 'warning') {
+              const warning = createFeedback(warningFeedback);
+              setActiveWarning(warning);
+              emitFeedback(warningFeedback);
+            } else {
+              setActiveWarning(null);
+            }
           } catch (error) {
             console.error('CV frame processing failed', error);
             setStatus('paused');
@@ -247,11 +277,12 @@ export function useCvSession({
         ?.getContext('2d')
         ?.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     };
-  }, [emitFeedback, ensureRuntime, exercise, isRunning, videoRef]);
+  }, [cameraActive, emitFeedback, ensureRuntime, exercise, isRunning, videoRef]);
 
   return {
     stats,
     feedback,
+    activeWarning,
     status,
     analysisStatus,
     cvConnected,

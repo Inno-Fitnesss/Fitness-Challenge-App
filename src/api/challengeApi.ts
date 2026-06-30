@@ -58,9 +58,17 @@ export const meApi = {
     return data;
   },
 
-  async getWeekActivity(): Promise<ApiWeekActivity> {
-    const { data } = await apiClient.get<ApiWeekActivity>('/me/week');
-    return data;
+  async getWeekActivity(weekStart?: string): Promise<ApiWeekActivity> {
+    try {
+      const { data } = await apiClient.get<ApiWeekActivity>('/me/week', {
+        params: weekStart ? { week_start: weekStart } : undefined,
+      });
+      return data;
+    } catch (error) {
+      if (!weekStart) throw error;
+      const { data } = await apiClient.get<ApiWeekActivity>('/me/week');
+      return data;
+    }
   },
 };
 
@@ -109,6 +117,11 @@ export const challengeApi = {
 
   async leave(id: number): Promise<{ left: boolean }> {
     const { data } = await apiClient.post<{ left: boolean }>(`/challenges/${id}/leave`);
+    return data;
+  },
+
+  async publish(id: number): Promise<ApiChallengeDetail> {
+    const { data } = await apiClient.post<ApiChallengeDetail>(`/challenges/${id}/publish`);
     return data;
   },
 

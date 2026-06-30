@@ -53,7 +53,7 @@ export function DateField({
   const readableValue = value && isValidIsoDate(value) ? formatIsoForDisplay(value) : '';
 
   return (
-    <div>
+    <div className="min-w-0 max-w-full">
       <label htmlFor={fieldId} className="block text-xs text-neutral-secondary mb-1.5">
         {label}
         {required && <span className="text-brand ml-0.5">*</span>}
@@ -75,7 +75,7 @@ export function DateField({
               onChange('');
             }
           }}
-          className="date-field-input w-full pl-4 pr-12 py-2.5 border border-neutral-border rounded-xl text-sm text-neutral-text bg-white focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 disabled:bg-neutral-card disabled:text-neutral-muted"
+          className="date-field-input w-full min-w-0 max-w-full pl-4 pr-12 py-2.5 border border-neutral-border rounded-xl text-sm text-neutral-text bg-white focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 disabled:bg-neutral-card disabled:text-neutral-muted"
         />
         <button
           type="button"

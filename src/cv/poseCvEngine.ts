@@ -214,6 +214,44 @@ export function getInferenceIntervalMs(): number {
   return INFERENCE_INTERVAL_MS;
 }
 
+export function checkVideoLighting(
+  video: HTMLVideoElement,
+): CvFeedbackInput | null {
+  if (video.videoWidth === 0 || video.videoHeight === 0) return null;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 48;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) return null;
+
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+
+  let brightness = 0;
+  for (let index = 0; index < pixels.length; index += 4) {
+    brightness +=
+      pixels[index] * 0.299 + pixels[index + 1] * 0.587 + pixels[index + 2] * 0.114;
+  }
+  brightness /= pixels.length / 4;
+
+  if (brightness < 45) {
+    return {
+      type: 'lighting',
+      severity: 'warning',
+      text: 'Слишком темно. Включите свет или подойдите к окну.',
+    };
+  }
+  if (brightness > 225) {
+    return {
+      type: 'lighting',
+      severity: 'warning',
+      text: 'Слишком яркий контровой свет. Повернитесь лицом к источнику света.',
+    };
+  }
+  return null;
+}
+
 export function detectExercise(
   exerciseName: string,
   metric: ExerciseMetric,
@@ -475,6 +513,12 @@ export class ExerciseAnalyzer {
 
   constructor(private readonly exercise: CvExercise) {}
 
+  private countingEnabled = true;
+
+  setCountingEnabled(enabled: boolean): void {
+    this.countingEnabled = enabled;
+  }
+
   reset(): void {
     this.reps = 0;
     this.repState = 'WAITING_FOR_TOP';
@@ -700,7 +744,7 @@ export class ExerciseAnalyzer {
     const holding =
       valid && this.stableValidFrames >= SETTINGS.plank.stableFrames;
 
-    if (holding && this.plankLastTimestamp !== null) {
+    if (holding && this.plankLastTimestamp !== null && this.countingEnabled) {
       this.plankHoldMs += Math.min(timestampMs - this.plankLastTimestamp, 200);
     }
     this.plankLastTimestamp = timestampMs;
@@ -768,8 +812,10 @@ export class ExerciseAnalyzer {
       this.minAngleInRep = primaryAngle;
       this.maxAngleInRep = primaryAngle;
       if (amplitude >= MIN_REP_AMPLITUDE) {
-        this.reps += 1;
-        return { counted: true, phase: 'Засчитано' };
+        if (this.countingEnabled) {
+          this.reps += 1;
+        }
+        return { counted: this.countingEnabled, phase: 'Засчитано' };
       }
       return { counted: false, phase: 'Верхняя позиция' };
     }

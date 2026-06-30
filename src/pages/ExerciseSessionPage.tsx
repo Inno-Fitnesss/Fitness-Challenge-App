@@ -4,14 +4,20 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { challengeApi } from '../api/challengeApi.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { resolveExerciseReturnPath } from '../utils/exerciseNavigation.ts';
-import { AiFeedbackPanel } from '../components/session/AiFeedbackPanel.tsx';
+import { todayIso } from '../utils/dateFormat.ts';
 import { CameraPreview } from '../components/session/CameraPreview.tsx';
+import { ExerciseTechniqueModal } from '../components/session/ExerciseTechniqueModal.tsx';
 import { SessionStatsCard } from '../components/session/SessionStatsCard.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { BrandLogoLink } from '../components/ui/BrandLogoLink.tsx';
+import { getExerciseTechniqueContent } from '../data/exerciseTechnique.ts';
 import { useCameraStream } from '../hooks/useCameraStream.ts';
 import { useCvSession } from '../hooks/useCvSession.ts';
 import type { ExerciseSessionContext } from '../types/session.types.ts';
+import {
+  isExerciseOnboardingDismissed,
+  setExerciseOnboardingDismissed,
+} from '../utils/exerciseOnboardingStorage.ts';
 
 function SessionHeader({
   title,
@@ -62,6 +68,7 @@ export function ExerciseSessionPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isTechniqueOpen, setIsTechniqueOpen] = useState(false);
 
   const { videoRef, status: cameraStatus, errorMessage, startCamera, stopCamera } =
     useCameraStream();
@@ -74,9 +81,17 @@ export function ExerciseSessionPage() {
     [parsedChallengeId, searchParams],
   );
 
+  const techniqueContent = useMemo(
+    () =>
+      context
+        ? getExerciseTechniqueContent(context.exerciseName, context.metric)
+        : null,
+    [context],
+  );
+
   const {
     stats,
-    feedback,
+    activeWarning,
     analysisStatus,
     cvConnected,
     overlayCanvasRef,
@@ -85,6 +100,7 @@ export function ExerciseSessionPage() {
     exerciseName: context?.exerciseName ?? '',
     metric: context?.metric ?? 'reps',
     isRunning,
+    cameraActive: cameraStatus === 'active',
     videoRef,
   });
 
@@ -121,6 +137,11 @@ export function ExerciseSessionPage() {
           return;
         }
 
+        if (detail.end_date && detail.end_date < todayIso()) {
+          setLoadError('Срок челленджа истёк. Челлендж должен быть в архиве.');
+          return;
+        }
+
         setContext({
           challengeId: parsedChallengeId,
           challengeExerciseId: parsedExerciseId,
@@ -148,6 +169,26 @@ export function ExerciseSessionPage() {
   useEffect(() => {
     startCamera();
   }, [startCamera]);
+
+  useEffect(() => {
+    if (!techniqueContent || isLoading) return;
+    if (isExerciseOnboardingDismissed(techniqueContent.exerciseKey)) return;
+    setIsTechniqueOpen(true);
+  }, [techniqueContent, isLoading]);
+
+  const handleCloseTechnique = useCallback(
+    (dontShowAgain: boolean) => {
+      if (techniqueContent && dontShowAgain) {
+        setExerciseOnboardingDismissed(techniqueContent.exerciseKey, true);
+      }
+      setIsTechniqueOpen(false);
+    },
+    [techniqueContent],
+  );
+
+  const handleShowTechnique = useCallback(() => {
+    setIsTechniqueOpen(true);
+  }, []);
 
   const goalReached = useMemo(() => {
     if (!context) return false;
@@ -191,10 +232,15 @@ export function ExerciseSessionPage() {
         context.metric === 'seconds'
           ? currentStats.elapsedSeconds
           : currentStats.reps;
-      const cleanValue =
+      const goalMet =
         context.metric === 'seconds'
+          ? currentStats.elapsedSeconds >= context.goal
+          : currentStats.cleanReps >= context.goal;
+      const cleanValue = goalMet
+        ? context.metric === 'seconds'
           ? currentStats.elapsedSeconds
-          : currentStats.cleanReps;
+          : currentStats.cleanReps
+        : 0;
 
       await challengeApi.submitSession(context.challengeId, {
         challenge_exercise_id: context.challengeExerciseId,
@@ -272,6 +318,7 @@ export function ExerciseSessionPage() {
               isSessionActive={isRunning}
               analysisStatus={analysisStatus}
               cvConnected={cvConnected}
+              activeWarning={activeWarning}
               onStartCamera={startCamera}
             />
 
@@ -331,10 +378,9 @@ export function ExerciseSessionPage() {
                 completedToday={context.completedToday}
                 stats={stats}
                 isRunning={isRunning}
+                onShowTechnique={handleShowTechnique}
               />
             </div>
-
-            <AiFeedbackPanel messages={feedback} cvConnected={cvConnected} />
           </div>
 
           <aside className="hidden lg:block space-y-5">
@@ -345,14 +391,15 @@ export function ExerciseSessionPage() {
               completedToday={context.completedToday}
               stats={stats}
               isRunning={isRunning}
+              onShowTechnique={handleShowTechnique}
             />
 
             <div className="rounded-3xl bg-white border border-neutral-border/60 shadow-card p-5 text-sm text-neutral-secondary space-y-3">
-              <p className="font-semibold text-neutral-text">Перед началом</p>
-              <ul className="space-y-2 text-xs leading-relaxed">
-                <li>• В кадре должны быть видны ключевые точки тела</li>
-                <li>• Избегайте сильной подсветки сзади</li>
+              <p className="font-semibold text-neutral-text">Важно!</p>
+              <ul className="space-y-2 text-xs leading-relaxed text-red-500">
                 <li>• Держите телефон или ноутбук на стабильной поверхности</li>
+                <li>• Убедитесь, что вас хорошо видно</li>
+                <li>• Следуйте подсказкам на экране камеры</li>
               </ul>
               <button
                 type="button"
@@ -365,6 +412,13 @@ export function ExerciseSessionPage() {
           </aside>
         </div>
       </main>
+
+      {isTechniqueOpen && techniqueContent && (
+        <ExerciseTechniqueModal
+          content={techniqueContent}
+          onClose={handleCloseTechnique}
+        />
+      )}
     </div>
   );
 }

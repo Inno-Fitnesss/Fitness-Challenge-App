@@ -25,6 +25,7 @@ function mapMeToUser(data: ApiMeResponse): User {
     fitnessLevel: (data.fitness_level as FitnessLevel | null) ?? undefined,
     streakCurrent: data.streak_current,
     streakLongest: data.streak_longest,
+    volume: data.volume,
   };
 }
 

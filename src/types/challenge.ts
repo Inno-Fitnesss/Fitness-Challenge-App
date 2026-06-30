@@ -1,4 +1,4 @@
-export type ChallengeTab = 'mine' | 'participating' | 'archive';
+export type ChallengeTab = 'individual' | 'group' | 'archive';
 export type ExerciseStatus = 'not_started' | 'in_progress' | 'completed';
 export type ChallengeStatus = 'active' | 'archived' | 'completed';
 

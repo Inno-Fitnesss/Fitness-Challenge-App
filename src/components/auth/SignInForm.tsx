@@ -14,7 +14,7 @@ interface SignInFormProps {
   redirectTo?: string;
 }
 
-export function SignInForm({ redirectTo = '/dashboard' }: SignInFormProps) {
+export function SignInForm({ redirectTo = '/settings' }: SignInFormProps) {
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);

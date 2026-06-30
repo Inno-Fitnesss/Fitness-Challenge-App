@@ -16,7 +16,7 @@ const AUTH_TABS = [
 export function AuthPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get('redirect') ?? '/dashboard';
+  const redirectTo = searchParams.get('redirect') ?? '/settings';
   const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [toast, setToast] = useState<string | null>(null);
