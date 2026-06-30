@@ -25,6 +25,8 @@ class SessionService:
         part = self.s.query(Participation).filter_by(user_id=user_id, challenge_id=challenge_id).first()
         if not part:
             raise HTTPException(status_code=403, detail="Join the challenge first")
+        if part.status != "active":
+            raise HTTPException(status_code=409, detail="Challenge is archived")
         if challenge.status != "active":
             raise HTTPException(status_code=409, detail="Challenge is not active")
         ce = self.s.query(ChallengeExercise).filter_by(

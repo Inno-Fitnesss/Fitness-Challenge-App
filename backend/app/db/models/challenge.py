@@ -26,9 +26,11 @@ class Challenge(Base):
     end_date = Column(Date)                              # null = open-ended
     join_code = Column(String(50), unique=True, nullable=False)
     is_preset = Column(Boolean, default=False)
-    is_private = Column(Boolean, default=True)           # true = join by code only
-    status = Column(String(20), nullable=False, default="active")  # active | completed | archived
-    archived_at = Column(DateTime)
+    # Lifecycle: a challenge is created private (individual) and can be made
+    # public exactly once. Going public is irreversible: editing is locked
+    # forever and other users may join. Presets are public templates.
+    is_public = Column(Boolean, nullable=False, default=False)
+    status = Column(String(20), nullable=False, default="active")  # active | completed
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -47,6 +49,11 @@ class Participation(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     challenge_id = Column(Integer, ForeignKey("challenges.id", ondelete="CASCADE"), nullable=False)
+    # Per-user view of a shared challenge. Archiving/un-archiving only touches
+    # the caller's own participation; deleting removes this row, and the
+    # challenge itself is purged once its last participation is gone.
+    status = Column(String(20), nullable=False, default="active")  # active | archived
+    archived_at = Column(DateTime)
     joined_at = Column(DateTime, server_default=func.now())
     days_completed = Column(Integer, default=0)      # score for the leaderboard
     challenge_streak = Column(Integer, default=0)

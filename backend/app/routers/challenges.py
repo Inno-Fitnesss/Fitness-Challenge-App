@@ -40,10 +40,28 @@ def edit_challenge(challenge_id: int, data: ChallengeEdit,
     return ChallengeService(db).edit(user.id, challenge_id, data)
 
 
+@challengeRouter.post("/{challenge_id}/make-public")
+def make_public(challenge_id: int, user: UserOutput = Depends(get_current_user),
+                db: Session = Depends(get_db)):
+    return ChallengeService(db).make_public(user.id, challenge_id)
+
+
 @challengeRouter.post("/{challenge_id}/archive")
 def archive_challenge(challenge_id: int, user: UserOutput = Depends(get_current_user),
                       db: Session = Depends(get_db)):
     return ChallengeService(db).archive(user.id, challenge_id)
+
+
+@challengeRouter.post("/{challenge_id}/unarchive")
+def unarchive_challenge(challenge_id: int, user: UserOutput = Depends(get_current_user),
+                        db: Session = Depends(get_db)):
+    return ChallengeService(db).unarchive(user.id, challenge_id)
+
+
+@challengeRouter.delete("/{challenge_id}")
+def delete_challenge(challenge_id: int, user: UserOutput = Depends(get_current_user),
+                     db: Session = Depends(get_db)):
+    return ChallengeService(db).delete(user.id, challenge_id)
 
 
 @challengeRouter.post("/{challenge_id}/join", status_code=201)

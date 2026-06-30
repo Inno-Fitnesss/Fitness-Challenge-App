@@ -9,7 +9,7 @@ from app.core.scheduling import local_today, is_scheduled
 from app.db.models.user import User
 from app.db.models.challenge import (
     Exercise, Challenge, ChallengeExercise, Participation,
-    ChallengeExerciseProgress, UserExerciseStats,
+    ChallengeExerciseProgress, UserExerciseStats, Session,
 )
 from app.db.schema.challenge import ChallengeCreate, ChallengeEdit
 
@@ -59,12 +59,22 @@ class ChallengeService:
         c = self._get_challenge(challenge_id)
         part = self.s.query(Participation).filter_by(user_id=user_id, challenge_id=challenge_id).first()
         participants = self.s.query(Participation).filter_by(challenge_id=challenge_id).count()
+        is_owner = c.created_by == user_id
+        # `status` reflects the caller's personal view (active/archived) when they
+        # participate; otherwise it falls back to the challenge lifecycle.
+        my_status = part.status if part else None
         return {
             "id": c.id, "name": c.name, "description": c.description,
             "schedule_type": c.schedule_type, "schedule_days": c.schedule_days,
             "start_date": c.start_date, "end_date": c.end_date,
-            "is_private": c.is_private, "is_preset": c.is_preset, "status": c.status,
-            "join_code": c.join_code if c.created_by == user_id else None,
+            "is_public": c.is_public, "is_private": not c.is_public,
+            "is_preset": c.is_preset,
+            "status": my_status or c.status,
+            "my_status": my_status,
+            "is_owner": is_owner,
+            "can_edit": is_owner and not c.is_public,
+            "can_make_public": is_owner and not c.is_public and not c.is_preset,
+            "join_code": c.join_code if is_owner else None,
             "exercises": self._exercises_of(challenge_id),
             "participants": participants,
             "joined": part is not None,
@@ -91,14 +101,17 @@ class ChallengeService:
         ]
 
     def my_challenges(self, user_id: int, status: str = "active"):
+        # `status` now filters the per-user participation state (active/archived),
+        # not a global challenge state — archive/unarchive is personal.
         rows = (
             self.s.query(Challenge, Participation)
             .join(Participation, Participation.challenge_id == Challenge.id)
-            .filter(Participation.user_id == user_id, Challenge.status == status)
+            .filter(Participation.user_id == user_id, Participation.status == status)
             .all()
         )
         return [
-            {"id": c.id, "name": c.name, "status": c.status,
+            {"id": c.id, "name": c.name, "status": p.status,
+             "is_public": c.is_public, "is_owner": c.created_by == user_id,
              "days_completed": p.days_completed, "challenge_streak": p.challenge_streak}
             for c, p in rows
         ]
@@ -109,7 +122,9 @@ class ChallengeService:
         rows = (
             self.s.query(Challenge, Participation)
             .join(Participation, Participation.challenge_id == Challenge.id)
-            .filter(Participation.user_id == user_id, Challenge.status == "active")
+            .filter(Participation.user_id == user_id,
+                    Participation.status == "active",
+                    Challenge.status == "active")
             .all()
         )
         out = []
@@ -136,7 +151,7 @@ class ChallengeService:
             name=data.name, description=data.description, created_by=user_id,
             schedule_type=data.schedule_type, schedule_days=data.schedule_days,
             start_date=data.start_date or local_today(user.timezone),
-            end_date=data.end_date, is_private=data.is_private,
+            end_date=data.end_date, is_public=False,  # always private at creation
             join_code=self._unique_code(),
         )
         self.s.add(challenge)
@@ -153,6 +168,8 @@ class ChallengeService:
         c = self._get_challenge(challenge_id)
         if c.created_by != user_id:
             raise HTTPException(status_code=403, detail="Only the creator can edit")
+        if c.is_public:
+            raise HTTPException(status_code=409, detail="A public challenge can no longer be edited")
         if data.name is not None:
             c.name = data.name
         if data.description is not None:
@@ -187,14 +204,65 @@ class ChallengeService:
         self.s.commit()
         return self.detail(user_id, challenge_id)
 
-    def archive(self, user_id: int, challenge_id: int):
+    def make_public(self, user_id: int, challenge_id: int):
+        """Irreversibly open a private challenge: editing is locked forever and
+        other users may join from this point on."""
         c = self._get_challenge(challenge_id)
         if c.created_by != user_id:
-            raise HTTPException(status_code=403, detail="Only the creator can archive")
-        c.status = "archived"
-        c.archived_at = datetime.now(timezone.utc)
+            raise HTTPException(status_code=403, detail="Only the creator can publish")
+        if c.is_public:
+            raise HTTPException(status_code=409, detail="Challenge is already public")
+        c.is_public = True
         self.s.commit()
-        return {"id": c.id, "status": c.status}
+        return self.detail(user_id, challenge_id)
+
+    def _participation(self, user_id: int, challenge_id: int) -> Participation:
+        part = self.s.query(Participation).filter_by(
+            user_id=user_id, challenge_id=challenge_id).first()
+        if not part:
+            raise HTTPException(status_code=404, detail="Not a participant")
+        return part
+
+    def archive(self, user_id: int, challenge_id: int):
+        """Personal archive: only the caller's own view is affected."""
+        part = self._participation(user_id, challenge_id)
+        part.status = "archived"
+        part.archived_at = datetime.now(timezone.utc)
+        self.s.commit()
+        return {"id": challenge_id, "status": part.status}
+
+    def unarchive(self, user_id: int, challenge_id: int):
+        """Move a personally-archived challenge back to active."""
+        part = self._participation(user_id, challenge_id)
+        part.status = "active"
+        part.archived_at = None
+        self.s.commit()
+        return {"id": challenge_id, "status": part.status}
+
+    def delete(self, user_id: int, challenge_id: int):
+        """Remove the caller's participation. Archiving is NOT deletion. When the
+        last participation is gone, the challenge itself is purged from the DB."""
+        part = self._participation(user_id, challenge_id)
+        self._remove_participation(part)
+        remaining = self.s.query(Participation).filter_by(challenge_id=challenge_id).count()
+        challenge_removed = remaining == 0
+        if challenge_removed:
+            self.s.delete(self._get_challenge(challenge_id))
+        self.s.commit()
+        return {"deleted": True, "challenge_removed": challenge_removed}
+
+    # Backwards-compatible alias: leaving a challenge is the same operation as
+    # deleting your own participation.
+    def leave(self, user_id: int, challenge_id: int):
+        result = self.delete(user_id, challenge_id)
+        return {"left": True, "challenge_removed": result["challenge_removed"]}
+
+    def _remove_participation(self, part: Participation):
+        # Sessions reference the participation without an ON DELETE cascade, so
+        # clear them explicitly; progress rows cascade on their own.
+        self.s.query(Session).filter_by(participation_id=part.id).delete()
+        self.s.delete(part)
+        self.s.flush()
 
     def join_by_code(self, user_id: int, code: str):
         c = self.s.query(Challenge).filter_by(join_code=code).first()
@@ -204,11 +272,11 @@ class ChallengeService:
 
     def join_by_id(self, user_id: int, challenge_id: int):
         c = self._get_challenge(challenge_id)
-        if c.is_private and not c.is_preset:
-            raise HTTPException(status_code=403, detail="Private challenge, join by code")
         return self._join(user_id, c)
 
     def _join(self, user_id: int, c: Challenge):
+        if not c.is_public:
+            raise HTTPException(status_code=403, detail="Challenge is private")
         if c.status != "active":
             raise HTTPException(status_code=409, detail="Challenge is not active")
         if self.s.query(Participation).filter_by(user_id=user_id, challenge_id=c.id).first():
@@ -217,11 +285,3 @@ class ChallengeService:
         self.s.add(part)
         self.s.commit()
         return {"participation_id": part.id, "challenge_id": c.id}
-
-    def leave(self, user_id: int, challenge_id: int):
-        part = self.s.query(Participation).filter_by(user_id=user_id, challenge_id=challenge_id).first()
-        if not part:
-            raise HTTPException(status_code=404, detail="Not a participant")
-        self.s.delete(part)
-        self.s.commit()
-        return {"left": True}

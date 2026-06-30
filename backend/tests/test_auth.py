@@ -659,8 +659,15 @@ class TestJWTWithChallengeAPI:
             json=create_data,
             headers={"Authorization": f"Bearer {token}"}
         )
+        challenge_id = create_response.json()["id"]
         join_code = create_response.json()["join_code"]
-        
+
+        # Open the challenge so other users may join (created private by default)
+        client.post(
+            f"/challenges/{challenge_id}/make-public",
+            headers={"Authorization": f"Bearer {token}"}
+        )
+
         # Register second user
         second_user_data = {
             "username": "testuser2",

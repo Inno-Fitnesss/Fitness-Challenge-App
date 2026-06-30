@@ -205,20 +205,19 @@ def challenge_id_active(auth_token, exercise_ids):
 @pytest.fixture
 def public_challenge_active(auth_token, exercise_ids):
     """
-    Creates a PUBLIC active daily challenge (started YESTERDAY).
-    Used in JOIN tests where joining by ID is required.
-    (Private challenges can only be joined by code)
+    Creates an active daily challenge (started YESTERDAY) and makes it PUBLIC.
+    Used in JOIN tests: only public challenges can be joined by other users.
+    A challenge is always created private, then opened via /make-public.
 
     Uses a yesterday start_date for the same timezone-safety reason as
     challenge_id_active.
     """
     start_date = (date.today() - timedelta(days=1)).isoformat()
-    
+
     challenge_data = {
         "name": "Public Active Challenge",
         "schedule_type": "daily",
         "start_date": start_date,
-        "is_private": False,  # public, can join by ID
         "exercises": [{"exercise_id": exercise_ids["squats"], "goal": 10}]
     }
     response = client.post(
@@ -226,7 +225,12 @@ def public_challenge_active(auth_token, exercise_ids):
         json=challenge_data,
         headers={"Authorization": f"Bearer {auth_token}"}
     )
-    return response.json()["id"]
+    challenge_id = response.json()["id"]
+    client.post(
+        f"/challenges/{challenge_id}/make-public",
+        headers={"Authorization": f"Bearer {auth_token}"}
+    )
+    return challenge_id
 
 
 # ================================================================
@@ -598,28 +602,46 @@ class TestChallengeEdit:
 
 class TestJoinLeave:
     
-    def test_join_by_code_success(self, auth_token2, challenge_id_active, auth_token):
+    def test_join_by_code_success(self, auth_token2, public_challenge_active, auth_token):
         """
         What we're testing:
-        - Can join a private challenge using join_code
+        - Can join a PUBLIC challenge using its join_code
         - Returns participation_id and challenge_id
         """
         # Get the code from the creator
         detail = client.get(
-            f"/challenges/{challenge_id_active}",
+            f"/challenges/{public_challenge_active}",
             headers={"Authorization": f"Bearer {auth_token}"}
         ).json()
         join_code = detail["join_code"]
-        
+
         # Second user joins by code
         response = client.post(
             "/challenges/join",
             json={"join_code": join_code},
             headers={"Authorization": f"Bearer {auth_token2}"}
         )
-        
+
         assert response.status_code == 201
-        assert response.json()["challenge_id"] == challenge_id_active
+        assert response.json()["challenge_id"] == public_challenge_active
+
+    def test_join_by_code_private_forbidden(self, auth_token2, challenge_id_active, auth_token):
+        """
+        What we're testing:
+        - A private (un-published) challenge cannot be joined, even with the code
+        - Expect 403 Forbidden
+        """
+        join_code = client.get(
+            f"/challenges/{challenge_id_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()["join_code"]
+
+        response = client.post(
+            "/challenges/join",
+            json={"join_code": join_code},
+            headers={"Authorization": f"Bearer {auth_token2}"}
+        )
+        assert response.status_code == 403
 
     def test_join_by_code_invalid(self, auth_token2):
         """
@@ -645,35 +667,28 @@ class TestJoinLeave:
         )
         assert response.status_code == 409  # ← already in challenge
 
-    def test_join_inactive_challenge(self, auth_token, public_challenge_active):
+    def test_join_private_by_id_forbidden(self, auth_token2, challenge_id_active):
         """
         What we're testing:
-        - Cannot join an INACTIVE challenge (archived/completed)
-        - Expect 409 Conflict
+        - A private (un-published) challenge cannot be joined by id by another user
+        - Expect 403 Forbidden
         """
-        # First archive it
-        client.post(
-            f"/challenges/{public_challenge_active}/archive",
-            headers={"Authorization": f"Bearer {auth_token}"}
-        )
-        
-        # Try to join
         response = client.post(
-            f"/challenges/{public_challenge_active}/join",
-            headers={"Authorization": f"Bearer {auth_token}"}
+            f"/challenges/{challenge_id_active}/join",
+            headers={"Authorization": f"Bearer {auth_token2}"}
         )
-        assert response.status_code == 409
+        assert response.status_code == 403
 
-    def test_leave_challenge(self, auth_token2, challenge_id_active, auth_token):
+    def test_leave_challenge(self, auth_token2, public_challenge_active, auth_token):
         """
         What we're testing:
         - Can leave a challenge
         - Participation and all progress are deleted (cascade)
-        - Returns {left: True}
+        - Returns {left: True}; the challenge stays (creator still participates)
         """
         # Second user joins
         join_code = client.get(
-            f"/challenges/{challenge_id_active}",
+            f"/challenges/{public_challenge_active}",
             headers={"Authorization": f"Bearer {auth_token}"}
         ).json()["join_code"]
         client.post(
@@ -681,15 +696,16 @@ class TestJoinLeave:
             json={"join_code": join_code},
             headers={"Authorization": f"Bearer {auth_token2}"}
         )
-        
+
         # Leaves
         response = client.post(
-            f"/challenges/{challenge_id_active}/leave",
+            f"/challenges/{public_challenge_active}/leave",
             headers={"Authorization": f"Bearer {auth_token2}"}
         )
-        
+
         assert response.status_code == 200
         assert response.json()["left"] is True
+        assert response.json()["challenge_removed"] is False
 
     def test_leave_not_participant(self, auth_token2, challenge_id_active):
         """
@@ -894,7 +910,7 @@ class TestSessionSubmission:
 
 class TestLeaderboard:
     
-    def test_leaderboard_returns_sorted(self, auth_token, auth_token2, challenge_id_active):
+    def test_leaderboard_returns_sorted(self, auth_token, auth_token2, public_challenge_active):
         """
         What we're testing:
         - Leaderboard is sorted in the correct order
@@ -903,7 +919,7 @@ class TestLeaderboard:
         """
         # Second user joins
         join_code = client.get(
-            f"/challenges/{challenge_id_active}",
+            f"/challenges/{public_challenge_active}",
             headers={"Authorization": f"Bearer {auth_token}"}
         ).json()["join_code"]
         client.post(
@@ -911,10 +927,10 @@ class TestLeaderboard:
             json={"join_code": join_code},
             headers={"Authorization": f"Bearer {auth_token2}"}
         )
-        
+
         # Get leaderboard
         response = client.get(
-            f"/challenges/{challenge_id_active}/leaderboard",
+            f"/challenges/{public_challenge_active}/leaderboard",
             headers={"Authorization": f"Bearer {auth_token}"}
         )
         
@@ -1075,17 +1091,17 @@ class TestArchive:
         assert data["id"] == challenge_id_future
         assert data["status"] == "archived"
 
-    def test_archive_challenge_by_non_creator(self, auth_token2, challenge_id_future):
+    def test_archive_challenge_by_non_participant(self, auth_token2, challenge_id_future):
         """
         What we're testing:
-        - Non-creator CANNOT archive
-        - Expect 403 Forbidden
+        - Archiving is personal; a non-participant has nothing to archive
+        - Expect 404 Not Found
         """
         response = client.post(
             f"/challenges/{challenge_id_future}/archive",
             headers={"Authorization": f"Bearer {auth_token2}"}
         )
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_archive_already_archived(self, auth_token, challenge_id_future):
         """
@@ -1242,3 +1258,154 @@ class TestTodayEdgeCases:
         """
         response = client.get("/me/today")
         assert response.status_code == 401
+
+
+# ================================================================
+# 15. TESTS: VISIBILITY (PRIVATE -> PUBLIC) AND DELETION
+# ================================================================
+# New model: a challenge is created private (individual). The creator can
+# make it public exactly once — that locks editing forever and opens joining.
+# Archive is per-user; deletion removes your participation and purges the
+# challenge only when the last participant is gone.
+# ================================================================
+
+class TestVisibilityAndDeletion:
+
+    def test_new_challenge_is_private(self, auth_token, challenge_id_future):
+        """A freshly created challenge is private and editable."""
+        detail = client.get(
+            f"/challenges/{challenge_id_future}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        assert detail["is_public"] is False
+        assert detail["is_private"] is True
+        assert detail["can_edit"] is True
+
+    def test_make_public_success(self, auth_token, challenge_id_future):
+        """Creator can publish; afterwards it is public and editing is locked."""
+        response = client.post(
+            f"/challenges/{challenge_id_future}/make-public",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_public"] is True
+        assert data["can_edit"] is False
+
+    def test_make_public_only_creator(self, auth_token2, challenge_id_future):
+        """A non-creator cannot publish someone else's challenge."""
+        response = client.post(
+            f"/challenges/{challenge_id_future}/make-public",
+            headers={"Authorization": f"Bearer {auth_token2}"}
+        )
+        assert response.status_code == 403
+
+    def test_make_public_twice_conflict(self, auth_token, challenge_id_future):
+        """Publishing an already-public challenge is a conflict."""
+        client.post(
+            f"/challenges/{challenge_id_future}/make-public",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        response = client.post(
+            f"/challenges/{challenge_id_future}/make-public",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 409
+
+    def test_edit_locked_after_public(self, auth_token, challenge_id_future):
+        """Once public, the creator can no longer edit the challenge."""
+        client.post(
+            f"/challenges/{challenge_id_future}/make-public",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        response = client.patch(
+            f"/challenges/{challenge_id_future}",
+            json={"name": "New Name"},
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 409
+
+    def test_unarchive_restores_active(self, auth_token, challenge_id_active):
+        """Archive then unarchive returns the participation to active."""
+        client.post(
+            f"/challenges/{challenge_id_active}/archive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        response = client.post(
+            f"/challenges/{challenge_id_active}/unarchive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "active"
+
+        # back in the active list, gone from the archived list
+        active = client.get(
+            "/me/challenges?status=active",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()
+        assert any(c["id"] == challenge_id_active for c in active)
+
+    def test_archive_is_not_deletion(self, auth_token, challenge_id_active):
+        """Archiving keeps the challenge in the DB (still fetchable)."""
+        client.post(
+            f"/challenges/{challenge_id_active}/archive",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        response = client.get(
+            f"/challenges/{challenge_id_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+
+    def test_delete_last_participant_purges_challenge(self, auth_token, challenge_id_active):
+        """Deleting the only participation removes the challenge from the DB."""
+        response = client.delete(
+            f"/challenges/{challenge_id_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        assert response.json()["challenge_removed"] is True
+
+        # the challenge is gone
+        gone = client.get(
+            f"/challenges/{challenge_id_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert gone.status_code == 404
+
+    def test_delete_keeps_challenge_while_others_remain(
+        self, auth_token, auth_token2, public_challenge_active
+    ):
+        """If another participant remains, deletion keeps the challenge alive."""
+        join_code = client.get(
+            f"/challenges/{public_challenge_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        ).json()["join_code"]
+        client.post(
+            "/challenges/join",
+            json={"join_code": join_code},
+            headers={"Authorization": f"Bearer {auth_token2}"}
+        )
+
+        # creator deletes their participation; second user still in
+        response = client.delete(
+            f"/challenges/{public_challenge_active}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 200
+        assert response.json()["challenge_removed"] is False
+
+        # still fetchable by the remaining participant
+        still = client.get(
+            f"/challenges/{public_challenge_active}",
+            headers={"Authorization": f"Bearer {auth_token2}"}
+        )
+        assert still.status_code == 200
+
+    def test_delete_by_non_participant(self, auth_token2, challenge_id_active):
+        """A non-participant cannot delete a challenge."""
+        response = client.delete(
+            f"/challenges/{challenge_id_active}",
+            headers={"Authorization": f"Bearer {auth_token2}"}
+        )
+        assert response.status_code == 404

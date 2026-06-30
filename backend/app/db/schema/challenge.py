@@ -21,7 +21,8 @@ class ChallengeCreate(BaseModel):
     schedule_days: Optional[List[int]] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    is_private: bool = True
+    # Challenges are always created private; visibility is changed later via the
+    # dedicated "make public" action. Any client-sent visibility flag is ignored.
     exercises: List[ChallengeExerciseIn] = Field(min_length=1)
 
     @field_validator("schedule_days")
