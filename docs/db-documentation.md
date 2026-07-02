@@ -48,6 +48,9 @@
 | timezone | VARCHAR(50) | DEFAULT 'UTC' | Когда у юзера наступает локальная полночь / новый день. |
 | created_at | TIMESTAMP | DEFAULT NOW() | Дата регистрации. |
 | updated_at | TIMESTAMP | DEFAULT NOW() | Последнее обновление. |
+height_cm          | integer                     |           |          | 
+ weight_kg          | integer                     |           |          | 
+ fitness_level      | character varying(30)       |           |          |
 
 ```sql
 CREATE TABLE users (
@@ -62,7 +65,10 @@ CREATE TABLE users (
     last_activity_date DATE,
     timezone           VARCHAR(50) DEFAULT 'UTC',
     created_at         TIMESTAMP DEFAULT NOW(),
-    updated_at         TIMESTAMP DEFAULT NOW()
+    updated_at         TIMESTAMP DEFAULT NOW(),
+    height_cm          INT,
+    weight_kg,         INT,
+    fitness_level      VARCHAR(20)
 );
 ```
 
@@ -116,6 +122,7 @@ INSERT INTO exercises (name, metric) VALUES
 | archived_at | TIMESTAMP | NULLABLE | Когда заархивирован вручную. |
 | created_at | TIMESTAMP | DEFAULT NOW() | Время создания. |
 | updated_at | TIMESTAMP | DEFAULT NOW() | Последнее обновление. |
+| is_public     | boolean                     |           | not null | false
 
 ```sql
 CREATE TABLE challenges (
@@ -133,7 +140,8 @@ CREATE TABLE challenges (
     status        VARCHAR(20) NOT NULL DEFAULT 'active', -- 'active' | 'completed' | 'archived'
     archived_at   TIMESTAMP,
     created_at    TIMESTAMP DEFAULT NOW(),
-    updated_at    TIMESTAMP DEFAULT NOW()
+    updated_at    TIMESTAMP DEFAULT NOW(),
+    is_public     BOOLEAN NOT NULL DEFAULT FALSE
 );
 ```
 
@@ -177,6 +185,8 @@ CREATE TABLE challenge_exercises (
 | challenge_streak | INT | DEFAULT 0 | Серия закрытых дней внутри этого челленджа (тай-брейк). |
 | total_clean_reps | INT | DEFAULT 0 | Сумма чистых повторов за **всё время в этом челлендже** (тай-брейк/объём). |
 | last_closed_date | DATE | NULLABLE | Дата последнего закрытого дня — для сброса `challenge_streak` при пропуске. |
+| status           | character varying(20)       |           | not null | 'active'::character varying
+| archived_at      | timestamp without time zone |           |          |
 | — | — | UNIQUE (user_id, challenge_id) | Нельзя вступить дважды. |
 
 ```sql
@@ -189,6 +199,8 @@ CREATE TABLE participations (
     challenge_streak INT DEFAULT 0,
     total_clean_reps INT DEFAULT 0,
     last_closed_date DATE,
+    status           VARCHAR(20) NOT NULL DEFAULT 'active',
+    archived_at      TIMESTAMP,
     UNIQUE (user_id, challenge_id)
 );
 ```
