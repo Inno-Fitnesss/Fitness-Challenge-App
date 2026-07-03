@@ -25,6 +25,7 @@ export interface UserOutput {
 /** DTO ответа с токеном — UserWithToken */
 export interface UserWithToken {
   token: string;
+  refresh_token?: string;
 }
 
 /** DTO ответа защищённого маршрута — GET /protected */

@@ -67,6 +67,14 @@ export const authApi = {
     return data;
   },
 
+  /** POST /auth/refresh — обмен refresh-токена на новый access-токен */
+  async refresh(refreshToken: string): Promise<UserWithToken> {
+    const { data } = await apiClient.post<UserWithToken>('/auth/refresh', {
+      refresh_token: refreshToken,
+    });
+    return data;
+  },
+
   /** GET /me — профиль со стриком и объёмом */
   async getCurrentUser(): Promise<User> {
     const { data } = await apiClient.get<ApiMeResponse>('/me');

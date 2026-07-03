@@ -23,6 +23,9 @@ const ERROR_TRANSLATIONS: Record<string, string> = {
   'Challenge is not active': 'Челлендж не активен.',
   'Not a participant': 'Вы не участвуете в этом челлендже.',
   'Validation Error': 'Проверьте правильность заполнения полей.',
+  'Invalid password': 'Неверный пароль.',
+  'Admin login is not configured': 'Админ-панель ещё не настроена на сервере.',
+  'Invalid Admin Session': 'Сессия истекла. Введите пароль снова.',
 };
 
 function extractRawMessage(data: unknown): string | undefined {

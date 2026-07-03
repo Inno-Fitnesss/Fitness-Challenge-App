@@ -46,8 +46,15 @@ function warmUpCvModel(): void {
 
 function clearSession(): void {
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
+  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.USER);
   localStorage.removeItem(STORAGE_KEYS.REMEMBER_ME);
+}
+
+function storeRefreshToken(refreshToken?: string): void {
+  if (refreshToken) {
+    localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -107,7 +114,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (credentials: LoginCredentials, redirectTo = '/settings') => {
-      const { token: authToken } = await authApi.login(credentials);
+      const { token: authToken, refresh_token } = await authApi.login(credentials);
+      storeRefreshToken(refresh_token);
       await completeSession(authToken, redirectTo);
     },
     [completeSession],
@@ -116,10 +124,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(
     async (data: RegisterData, redirectTo = '/settings') => {
       await authApi.register(data);
-      const { token: authToken } = await authApi.login({
+      const { token: authToken, refresh_token } = await authApi.login({
         email: data.email,
         password: data.password,
       });
+      storeRefreshToken(refresh_token);
       await completeSession(authToken, redirectTo);
     },
     [completeSession],
