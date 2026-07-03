@@ -39,3 +39,22 @@ def get_current_user(
         except Exception as error:
             raise error
     raise auth_exception
+
+def get_current_admin(
+        authorization: Annotated[Union[str, None], Header()] = None
+) -> bool:
+    """Gate for /admin/* routes. Checks a short-lived admin session token —
+    unrelated to regular user accounts, since access is by shared password."""
+    auth_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid Admin Session"
+    )
+
+    if not authorization or not authorization.startswith(AUTH_PREFIX):
+        raise auth_exception
+
+    payload = AuthHandler.decode_admin_token(token=authorization[len(AUTH_PREFIX):])
+    if not payload:
+        raise auth_exception
+
+    return True

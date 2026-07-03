@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.util.init_db import create_tables, seed_exercises, sync_schema
 from app.routers.auth import authRouter
+from app.routers.admin import adminRouter
 from app.routers.challenges import challengeRouter
 from app.routers.exercises import exerciseRouter
 from app.routers.me import meRouter
@@ -29,6 +30,7 @@ app.add_middleware(
 )
 
 app.include_router(router=authRouter, tags=["auth"], prefix="/auth")
+app.include_router(router=adminRouter, tags=["admin"], prefix="/admin")
 app.include_router(router=challengeRouter, tags=["challenges"], prefix="/challenges")
 app.include_router(router=exerciseRouter, tags=["exercises"], prefix="/exercises")
 app.include_router(router=meRouter, tags=["me"], prefix="/me")

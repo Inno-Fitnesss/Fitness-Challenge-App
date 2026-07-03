@@ -9,6 +9,7 @@ JWT_ALGORITHM = config("JWT_ALGORITHM")
 # Short-lived access token + long-lived refresh token (stateless).
 ACCESS_TTL = config("ACCESS_TTL_SECONDS", default=1800, cast=int)        # 30 min
 REFRESH_TTL = config("REFRESH_TTL_SECONDS", default=1209600, cast=int)   # 14 days
+ADMIN_TTL = config("ADMIN_TTL_SECONDS", default=7200, cast=int)
 
 
 class AuthHandler(object):
@@ -59,3 +60,27 @@ class AuthHandler(object):
     def decode_refresh(token: str) -> dict | None:
         """Validate a REFRESH token (used by /auth/refresh)."""
         return AuthHandler._decode(token, "refresh")
+    
+    # --- Admin panel tokens -------------------------------------------------
+    # Separate token kind so an admin session can never be forged from (or
+    # confused with) a regular user's access/refresh token. Not tied to a
+    # user_id — the admin panel is gated by a single shared password.
+    @staticmethod
+    def sign_admin_token() -> str:
+        now = int(time.time())
+        payload = {
+            "type": "admin",
+            "iat": now,
+            "exp": now + ADMIN_TTL,
+        }
+        return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+    @staticmethod
+    def decode_admin_token(token: str) -> dict | None:
+        try:
+            decoded = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        except Exception:
+            return None
+        if decoded.get("type") != "admin":
+            return None
+        return decoded
