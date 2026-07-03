@@ -39,10 +39,10 @@ export function SchedulePicker({
     }`;
 
   return (
-    <section>
+    <section className="min-w-0">
       <h2 className="text-sm font-bold text-neutral-text mb-3">Расписание</h2>
 
-      <div className="flex flex-col xs:flex-row gap-2 sm:gap-3 max-w-md">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full min-w-0 max-w-md">
         <button
           type="button"
           className={modeBtnClass(mode === 'daily')}
@@ -64,7 +64,7 @@ export function SchedulePicker({
           <p className="text-xs text-neutral-muted mb-3">
             Отметьте дни, когда нужно выполнять упражнения
           </p>
-          <div className="grid grid-cols-4 xs:grid-cols-7 gap-2">
+          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 min-w-0">
             {WEEKDAYS.map(({ value, label, full }) => {
               const selected = selectedDays.includes(value);
               return (

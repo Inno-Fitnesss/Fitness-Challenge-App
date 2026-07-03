@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Play } from 'lucide-react';
 import type { ExerciseTechniqueContent } from '../../data/exerciseTechnique.ts';
 import { Button } from '../ui/Button.tsx';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts';
 
 interface ExerciseTechniqueModalProps {
   content: ExerciseTechniqueContent;
@@ -14,6 +15,7 @@ export function ExerciseTechniqueModal({
   isSavingPreference = false,
   onClose,
 }: ExerciseTechniqueModalProps) {
+  useBodyScrollLock(true);
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -39,16 +41,23 @@ export function ExerciseTechniqueModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 overflow-hidden"
       role="dialog"
       aria-modal="true"
       aria-labelledby="technique-modal-title"
-      onClick={() => {
-        if (!isSavingPreference) onClose(dontShowAgain);
-      }}
     >
+      <button
+        type="button"
+        aria-label="Закрыть"
+        disabled={isSavingPreference}
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        onClick={() => {
+          if (!isSavingPreference) onClose(dontShowAgain);
+        }}
+      />
+      <div className="absolute inset-0 flex items-center justify-center modal-safe-x py-4 pointer-events-none">
       <div
-        className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-modal p-6 sm:p-8"
+        className="pointer-events-auto w-full max-w-lg max-h-[90dvh] overflow-y-auto overflow-x-hidden bg-white rounded-3xl shadow-modal p-6 sm:p-8 min-w-0"
         onClick={(event) => event.stopPropagation()}
       >
         <header className="text-center mb-5">
@@ -137,6 +146,7 @@ export function ExerciseTechniqueModal({
         >
           Понятно
         </Button>
+      </div>
       </div>
     </div>
   );
