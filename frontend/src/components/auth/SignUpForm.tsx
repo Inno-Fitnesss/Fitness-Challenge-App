@@ -15,10 +15,10 @@ interface SignUpFormProps {
 }
 
 const fieldClass = 'auth-field';
-const inputClass = 'py-2.5 px-4 text-sm rounded-xl';
-const labelClass = 'mb-1 text-xs';
+const inputClass = 'py-3 px-4 text-sm rounded-2xl bg-sky-50/70 border-sky-100/80 focus:bg-white';
+const labelClass = 'mb-1.5 text-sm';
 
-export function SignUpForm({ redirectTo = '/settings' }: SignUpFormProps) {
+export function SignUpForm({ redirectTo = '/dashboard' }: SignUpFormProps) {
   const { register: registerUser } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);

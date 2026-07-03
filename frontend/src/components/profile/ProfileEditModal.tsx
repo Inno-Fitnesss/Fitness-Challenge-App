@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { readImageFileAsDataUrl } from '../../utils/profileAvatarStorage.ts';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts';
 
 interface ProfileEditModalProps {
   username: string;
@@ -19,6 +20,7 @@ export function ProfileEditModal({
   onClose,
   onSave,
 }: ProfileEditModalProps) {
+  useBodyScrollLock(true);
   const [draftUsername, setDraftUsername] = useState(username);
   const [draftAvatarUrl, setDraftAvatarUrl] = useState<string | null>(avatarUrl);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,16 +49,23 @@ export function ProfileEditModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 overflow-hidden"
       role="dialog"
       aria-modal="true"
       aria-labelledby="profile-edit-title"
-      onClick={() => {
-        if (!isSaving) onClose();
-      }}
     >
+      <button
+        type="button"
+        aria-label="Закрыть"
+        disabled={isSaving}
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        onClick={() => {
+          if (!isSaving) onClose();
+        }}
+      />
+      <div className="absolute inset-0 flex items-center justify-center modal-safe-x py-4 pointer-events-none">
       <div
-        className="w-full max-w-md bg-white rounded-3xl shadow-modal p-6 sm:p-8"
+        className="pointer-events-auto w-full max-w-md max-h-[90dvh] overflow-y-auto overflow-x-hidden bg-white rounded-3xl shadow-modal p-6 sm:p-8"
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id="profile-edit-title" className="text-lg font-bold text-neutral-text text-center mb-6">
@@ -142,6 +151,7 @@ export function ProfileEditModal({
             {isSaving ? 'Сохраняем…' : 'Сохранить'}
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

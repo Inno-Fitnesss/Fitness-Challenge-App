@@ -10,11 +10,10 @@ import { Label } from '../ui/Label.tsx';
 import { FieldError } from '../ui/FieldError.tsx';
 import type { ApiError } from '../../types/auth.types.ts';
 
-interface SignInFormProps {
-  redirectTo?: string;
-}
+const authInputClass =
+  'py-3.5 px-4 text-sm rounded-2xl bg-sky-50/70 border-sky-100/80 focus:bg-white';
 
-export function SignInForm({ redirectTo = '/settings' }: SignInFormProps) {
+export function SignInForm({ redirectTo = '/dashboard' }: SignInFormProps) {
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -68,6 +67,7 @@ export function SignInForm({ redirectTo = '/settings' }: SignInFormProps) {
           autoComplete="email"
           placeholder="ivan@example.com"
           hasError={!!errors.email}
+          className={authInputClass}
           aria-describedby={errors.email ? 'signin-email-error' : undefined}
           aria-invalid={!!errors.email}
           {...register('email')}
@@ -88,7 +88,7 @@ export function SignInForm({ redirectTo = '/settings' }: SignInFormProps) {
             hasError={!!errors.password}
             aria-describedby={errors.password ? 'signin-password-error' : undefined}
             aria-invalid={!!errors.password}
-            className="pr-14"
+            className={`${authInputClass} pr-14`}
             {...register('password')}
           />
           <button

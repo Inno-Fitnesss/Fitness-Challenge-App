@@ -119,7 +119,7 @@ export function Dashboard() {
       </header>
 
       <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-8 sm:mb-10">
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0" data-tour="week-calendar">
           <WeeklyCalendar
             days={calendarDays}
             weekLabel={weekLabel}
@@ -136,7 +136,7 @@ export function Dashboard() {
         <StreakWidget days={streakDays} />
       </div>
 
-      <section>
+      <section data-tour="today-plan">
         <h2 className="text-lg sm:text-xl font-bold text-neutral-text mb-4 sm:mb-5">План на сегодня</h2>
 
         {isLoading && <p className="text-neutral-muted text-sm">Загрузка...</p>}

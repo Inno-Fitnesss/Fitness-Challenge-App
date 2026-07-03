@@ -9,7 +9,10 @@ export function StreakWidget({ days }: StreakWidgetProps) {
   const isActive = days > 0;
 
   return (
-    <div className="bg-white rounded-3xl shadow-card p-5 sm:p-6 w-full sm:w-[200px] flex flex-row sm:flex-col items-center justify-center gap-4 sm:gap-3 flex-shrink-0">
+    <div
+      data-tour="streak-widget"
+      className="bg-white rounded-3xl shadow-card p-5 sm:p-6 w-full sm:w-[200px] flex flex-row sm:flex-col items-center justify-center gap-4 sm:gap-3 flex-shrink-0"
+    >
       <div
         className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center flex-shrink-0 ${
           isActive ? 'bg-brand-light' : 'bg-neutral-card'

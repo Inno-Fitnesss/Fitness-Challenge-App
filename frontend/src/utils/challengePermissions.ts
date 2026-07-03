@@ -9,14 +9,7 @@ export function canPublishChallenge(challenge: ChallengeListItem): boolean {
 }
 
 export function canInviteToChallenge(challenge: ChallengeListItem): boolean {
-  // Invite links are only for public challenges — a private (individual)
-  // challenge has nobody to invite until it's published.
-  return (
-    challenge.isOwner &&
-    !challenge.isPrivate &&
-    Boolean(challenge.joinCode) &&
-    challenge.status === 'active'
-  );
+  return challenge.isOwner && Boolean(challenge.joinCode) && challenge.status === 'active';
 }
 
 export function canDeleteChallenge(challenge: ChallengeListItem): boolean {
