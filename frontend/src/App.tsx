@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext.tsx';
 import { ProtectedRoute } from './routes/ProtectedRoute.tsx';
 import { AppShell } from './components/layout/AppShell.tsx';
 import { AuthPage } from './pages/AuthPage.tsx';
+import { AdminPage } from './pages/AdminPage.tsx';
 import { Dashboard } from './pages/Dashboard.tsx';
 import { ChallengesPage } from './pages/ChallengesPage.tsx';
 import { ChallengeCreatePage } from './pages/ChallengeCreatePage.tsx';
@@ -17,6 +18,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="/invite/:joinCode" element={<InviteRedirectPage />} />
 
           <Route element={<ProtectedRoute />}>

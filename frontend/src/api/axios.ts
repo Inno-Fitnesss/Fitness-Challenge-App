@@ -27,7 +27,9 @@ const rawClient = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-    if (token && config.headers) {
+    // Don't clobber an Authorization header a caller already set explicitly
+    // (e.g. admin panel requests, which use their own short-lived token).
+    if (token && config.headers && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -80,7 +82,7 @@ async function runRefresh(): Promise<string | null> {
 
 type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
-const AUTH_PATHS = ['/auth/login', '/auth/signup', '/auth/refresh'];
+const AUTH_PATHS = ['/auth/login', '/auth/signup', '/auth/refresh', '/admin/'];
 
 apiClient.interceptors.response.use(
   (response) => response,
