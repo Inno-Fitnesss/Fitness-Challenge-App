@@ -13,29 +13,33 @@ const ICON_BY_TYPE: Record<CvFeedbackType, typeof Camera> = {
   general: AlertTriangle,
 };
 
+const LABEL_BY_TYPE: Record<CvFeedbackType, string> = {
+  camera: 'Проверьте камеру',
+  lighting: 'Проверьте освещение',
+  posture: 'Встаньте в позу',
+  general: 'Подсказка',
+};
+
+/** Compact warning banner shown at the top of the camera (does not cover the frame). */
 export function CameraSetupOverlay({ message, type = 'camera' }: CameraSetupOverlayProps) {
   if (!message) return null;
 
   const Icon = ICON_BY_TYPE[type];
 
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center p-4 sm:p-8 pointer-events-none">
-      <div
-        className="w-full max-w-md rounded-2xl border-2 border-red-400/80 bg-red-600/90 text-white px-5 py-4 sm:px-6 sm:py-5 shadow-2xl backdrop-blur-sm"
-        role="alert"
-        aria-live="assertive"
-      >
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
-            <Icon size={20} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-white/80 mb-1">
-              Проверьте камеру
-            </p>
-            <p className="text-sm sm:text-base font-bold leading-snug">{message}</p>
-          </div>
-        </div>
+    <div
+      className="flex items-start gap-2.5 rounded-2xl border border-red-400/60 bg-red-600/90 text-white px-3.5 py-2.5 shadow-lg backdrop-blur-sm animate-fade-in"
+      role="alert"
+      aria-live="assertive"
+    >
+      <div className="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+        <Icon size={16} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-white/80 leading-none mb-1">
+          {LABEL_BY_TYPE[type]}
+        </p>
+        <p className="text-xs sm:text-sm font-semibold leading-snug">{message}</p>
       </div>
     </div>
   );
