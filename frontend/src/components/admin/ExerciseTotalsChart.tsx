@@ -30,8 +30,8 @@ export function ExerciseTotalsChart({ data }: ExerciseTotalsChartProps) {
                 axisLine={{ stroke: '#E5E7EB' }}
               />
               <Tooltip
-                formatter={(value: number, _name: string, item: { payload: ExerciseVolume }) => [
-                  `${value.toLocaleString('ru-RU')} ${item.payload.unit}`,
+                formatter={(value: number, _name: string, item: { payload?: ExerciseVolume }) => [
+                  `${value.toLocaleString('ru-RU')} ${item.payload?.unit ?? ''}`,
                   '',
                 ]}
                 cursor={{ fill: '#F5F5F5' }}

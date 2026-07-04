@@ -126,7 +126,7 @@ export function ChallengeInviteModal({ joinCode, onClose, onJoined }: ChallengeI
     : '';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-6">
+    <div className="fixed inset-0 z-50 overflow-hidden">
       <button
         type="button"
         aria-label="Закрыть"
@@ -138,7 +138,10 @@ export function ChallengeInviteModal({ joinCode, onClose, onJoined }: ChallengeI
         role="dialog"
         aria-modal="true"
         aria-labelledby="invite-modal-title"
-        className="relative bg-white rounded-t-3xl sm:rounded-3xl shadow-modal w-full sm:max-w-[900px] max-h-[92vh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden animate-scale-in"
+        className="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-6 pointer-events-none"
+      >
+      <div
+        className="pointer-events-auto relative bg-white rounded-t-3xl sm:rounded-3xl shadow-modal w-full max-w-full sm:max-w-[900px] max-h-[min(92dvh,100%)] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden animate-fade-in min-w-0 mx-auto"
       >
         <button
           type="button"
@@ -149,7 +152,7 @@ export function ChallengeInviteModal({ joinCode, onClose, onJoined }: ChallengeI
           <X size={20} />
         </button>
 
-        <div className="p-4 sm:p-8 pt-5 min-w-0">
+        <div className="p-4 sm:p-8 pt-5 min-w-0 modal-safe-x sm:px-8">
           {isLoading && (
             <p className="text-neutral-muted text-sm py-12 text-center">Загрузка приглашения…</p>
           )}
@@ -249,6 +252,7 @@ export function ChallengeInviteModal({ joinCode, onClose, onJoined }: ChallengeI
             </>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

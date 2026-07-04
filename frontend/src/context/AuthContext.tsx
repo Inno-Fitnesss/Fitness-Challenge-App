@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const login = useCallback(
-    async (credentials: LoginCredentials, redirectTo = '/settings') => {
+    async (credentials: LoginCredentials, redirectTo = '/dashboard') => {
       const { token: authToken, refresh_token } = await authApi.login(credentials);
       storeRefreshToken(refresh_token);
       await completeSession(authToken, redirectTo);
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const register = useCallback(
-    async (data: RegisterData, redirectTo = '/settings') => {
+    async (data: RegisterData, redirectTo = '/dashboard') => {
       await authApi.register(data);
       const { token: authToken, refresh_token } = await authApi.login({
         email: data.email,

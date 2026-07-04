@@ -3,11 +3,12 @@ import { LayoutGrid, BarChart3, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { BrandLogoLink } from '../ui/BrandLogoLink.tsx';
 import { ProfileAvatar } from '../profile/ProfileAvatar.tsx';
+import { AppOnboardingGate } from '../onboarding/AppOnboardingGate.tsx';
 
 const navItems = [
-  { to: '/dashboard', label: 'Главная', icon: LayoutGrid, end: true },
-  { to: '/challenges', label: 'Челленджи', icon: BarChart3, end: false },
-  { to: '/settings', label: 'Профиль', icon: Settings, end: false },
+  { to: '/dashboard', label: 'Главная', icon: LayoutGrid, end: true, tourId: 'nav-dashboard' },
+  { to: '/challenges', label: 'Челленджи', icon: BarChart3, end: false, tourId: 'nav-challenges' },
+  { to: '/settings', label: 'Профиль', icon: Settings, end: false, tourId: 'nav-profile' },
 ];
 
 function getDisplayName(username?: string, email?: string): string {
@@ -22,17 +23,20 @@ function NavItem({
   icon: Icon,
   end,
   mobile = false,
+  tourId,
 }: {
   to: string;
   label: string;
   icon: typeof LayoutGrid;
   end?: boolean;
   mobile?: boolean;
+  tourId?: string;
 }) {
   return (
     <NavLink
       to={to}
       end={end}
+      data-tour={tourId}
       className={({ isActive }) =>
         mobile
           ? `flex flex-col items-center gap-1 flex-1 py-2 px-1 text-[11px] font-medium transition-colors ${
@@ -70,11 +74,12 @@ export function AppShell() {
   const displayName = getDisplayName(user?.username, user?.email);
 
   return (
+    <AppOnboardingGate>
     <div className="min-h-screen flex flex-col lg:flex-row bg-neutral-card">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-[240px] flex-shrink-0 bg-white border-r border-neutral-border flex-col fixed inset-y-0 left-0 z-30">
         <div className="px-6 pt-8 pb-6">
-          <BrandLogoLink />
+          <BrandLogoLink showIcon={false} />
         </div>
 
         <nav className="flex-1 px-3 space-y-1" aria-label="Основная навигация">
@@ -108,7 +113,7 @@ export function AppShell() {
       {/* Mobile header */}
       <header className="lg:hidden sticky top-0 z-30 bg-white border-b border-neutral-border px-4 py-3 flex items-center justify-between">
         <BrandLogoLink
-          iconClassName="w-8 h-8 rounded-lg bg-lime flex-shrink-0"
+          showIcon={false}
           logoClassName="text-base font-extrabold truncate"
           className="inline-flex items-center gap-2.5 min-w-0 flex-shrink hover:opacity-90 transition-opacity"
         />
@@ -149,5 +154,6 @@ export function AppShell() {
         ))}
       </nav>
     </div>
+    </AppOnboardingGate>
   );
 }

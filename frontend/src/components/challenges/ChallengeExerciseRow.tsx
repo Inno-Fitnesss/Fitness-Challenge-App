@@ -79,8 +79,8 @@ export function ChallengeExerciseRow({
   };
 
   return (
-    <div className="flex items-center gap-2 sm:gap-3 bg-white border border-neutral-border rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 w-full sm:w-auto sm:min-w-[220px] sm:flex-1 sm:max-w-[360px]">
-      <div className="relative flex-1 min-w-0">
+    <div className="relative flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3 bg-white border border-neutral-border rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 w-full min-w-0 max-w-full sm:w-auto sm:min-w-[220px] sm:flex-1 sm:max-w-[360px]">
+      <div className="relative w-full sm:flex-1 sm:min-w-0 pr-8 sm:pr-0">
         <select
           value={row.exerciseId ?? ''}
           onChange={(e) => handleExerciseChange(Number(e.target.value))}
@@ -107,13 +107,13 @@ export function ChallengeExerciseRow({
       </div>
 
       {selected && (
-        <span className="text-xs text-neutral-muted whitespace-nowrap flex-shrink-0">
-          {metricLabel(selected.metric)}
-        </span>
-      )}
+        <div className="flex items-center gap-2 w-full sm:w-auto min-w-0 flex-wrap">
+          <span className="text-xs text-neutral-muted whitespace-nowrap flex-shrink-0">
+            {metricLabel(selected.metric)}
+          </span>
 
       {selected?.metric === 'seconds' ? (
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0 ml-auto sm:ml-0">
           <input
             type="number"
             min={0}
@@ -146,8 +146,14 @@ export function ChallengeExerciseRow({
           onChange={(e) => handleRepsChange(e.target.value)}
           disabled={!selected}
           aria-label="Цель"
-          className="w-14 sm:w-16 text-center text-sm font-medium text-neutral-text border border-neutral-border rounded-xl py-1.5 focus:outline-none focus:border-brand disabled:bg-neutral-card disabled:text-neutral-muted"
+          className="w-14 sm:w-16 text-center text-sm font-medium text-neutral-text border border-neutral-border rounded-xl py-1.5 focus:outline-none focus:border-brand disabled:bg-neutral-card disabled:text-neutral-muted ml-auto sm:ml-0"
         />
+      )}
+        </div>
+      )}
+
+      {!selected && (
+        <div className="hidden sm:block flex-1" aria-hidden />
       )}
 
       {canRemove && (
@@ -155,7 +161,7 @@ export function ChallengeExerciseRow({
           type="button"
           onClick={() => onRemove(row.rowId)}
           aria-label="Удалить упражнение"
-          className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-neutral-muted hover:text-red-500 hover:bg-red-50 transition-colors text-lg leading-none"
+          className="absolute top-2.5 right-2.5 sm:static flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-neutral-muted hover:text-red-500 hover:bg-red-50 transition-colors text-lg leading-none"
         >
           ×
         </button>

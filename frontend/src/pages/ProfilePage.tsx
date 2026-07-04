@@ -210,7 +210,7 @@ export function ProfilePage() {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4" data-tour="profile-stats">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <VolumeCard
               title="За всё время вы присели"

@@ -14,6 +14,7 @@ import {
 import { SchedulePicker, type ScheduleMode } from './SchedulePicker.tsx';
 import { generateId } from '../../utils/generateId.ts';
 import { CHALLENGE_NAME_MAX_LENGTH, CHALLENGE_DESCRIPTION_MAX_LENGTH } from '../../constants/challengeLimits.ts';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts';
 import type { AxiosError } from 'axios';
 
 interface ChallengeFormModalProps {
@@ -129,8 +130,9 @@ function hasUnsavedCreateContent(snapshot: FormSnapshot): boolean {
 
 export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: ChallengeFormModalProps) {
   const isEdit = mode === 'edit';
-  const overlayRef = useRef<HTMLDivElement>(null);
   const initialSnapshotRef = useRef<FormSnapshot | null>(null);
+
+  useBodyScrollLock(true);
 
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -294,10 +296,6 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
     };
   }, [isEdit, challengeId]);
 
-  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === overlayRef.current && !isSubmitting) requestClose();
-  };
-
   const updateRow = useCallback((rowId: string, patch: Partial<ExerciseRowData>) => {
     setRows((prev) => prev.map((r) => (r.rowId === rowId ? { ...r, ...patch } : r)));
   }, []);
@@ -406,18 +404,25 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
 
   return (
     <div
-      ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-end sm:items-start justify-center sm:p-6 bg-black/40 backdrop-blur-[2px] animate-fade-in"
+      className="fixed inset-0 z-50 overflow-hidden"
       role="dialog"
       aria-modal="true"
       aria-label={isEdit ? 'Редактировать челлендж' : 'Создать челлендж'}
-      onClick={handleOverlayClick}
     >
-      <div
-        className="relative w-full sm:max-w-3xl bg-white rounded-t-3xl sm:rounded-3xl shadow-modal animate-slide-up sm:animate-scale-in
-          max-h-[92dvh] sm:max-h-[calc(100dvh-3rem)] flex flex-col sm:my-8 min-w-0 overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <button
+        type="button"
+        aria-label="Закрыть"
+        disabled={isSubmitting}
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px] animate-fade-in"
+        onClick={requestClose}
+      />
+
+      <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-start sm:justify-center sm:p-6 pointer-events-none">
+        <div
+          className="pointer-events-auto relative flex flex-col w-full max-w-full sm:max-w-3xl mx-auto bg-white rounded-t-3xl sm:rounded-3xl shadow-modal animate-fade-in
+            max-h-[min(92dvh,100%)] sm:max-h-[calc(100dvh-3rem)] sm:my-8 min-h-0 min-w-0 overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
         {showDiscardConfirm && (
           <div className="absolute inset-0 z-10 flex items-center justify-center p-4 bg-black/30 rounded-t-3xl sm:rounded-3xl">
             <div
@@ -452,9 +457,9 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
           </div>
         )}
 
-        <div className="flex-shrink-0 p-4 sm:p-6 sm:pb-4 border-b border-neutral-border/60 sm:border-0">
+        <div className="flex-shrink-0 modal-safe-x pt-4 sm:pt-6 pb-4 sm:pb-4 border-b border-neutral-border/60 sm:border-0">
           <div className="w-10 h-1 bg-neutral-border rounded-full mx-auto mb-4 sm:hidden" aria-hidden />
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 min-w-0">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 min-w-0 w-full">
             <div className="flex-1 min-w-0">
               <input
                 type="text"
@@ -476,7 +481,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 sm:py-2">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain modal-safe-x py-4 sm:py-2 min-w-0">
           {error && (
             <p role="alert" className="mb-4 text-sm text-red-500 break-words">
               {error}
@@ -486,8 +491,8 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
           {isLoading ? (
             <p className="text-sm text-neutral-muted py-8">Загрузка...</p>
           ) : (
-            <div className="space-y-6 sm:space-y-8 pb-2">
-              <section>
+            <div className="space-y-6 sm:space-y-8 pb-2 min-w-0 w-full">
+              <section className="min-w-0">
                 <h2 className="text-sm font-bold text-neutral-text mb-3">Длительность</h2>
                 <div className="space-y-4">
                   <DateField
@@ -540,7 +545,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
                 onDaysChange={setScheduleDays}
               />
 
-              <section>
+              <section className="min-w-0">
                 <h2 className="text-sm font-bold text-neutral-text mb-3">Описание</h2>
                 <textarea
                   value={description}
@@ -557,21 +562,21 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
                 </p>
               </section>
 
-              <section className="border border-neutral-border rounded-2xl p-4 sm:p-5">
-                <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-3 mb-4">
+              <section className="border border-neutral-border rounded-2xl p-4 sm:p-5 min-w-0 overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <span className="text-sm text-neutral-muted">Упражнения</span>
                   <button
                     type="button"
                     onClick={addRow}
                     disabled={rows.length >= exercises.length}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-brand text-white text-xs sm:text-sm font-semibold rounded-xl hover:bg-brand-hover transition-colors disabled:opacity-50 w-full xs:w-auto"
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-brand text-white text-xs sm:text-sm font-semibold rounded-xl hover:bg-brand-hover transition-colors disabled:opacity-50 w-full sm:w-auto"
                   >
                     <Plus size={14} />
                     Добавить упражнение
                   </button>
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
+                <div className="flex flex-col gap-3 min-w-0">
                   {rows.map((row) => (
                     <ChallengeExerciseRow
                       key={row.rowId}
@@ -589,8 +594,9 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
           )}
         </div>
 
-        <div className="flex-shrink-0 sm:hidden flex gap-2 p-4 border-t border-neutral-border bg-white pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="flex-shrink-0 sm:hidden flex gap-2 modal-safe-x pt-4 border-t border-neutral-border bg-white pb-[max(1rem,env(safe-area-inset-bottom))]">
           {actionButtons}
+        </div>
         </div>
       </div>
     </div>
