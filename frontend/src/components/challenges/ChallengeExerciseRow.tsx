@@ -1,5 +1,5 @@
-import { ChevronDown } from 'lucide-react';
 import type { ApiExercise } from '../../types/api.types.ts';
+import { ExerciseSelect } from './ExerciseSelect.tsx';
 import {
   clampRepsGoal,
   combinePlankGoal,
@@ -79,30 +79,13 @@ export function ChallengeExerciseRow({
   };
 
   return (
-    <div className="relative flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3 bg-white border border-neutral-border rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 w-full min-w-0 max-w-full sm:w-auto sm:min-w-[220px] sm:flex-1 sm:max-w-[360px]">
-      <div className="relative w-full sm:flex-1 sm:min-w-0 pr-8 sm:pr-0">
-        <select
-          value={row.exerciseId ?? ''}
-          onChange={(e) => handleExerciseChange(Number(e.target.value))}
-          className="w-full appearance-none bg-transparent text-sm text-neutral-text pr-6 focus:outline-none cursor-pointer truncate lowercase"
-          aria-label="Упражнение"
-        >
-          <option value="" disabled>
-            выберите
-          </option>
-          {exercises.map((exercise) => {
-            const disabled =
-              exercise.id !== row.exerciseId && usedExerciseIds.has(exercise.id);
-            return (
-              <option key={exercise.id} value={exercise.id} disabled={disabled}>
-                {exercise.name.toLowerCase()}
-              </option>
-            );
-          })}
-        </select>
-        <ChevronDown
-          size={14}
-          className="absolute right-0 top-1/2 -translate-y-1/2 text-neutral-muted pointer-events-none"
+    <div className="relative flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3 bg-white border border-neutral-border rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 w-full min-w-0">
+      <div className="w-full sm:flex-1 sm:min-w-0 pr-8 sm:pr-0">
+        <ExerciseSelect
+          exercises={exercises}
+          value={row.exerciseId}
+          usedExerciseIds={usedExerciseIds}
+          onChange={handleExerciseChange}
         />
       </div>
 

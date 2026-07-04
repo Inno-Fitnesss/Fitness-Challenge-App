@@ -3,6 +3,7 @@ import { Badge } from '../ui/Badge.tsx';
 import { ChallengeScheduleBadge } from './ChallengeScheduleBadge.tsx';
 import type { ChallengeListItem, ChallengeTab } from '../../types/challenge.ts';
 import { formatParticipants } from '../../utils/challengeMappers.ts';
+import { useCopyFeedback } from '../../hooks/useCopyFeedback.ts';
 import {
   canArchiveChallenge,
   canDeleteChallenge,
@@ -34,6 +35,15 @@ function ActionBar({
   onResume,
 }: ChallengeCardProps) {
   const challengeId = challenge.id;
+  const { copied, markCopied } = useCopyFeedback();
+
+  const handleCopy = () => {
+    markCopied();
+    onCopyLink?.(challengeId);
+  };
+
+  const copiedClass = copied ? 'text-neutral-muted pointer-events-none' : '';
+
   const btnClass =
     'flex-shrink-0 px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium text-neutral-secondary hover:text-neutral-text hover:bg-white/60 transition-colors text-center whitespace-nowrap';
 
@@ -42,9 +52,21 @@ function ActionBar({
   if (tab === 'individual') {
     const actions = [
       canInviteToChallenge(challenge) && (
-        <button key="link" type="button" className={`${btnClass} sm:flex-1`} onClick={() => onCopyLink?.(challengeId)}>
-          <span className="hidden sm:inline">Скопировать ссылку</span>
-          <span className="sm:hidden">Ссылка</span>
+        <button
+          key="link"
+          type="button"
+          className={`${btnClass} sm:flex-1 ${copiedClass}`}
+          onClick={handleCopy}
+          disabled={copied}
+        >
+          {copied ? (
+            'Скопировано!'
+          ) : (
+            <>
+              <span className="hidden sm:inline">Скопировать ссылку</span>
+              <span className="sm:hidden">Ссылка</span>
+            </>
+          )}
         </button>
       ),
       canPublishChallenge(challenge) && (
@@ -95,8 +117,14 @@ function ActionBar({
   if (tab === 'group') {
     const actions = [
       canInviteToChallenge(challenge) && (
-        <button key="link" type="button" className={`${btnClass} flex-1`} onClick={() => onCopyLink?.(challengeId)}>
-          Пригласить по ссылке
+        <button
+          key="link"
+          type="button"
+          className={`${btnClass} flex-1 ${copiedClass}`}
+          onClick={handleCopy}
+          disabled={copied}
+        >
+          {copied ? 'Скопировано!' : 'Пригласить по ссылке'}
         </button>
       ),
       canLeaveChallenge(challenge) && (
