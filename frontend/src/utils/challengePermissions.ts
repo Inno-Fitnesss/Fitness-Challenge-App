@@ -9,7 +9,14 @@ export function canPublishChallenge(challenge: ChallengeListItem): boolean {
 }
 
 export function canInviteToChallenge(challenge: ChallengeListItem): boolean {
-  return challenge.isOwner && Boolean(challenge.joinCode) && challenge.status === 'active';
+  // Ссылка-приглашение только для публичных челленджей — в приватный
+  // (индивидуальный) приглашать некого, пока он не опубликован.
+  return (
+    challenge.isOwner &&
+    !challenge.isPrivate &&
+    Boolean(challenge.joinCode) &&
+    challenge.status === 'active'
+  );
 }
 
 export function canDeleteChallenge(challenge: ChallengeListItem): boolean {

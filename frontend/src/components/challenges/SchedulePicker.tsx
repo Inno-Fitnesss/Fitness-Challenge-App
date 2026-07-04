@@ -60,7 +60,7 @@ export function SchedulePicker({
       </div>
 
       {mode === 'weekly' && (
-        <div className="mt-3 p-3 sm:p-4 border border-neutral-border rounded-2xl bg-neutral-card/50 animate-slide-up">
+        <div className="mt-3 p-3 sm:p-4 border border-neutral-border rounded-2xl bg-neutral-card/50">
           <p className="text-xs text-neutral-muted mb-3">
             Отметьте дни, когда нужно выполнять упражнения
           </p>

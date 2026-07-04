@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Badge } from '../ui/Badge.tsx';
 import { Button } from '../ui/Button.tsx';
 import { ProgressBar } from '../ui/ProgressBar.tsx';
+import { useCopyFeedback } from '../../hooks/useCopyFeedback.ts';
 import { fetchChallengeModalData } from '../../api/challengeQueries.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import type { ChallengeModalData, ExerciseProgress } from '../../types/challenge.ts';
@@ -109,6 +110,7 @@ export function ChallengeDetailModal({
   const [data, setData] = useState<ChallengeModalData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { copied: linkCopied, markCopied: markLinkCopied } = useCopyFeedback();
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -225,9 +227,13 @@ export function ChallengeDetailModal({
                       variant="secondary"
                       size="sm"
                       className="w-full sm:w-auto flex-shrink-0"
-                      onClick={onCopyLink}
+                      onClick={() => {
+                        markLinkCopied();
+                        onCopyLink?.();
+                      }}
+                      disabled={linkCopied}
                     >
-                      Пригласить по ссылке
+                      {linkCopied ? 'Скопировано!' : 'Пригласить по ссылке'}
                     </Button>
                   )}
                   {canLeaveChallenge(challenge) && onLeave && (

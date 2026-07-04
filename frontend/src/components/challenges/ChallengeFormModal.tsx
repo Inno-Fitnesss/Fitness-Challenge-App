@@ -491,7 +491,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
           {isLoading ? (
             <p className="text-sm text-neutral-muted py-8">Загрузка...</p>
           ) : (
-            <div className="space-y-6 sm:space-y-8 pb-2 min-w-0 w-full">
+            <div className="space-y-5 sm:space-y-6 pb-2 min-w-0 w-full">
               <section className="min-w-0">
                 <h2 className="text-sm font-bold text-neutral-text mb-3">Длительность</h2>
                 <div className="space-y-4">

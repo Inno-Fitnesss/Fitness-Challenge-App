@@ -292,11 +292,24 @@ export function drawPose(
   if (!landmarks) return;
 
   const drawingUtils = new runtime.DrawingUtils(context);
-  drawingUtils.drawConnectors(landmarks, runtime.poseConnections, {
+
+  // Точки и линии лица (индексы 0–10 в BlazePose: нос, глаза, уши, рот) не рисуем —
+  // оставляем только скелет тела (индексы 11+).
+  const FACE_LANDMARK_COUNT = 11;
+  const rawConnections = runtime.poseConnections as Array<{ start: number; end: number }>;
+  const bodyConnections =
+    Array.isArray(rawConnections) &&
+    rawConnections.every((c) => typeof c?.start === 'number' && typeof c?.end === 'number')
+      ? rawConnections.filter(
+          (c) => c.start >= FACE_LANDMARK_COUNT && c.end >= FACE_LANDMARK_COUNT,
+        )
+      : runtime.poseConnections;
+  const bodyLandmarks = landmarks.filter((_, index) => index >= FACE_LANDMARK_COUNT);
+  drawingUtils.drawConnectors(landmarks, bodyConnections, {
     color: '#b8e52f',
     lineWidth: 4,
   });
-  drawingUtils.drawLandmarks(landmarks, {
+  drawingUtils.drawLandmarks(bodyLandmarks, {
     color: '#ffffff',
     fillColor: '#ff8a00',
     radius: 4,
@@ -647,9 +660,9 @@ export class ExerciseAnalyzer {
         'Расположитесь горизонтально и боком',
         false,
         {
-          type: 'camera',
+          type: 'posture',
           severity: 'warning',
-          text: 'Поставьте камеру сбоку и ниже: плечи, таз и стопы должны быть видны.',
+          text: 'Встаньте в позу для отжиманий: тело горизонтально, боком к камере.',
         },
         elbow,
       );
@@ -724,9 +737,9 @@ export class ExerciseAnalyzer {
       valid = false;
       status = 'Расположитесь горизонтально';
       feedback = {
-        type: 'camera',
+        type: 'posture',
         severity: 'warning',
-        text: 'Повернитесь к камере боком и расположите всё тело горизонтально.',
+        text: 'Встаньте в позу для планки: тело горизонтально, боком к камере.',
       };
     } else if (bodyLine < SETTINGS.plank.bodyLine) {
       valid = false;
