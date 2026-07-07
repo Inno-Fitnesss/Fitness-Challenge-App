@@ -454,7 +454,7 @@ export function ExerciseSessionPage() {
             <button
               type="button"
               onClick={handleShowTechnique}
-              className="flex h-9 w-full items-center justify-center rounded-xl bg-[#F5A400] px-4 text-sm font-bold text-white transition-colors hover:bg-[#EC9900] sm:h-10 sm:text-base"
+              className="flex h-9 w-full items-center justify-center rounded-xl bg-[#FF7A14] px-4 text-sm font-bold text-white transition-colors hover:bg-[#F06C00] sm:h-10 sm:text-base"
             >
               Как поставить камеру?
             </button>
