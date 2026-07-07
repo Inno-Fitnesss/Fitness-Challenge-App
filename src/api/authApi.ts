@@ -12,6 +12,7 @@ import type {
 import type { ApiMeResponse } from '../types/api.types.ts';
 import type { FitnessLevel } from '../constants/fitnessLevels.ts';
 import { mapRegisterDataToApi, mapUserOutputToUser } from '../utils/userMapper.ts';
+import { getBrowserTimezone } from '../utils/timezone.ts';
 
 function mapMeToUser(data: ApiMeResponse): User {
   return {
@@ -23,6 +24,7 @@ function mapMeToUser(data: ApiMeResponse): User {
     heightCm: data.height_cm ?? undefined,
     weightKg: data.weight_kg ?? undefined,
     fitnessLevel: (data.fitness_level as FitnessLevel | null) ?? undefined,
+    timezone: data.timezone ?? undefined,
     streakCurrent: data.streak_current,
     streakLongest: data.streak_longest,
     volume: data.volume,
@@ -85,6 +87,24 @@ export const authApi = {
   async updateProfile(payload: ProfileUpdateData): Promise<User> {
     const { data } = await apiClient.patch<ApiMeResponse>('/me', mapProfileUpdateToApi(payload));
     return mapMeToUser(data);
+  },
+
+  /**
+   * Best-effort sync of the browser's detected timezone to the backend.
+   * Only sends a PATCH when it actually differs from what's already
+   * stored, and never throws — a failure here must never block
+   * login/signup/app boot. Returns the timezone now in effect (new value
+   * if it changed, the original one otherwise).
+   */
+  async syncTimezone(currentTimezone?: string): Promise<string | undefined> {
+    const detected = getBrowserTimezone();
+    if (detected === currentTimezone) return currentTimezone;
+    try {
+      const { data } = await apiClient.patch<ApiMeResponse>('/me', { timezone: detected });
+      return data.timezone ?? detected;
+    } catch {
+      return currentTimezone;
+    }
   },
 
   /** GET /protected — fallback для совместимости */

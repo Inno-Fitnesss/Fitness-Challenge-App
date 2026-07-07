@@ -45,6 +45,7 @@ export interface User {
   heightCm?: number;
   weightKg?: number;
   fitnessLevel?: FitnessLevel;
+  timezone?: string;
   streakCurrent?: number;
   streakLongest?: number;
   volume?: { exercise: string; metric: string; total: number }[];

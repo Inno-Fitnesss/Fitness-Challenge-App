@@ -71,6 +71,7 @@ export interface ApiMeResponse {
   height_cm?: number | null;
   weight_kg?: number | null;
   fitness_level?: string | null;
+  timezone?: string | null;
   streak_current: number;
   streak_longest: number;
   volume: { exercise: string; metric: string; total: number }[];

@@ -13,6 +13,10 @@ import type { ApiError } from '../../types/auth.types.ts';
 const authInputClass =
   'py-3.5 px-4 text-sm rounded-2xl bg-sky-50/70 border-sky-100/80 focus:bg-white';
 
+interface SignInFormProps {
+  redirectTo?: string;
+}
+
 export function SignInForm({ redirectTo = '/dashboard' }: SignInFormProps) {
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);

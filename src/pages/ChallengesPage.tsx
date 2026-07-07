@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { Button } from '../components/ui/Button.tsx';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog.tsx';
 import { PageTabs } from '../components/ui/PageTabs.tsx';
 import { PageContainer } from '../components/layout/PageContainer.tsx';
 import { ChallengeCard } from '../components/challenges/ChallengeCard.tsx';
@@ -52,6 +53,14 @@ function filterByTab(items: ChallengeListItem[], tab: ChallengeTab): ChallengeLi
 function getErrorMessage(err: unknown, fallback: string): string {
   return parseApiError(err as AxiosError).message ?? fallback;
 }
+
+type ConfirmState = {
+  title: string;
+  description?: string;
+  confirmLabel: string;
+  tone?: 'default' | 'danger';
+  action: () => Promise<void>;
+} | null;
 
 function DiscoverySection({
   discovery,
@@ -127,6 +136,8 @@ export function ChallengesPage() {
     parsedRouteId && !Number.isNaN(parsedRouteId) ? parsedRouteId : null,
   );
   const [toast, setToast] = useState<string | null>(null);
+  const [confirmState, setConfirmState] = useState<ConfirmState>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -203,25 +214,37 @@ export function ChallengesPage() {
     }
   };
 
-  const handlePublish = async (id: number) => {
-    if (
-      !window.confirm(
-        'Сделать челлендж публичным? После этого его нельзя будет редактировать, он переместится в «Групповые».',
-      )
-    ) {
-      return;
-    }
+  const runConfirmed = async () => {
+    if (!confirmState || isConfirming) return;
+    setIsConfirming(true);
     try {
-      await challengeApi.publish(id);
-      showToast('Челлендж опубликован');
-      if (selectedChallengeId === id) {
-        closeChallenge();
-      }
-      setSearchParams({ tab: 'group' });
-      await loadData();
-    } catch (err) {
-      showToast(getErrorMessage(err, 'Не удалось опубликовать челлендж'));
+      await confirmState.action();
+    } finally {
+      setIsConfirming(false);
+      setConfirmState(null);
     }
+  };
+
+  const handlePublish = (id: number) => {
+    setConfirmState({
+      title: 'Сделать челлендж публичным?',
+      description:
+        'После этого его нельзя будет редактировать, он переместится в «Групповые».',
+      confirmLabel: 'Сделать публичным',
+      action: async () => {
+        try {
+          await challengeApi.publish(id);
+          showToast('Челлендж опубликован');
+          if (selectedChallengeId === id) {
+            closeChallenge();
+          }
+          setSearchParams({ tab: 'group' });
+          await loadData();
+        } catch (err) {
+          showToast(getErrorMessage(err, 'Не удалось опубликовать челлендж'));
+        }
+      },
+    });
   };
 
   const handleInviteJoined = async (challengeId: number) => {
@@ -255,36 +278,46 @@ export function ChallengesPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Удалить челлендж безвозвратно? Это действие нельзя отменить.')) {
-      return;
-    }
-    try {
-      await challengeApi.delete(id);
-      if (selectedChallengeId === id) {
-        closeChallenge();
-      }
-      showToast('Челлендж удалён');
-      await loadData();
-    } catch (err) {
-      showToast(getErrorMessage(err, 'Не удалось удалить челлендж'));
-    }
+  const handleDelete = (id: number) => {
+    setConfirmState({
+      title: 'Удалить челлендж?',
+      description: 'Это действие нельзя отменить — челлендж удалится безвозвратно.',
+      confirmLabel: 'Удалить',
+      tone: 'danger',
+      action: async () => {
+        try {
+          await challengeApi.delete(id);
+          if (selectedChallengeId === id) {
+            closeChallenge();
+          }
+          showToast('Челлендж удалён');
+          await loadData();
+        } catch (err) {
+          showToast(getErrorMessage(err, 'Не удалось удалить челлендж'));
+        }
+      },
+    });
   };
 
-  const handleLeave = async (id: number) => {
-    if (!window.confirm('Покинуть челлендж?')) {
-      return;
-    }
-    try {
-      await challengeApi.leave(id);
-      if (selectedChallengeId === id) {
-        closeChallenge();
-      }
-      showToast('Вы покинули челлендж');
-      await loadData();
-    } catch (err) {
-      showToast(getErrorMessage(err, 'Не удалось покинуть челлендж'));
-    }
+  const handleLeave = (id: number) => {
+    setConfirmState({
+      title: 'Покинуть челлендж?',
+      description: 'Вы перестанете быть участником. Присоединиться снова можно по ссылке-приглашению.',
+      confirmLabel: 'Покинуть',
+      tone: 'danger',
+      action: async () => {
+        try {
+          await challengeApi.leave(id);
+          if (selectedChallengeId === id) {
+            closeChallenge();
+          }
+          showToast('Вы покинули челлендж');
+          await loadData();
+        } catch (err) {
+          showToast(getErrorMessage(err, 'Не удалось покинуть челлендж'));
+        }
+      },
+    });
   };
 
   const handleJoin = async (id: number) => {
@@ -434,10 +467,23 @@ export function ChallengesPage() {
         />
       )}
 
+      <ConfirmDialog
+        open={confirmState !== null}
+        title={confirmState?.title ?? ''}
+        description={confirmState?.description}
+        confirmLabel={confirmState?.confirmLabel}
+        tone={confirmState?.tone}
+        isLoading={isConfirming}
+        onConfirm={() => void runConfirmed()}
+        onCancel={() => {
+          if (!isConfirming) setConfirmState(null);
+        }}
+      />
+
       {toast && (
         <div
           role="status"
-          className="fixed bottom-20 lg:bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-sm z-50 px-5 py-3 bg-neutral-text text-white text-sm font-medium rounded-2xl shadow-modal animate-slide-up text-center sm:text-left"
+          className="fixed bottom-20 lg:bottom-auto lg:top-6 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-sm z-50 px-5 py-3 bg-neutral-text text-white text-sm font-medium rounded-2xl shadow-modal animate-slide-up text-center sm:text-left"
         >
           {toast}
         </div>

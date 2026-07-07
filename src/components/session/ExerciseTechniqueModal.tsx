@@ -57,17 +57,17 @@ export function ExerciseTechniqueModal({
       />
       <div className="absolute inset-0 flex items-center justify-center modal-safe-x py-4 pointer-events-none">
       <div
-        className="pointer-events-auto w-full max-w-lg max-h-[90dvh] overflow-y-auto overflow-x-hidden bg-white rounded-3xl shadow-modal p-6 sm:p-8 min-w-0"
+        className="pointer-events-auto w-full max-w-lg max-h-[90dvh] overflow-y-auto overflow-x-hidden bg-white rounded-3xl shadow-modal p-5 sm:p-6 min-w-0"
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="text-center mb-5">
+        <header className="text-center mb-4">
           <h2 id="technique-modal-title" className="text-xl font-extrabold text-neutral-text">
             {content.title}
           </h2>
           <p className="text-sm text-neutral-muted mt-1">{content.techniqueTitle}</p>
         </header>
 
-        <div className="relative mb-5 rounded-2xl overflow-hidden aspect-video bg-neutral-text shadow-card">
+        <div className="relative mb-4 rounded-2xl overflow-hidden aspect-video bg-neutral-text shadow-card">
           {content.videoUrl && isVideoPlaying ? (
             <video
               ref={videoRef}
@@ -101,7 +101,7 @@ export function ExerciseTechniqueModal({
           )}
         </div>
 
-        <section className="mb-5">
+        <section className="mb-4">
           <ul className="space-y-2 text-sm text-neutral-secondary">
             {content.techniqueTips.map((tip) => (
               <li key={tip} className="flex gap-2">
@@ -112,7 +112,7 @@ export function ExerciseTechniqueModal({
           </ul>
         </section>
 
-        <section className="mb-6">
+        <section className="mb-4">
           <h3 className="text-sm font-bold text-neutral-text mb-3">
             Для корректной работы приложения:
           </h3>
@@ -126,7 +126,7 @@ export function ExerciseTechniqueModal({
           </ul>
         </section>
 
-        <label className="flex items-center gap-3 mb-5 cursor-pointer select-none">
+        <label className="flex items-center gap-3 mb-4 cursor-pointer select-none">
           <input
             type="checkbox"
             checked={dontShowAgain}

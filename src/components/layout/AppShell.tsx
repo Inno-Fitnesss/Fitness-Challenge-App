@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { LayoutGrid, BarChart3, Settings, LogOut } from 'lucide-react';
+import { LayoutGrid, BarChart3, Newspaper, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { BrandLogoLink } from '../ui/BrandLogoLink.tsx';
 import { ProfileAvatar } from '../profile/ProfileAvatar.tsx';
@@ -8,6 +8,7 @@ import { AppOnboardingGate } from '../onboarding/AppOnboardingGate.tsx';
 const navItems = [
   { to: '/dashboard', label: 'Главная', icon: LayoutGrid, end: true, tourId: 'nav-dashboard' },
   { to: '/challenges', label: 'Челленджи', icon: BarChart3, end: false, tourId: 'nav-challenges' },
+  { to: '/feed', label: 'Лента', icon: Newspaper, end: false, tourId: 'nav-feed' },
   { to: '/settings', label: 'Профиль', icon: Settings, end: false, tourId: 'nav-profile' },
 ];
 

@@ -375,7 +375,6 @@ export function ExerciseSessionPage() {
                 exerciseName={context.exerciseName}
                 metric={context.metric}
                 goal={context.goal}
-                completedToday={context.completedToday}
                 stats={stats}
                 isRunning={isRunning}
                 onShowTechnique={handleShowTechnique}
@@ -388,27 +387,18 @@ export function ExerciseSessionPage() {
               exerciseName={context.exerciseName}
               metric={context.metric}
               goal={context.goal}
-              completedToday={context.completedToday}
               stats={stats}
               isRunning={isRunning}
               onShowTechnique={handleShowTechnique}
             />
 
-            <div className="rounded-3xl bg-white border border-neutral-border/60 shadow-card p-5 text-sm text-neutral-secondary space-y-3">
-              <p className="font-semibold text-neutral-text">Важно!</p>
-              <ul className="space-y-2 text-xs leading-relaxed text-red-500">
-                <li>• Держите телефон или ноутбук на стабильной поверхности</li>
-                <li>• Убедитесь, что вас хорошо видно</li>
-                <li>• Следуйте подсказкам на экране камеры</li>
-              </ul>
-              <button
-                type="button"
-                onClick={handleRestart}
-                className="text-xs font-semibold text-brand hover:text-brand-hover"
-              >
-                Сбросить счётчик
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleRestart}
+              className="w-full rounded-3xl bg-white border border-neutral-border/60 shadow-card px-5 py-3.5 text-sm font-semibold text-neutral-secondary hover:text-brand transition-colors"
+            >
+              Сбросить счётчик
+            </button>
           </aside>
         </div>
       </main>

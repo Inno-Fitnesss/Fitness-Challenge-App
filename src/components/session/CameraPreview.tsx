@@ -29,6 +29,7 @@ export function CameraPreview({
 }: CameraPreviewProps) {
   const showVideo = status === 'active';
   const showPoseOverlay = showVideo && cvConnected;
+  const hasWarning = showVideo && Boolean(activeWarning?.text);
 
   return (
     <div className="relative w-full aspect-[4/3] sm:aspect-video rounded-3xl overflow-hidden bg-neutral-text shadow-card">
@@ -46,11 +47,6 @@ export function CameraPreview({
         className={`absolute inset-0 w-full h-full object-cover scale-x-[-1] pointer-events-none ${
           showPoseOverlay ? 'opacity-100' : 'opacity-0'
         }`}
-      />
-
-      <CameraSetupOverlay
-        message={activeWarning?.text ?? null}
-        type={activeWarning?.type}
       />
 
       {!showVideo && (
@@ -95,16 +91,32 @@ export function CameraPreview({
             <div className="absolute left-1/2 top-6 bottom-6 w-px bg-white/10" />
           </div>
 
-          <div className="absolute top-4 left-4 flex items-center gap-2">
-            {isSessionActive && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/90 text-white text-xs font-semibold">
-                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                LIVE
-              </span>
+          {hasWarning && (
+            <div
+              className="absolute inset-0 z-10 rounded-3xl border-[3px] border-red-500 pointer-events-none animate-pulse"
+              aria-hidden="true"
+            />
+          )}
+
+          <div className="absolute top-0 inset-x-0 z-20 flex flex-col gap-2 p-4 pointer-events-none">
+            {hasWarning && (
+              <CameraSetupOverlay
+                message={activeWarning?.text ?? null}
+                type={activeWarning?.type}
+              />
             )}
-            <span className="px-3 py-1 rounded-full bg-black/50 text-white/90 text-xs font-medium backdrop-blur-sm">
-              {cvConnected ? 'CV подключён' : 'CV ожидает запуска'}
-            </span>
+
+            <div className="flex items-center gap-2">
+              {isSessionActive && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/90 text-white text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  LIVE
+                </span>
+              )}
+              <span className="px-3 py-1 rounded-full bg-black/50 text-white/90 text-xs font-medium backdrop-blur-sm">
+                {cvConnected ? 'CV подключён' : 'CV ожидает запуска'}
+              </span>
+            </div>
           </div>
 
           <div className="absolute bottom-4 left-4 right-4 flex justify-center">
