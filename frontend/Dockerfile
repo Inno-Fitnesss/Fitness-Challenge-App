@@ -7,8 +7,6 @@ COPY . .
 # passed as a build arg (empty value hides the Google sign-in button).
 ARG VITE_GOOGLE_CLIENT_ID=
 ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
-ARG VITE_FORCE_MOBILE_APP=
-ENV VITE_FORCE_MOBILE_APP=$VITE_FORCE_MOBILE_APP
 RUN npm run build
 
 FROM nginx:alpine
