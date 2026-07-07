@@ -8,6 +8,7 @@ import { Button } from '../ui/Button.tsx';
 import { Input } from '../ui/Input.tsx';
 import { Label } from '../ui/Label.tsx';
 import { FieldError } from '../ui/FieldError.tsx';
+import { ForgotPasswordModal } from './ForgotPasswordModal.tsx';
 import type { ApiError } from '../../types/auth.types.ts';
 
 const authInputClass =
@@ -21,10 +22,12 @@ export function SignInForm({ redirectTo = '/dashboard' }: SignInFormProps) {
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<SignInFormValues>({
     resolver: zodResolver(signInSchema),
@@ -46,6 +49,7 @@ export function SignInForm({ redirectTo = '/dashboard' }: SignInFormProps) {
   };
 
   return (
+    <>
     <form
       noValidate
       onSubmit={handleSubmit(onSubmit)}
@@ -110,18 +114,25 @@ export function SignInForm({ redirectTo = '/dashboard' }: SignInFormProps) {
       </div>
 
       <div className="flex justify-end">
-        <a
-          href="#"
+        <button
+          type="button"
           className="text-sm font-medium text-brand hover:text-brand-hover transition-colors duration-150"
-          onClick={(e) => e.preventDefault()}
+          onClick={() => setForgotOpen(true)}
         >
           Забыли пароль?
-        </a>
+        </button>
       </div>
 
       <Button type="submit" fullWidth isLoading={isSubmitting}>
         Войти
       </Button>
     </form>
+
+    <ForgotPasswordModal
+      open={forgotOpen}
+      initialEmail={getValues('email')}
+      onClose={() => setForgotOpen(false)}
+    />
+    </>
   );
 }

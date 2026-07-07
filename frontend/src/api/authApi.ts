@@ -4,6 +4,7 @@ import type {
   ProfileUpdateData,
   ProtectedResponse,
   RegisterData,
+  ResetPasswordData,
   User,
   UserInLogin,
   UserOutput,
@@ -75,6 +76,21 @@ export const authApi = {
       id_token: idToken,
     });
     return data;
+  },
+
+  /** POST /auth/forgot-password — запросить код восстановления на email */
+  async forgotPassword(email: string): Promise<void> {
+    await apiClient.post('/auth/forgot-password', { email });
+  },
+
+  /** POST /auth/reset-password — сменить пароль по коду из письма */
+  async resetPassword(payload: ResetPasswordData): Promise<void> {
+    await apiClient.post('/auth/reset-password', {
+      email: payload.email,
+      code: payload.code,
+      new_password: payload.newPassword,
+      confirm_password: payload.confirmPassword,
+    });
   },
 
   /** POST /auth/refresh — обмен refresh-токена на новый access-токен */
