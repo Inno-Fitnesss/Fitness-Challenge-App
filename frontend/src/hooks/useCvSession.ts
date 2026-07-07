@@ -87,7 +87,7 @@ export function useCvSession({
   const [activeWarning, setActiveWarning] = useState<CvFeedbackMessage | null>(null);
   const [status, setStatus] = useState<SessionStatus>('idle');
   const [analysisStatus, setAnalysisStatus] = useState(
-    'Нажмите «Начать», чтобы запустить анализ',
+    'Готовим CV-анализ',
   );
   const [cvConnected, setCvConnected] = useState(false);
 
@@ -145,7 +145,7 @@ export function useCvSession({
         text: 'Автоматический подсчёт доступен для отжиманий, приседаний и планки.',
       });
     } else {
-      setAnalysisStatus('Нажмите «Начать», чтобы запустить анализ');
+      setAnalysisStatus('Готовим CV-анализ');
     }
   }, [exercise, emitFeedback]);
 
