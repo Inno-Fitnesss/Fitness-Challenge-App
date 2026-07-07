@@ -5,6 +5,8 @@ import { AppShell } from './components/layout/AppShell.tsx';
 import { AuthPage } from './pages/AuthPage.tsx';
 import { AdminPage } from './pages/AdminPage.tsx';
 import { Dashboard } from './pages/Dashboard.tsx';
+import { FeedPage } from './pages/FeedPage.tsx';
+import { ArticlePage } from './pages/ArticlePage.tsx';
 import { ChallengesPage } from './pages/ChallengesPage.tsx';
 import { ChallengeCreatePage } from './pages/ChallengeCreatePage.tsx';
 import { ChallengeEditPage } from './pages/ChallengeEditPage.tsx';
@@ -28,6 +30,8 @@ function App() {
             />
             <Route element={<AppShell />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/feed" element={<FeedPage />} />
+              <Route path="/articles/:articleId" element={<ArticlePage />} />
               <Route path="/challenges" element={<ChallengesPage />} />
               <Route path="/challenges/create" element={<ChallengeCreatePage />} />
               <Route path="/challenges/:id/edit" element={<ChallengeEditPage />} />
