@@ -79,8 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const freshUser = await authApi.getCurrentUser();
-      setUser(freshUser);
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(freshUser));
+      const syncedTimezone = await authApi.syncTimezone(freshUser.timezone);
+      const resolvedUser = syncedTimezone !== freshUser.timezone
+        ? { ...freshUser, timezone: syncedTimezone }
+        : freshUser;
+      setUser(resolvedUser);
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(resolvedUser));
       warmUpCvModel();
     } catch (error) {
       const apiError = error as ApiError;
@@ -103,9 +107,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEYS.TOKEN, authToken);
 
       const currentUser = await authApi.getCurrentUser();
-      persistSession(authToken, currentUser, true);
+      const syncedTimezone = await authApi.syncTimezone(currentUser.timezone);
+      const resolvedUser = syncedTimezone !== currentUser.timezone
+        ? { ...currentUser, timezone: syncedTimezone }
+        : currentUser;
+      persistSession(authToken, resolvedUser, true);
       setToken(authToken);
-      setUser(currentUser);
+      setUser(resolvedUser);
       warmUpCvModel();
       navigate(redirectTo);
     },
