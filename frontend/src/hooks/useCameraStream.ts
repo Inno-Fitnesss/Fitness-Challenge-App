@@ -16,13 +16,13 @@ export function useCameraStream(): UseCameraStreamResult {
   const [status, setStatus] = useState<CameraStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const stopCamera = useCallback(() => {
+  const stopCamera = useCallback((nextStatus: CameraStatus = 'idle') => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    setStatus('idle');
+    setStatus(nextStatus);
   }, []);
 
   const startCamera = useCallback(async () => {
@@ -36,7 +36,7 @@ export function useCameraStream(): UseCameraStreamResult {
     setErrorMessage(null);
 
     try {
-      stopCamera();
+      stopCamera('requesting');
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'user',
