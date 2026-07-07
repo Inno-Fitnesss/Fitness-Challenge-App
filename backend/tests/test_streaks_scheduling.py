@@ -254,19 +254,11 @@ class TestStreakBreaking:
         assert part.challenge_streak == 1
         db.close()
 
-    @pytest.mark.xfail(
-        reason=(
-            "KNOWN GAP: there is no background job that invalidates a streak "
-            "at the day boundary. challenge_streak / user streak_current only "
-            "update lazily on the NEXT submission, so if a user misses a day "
-            "and simply opens the app without training, the API still reports "
-            "the stale pre-break streak. This matches the teamlead's report: "
-            "'5-го в 00:05 стрик не сбился, хотя должен был'. Needs either a "
-            "scheduled job or an on-read recomputation before this can pass."
-        ),
-        strict=True,
-    )
     def test_streak_reads_as_broken_before_any_new_submission(self, monkeypatch, auth_token):
+        """FIXED: challenge_streak is now recomputed on every read
+        (see effective_challenge_streak in app/core/scheduling.py), so a
+        missed scheduled day reads as broken immediately — no new
+        submission required to see it."""
         freeze(monkeypatch, DAY[0])
         cid = create_daily_challenge(auth_token)
         ces = exercise_ids_of(auth_token, cid)
@@ -282,6 +274,34 @@ class TestStreakBreaking:
             "Streak should read as broken once a scheduled day has passed "
             "without completion, even with no new submission yet."
         )
+
+    def test_streak_still_alive_when_todays_own_slot_just_hasnt_closed_yet(self, monkeypatch, auth_token):
+        """Recompute-on-read must NOT be overzealous: reading on the very
+        day that's due (before submitting anything today) should still show
+        the streak as alive — only an actually-MISSED prior day should zero
+        it out."""
+        freeze(monkeypatch, DAY[0])
+        cid = create_daily_challenge(auth_token)
+        ces = exercise_ids_of(auth_token, cid)
+        complete_day(auth_token, cid, ces)  # day0: streak = 1
+
+        freeze(monkeypatch, DAY[1])  # the very next scheduled day, not yet closed
+        board = client.get(f"/challenges/{cid}/leaderboard", headers=_auth(auth_token)).json()
+        assert board[0]["challenge_streak"] == 1, (
+            "reading on today's own not-yet-closed scheduled day must not "
+            "zero out yesterday's still-valid streak"
+        )
+
+    def test_my_challenges_endpoint_also_reflects_the_recomputed_streak(self, monkeypatch, auth_token):
+        freeze(monkeypatch, DAY[0])
+        cid = create_daily_challenge(auth_token)
+        ces = exercise_ids_of(auth_token, cid)
+        complete_day(auth_token, cid, ces)
+
+        freeze(monkeypatch, DAY[2])  # DAY[1] missed
+        mine = client.get("/me/challenges?status=active", headers=_auth(auth_token)).json()
+        entry = next(c for c in mine if c["id"] == cid)
+        assert entry["challenge_streak"] == 0
 
 
 # ======================================================================

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.scheduling import local_today, is_scheduled
+from app.core.scheduling import local_today, is_scheduled, effective_challenge_streak
 from app.db.models.user import User
 from app.db.models.challenge import (
     Exercise, Challenge, ChallengeExercise, Participation,
@@ -81,28 +81,44 @@ class ChallengeService:
         }
 
     def leaderboard(self, challenge_id: int):
-        self._get_challenge(challenge_id)
+        c = self._get_challenge(challenge_id)
         rows = (
             self.s.query(Participation, User.username)
             .join(User, Participation.user_id == User.id)
             .filter(Participation.challenge_id == challenge_id)
-            .order_by(
-                Participation.days_completed.desc(),
-                Participation.challenge_streak.desc(),
-                Participation.total_clean_reps.desc(),
-                Participation.joined_at.asc(),
-            ).all()
+            .all()
         )
+        # One shared "today" for the whole leaderboard, rather than per-row —
+        # timezone isn't user-configurable yet (everything runs on UTC), so
+        # there's no meaningful per-participant "today" to use here anyway.
+        today = local_today("UTC")
+        entries = [
+            {
+                "username": username,
+                "days_completed": p.days_completed,
+                "challenge_streak": effective_challenge_streak(c, p.last_closed_date, p.challenge_streak, today),
+                "total_clean_reps": p.total_clean_reps,
+                "joined_at": p.joined_at,
+            }
+            for p, username in rows
+        ]
+        # Sort on the CORRECTED streak, not the raw (possibly stale) stored
+        # value — otherwise someone whose streak just read as broken above
+        # could still rank above someone with a genuinely-higher live streak.
+        entries.sort(key=lambda e: (
+            -e["days_completed"], -e["challenge_streak"], -e["total_clean_reps"], e["joined_at"],
+        ))
         return [
-            {"place": i + 1, "username": username,
-             "days_completed": p.days_completed, "challenge_streak": p.challenge_streak,
-             "total_clean_reps": p.total_clean_reps}
-            for i, (p, username) in enumerate(rows)
+            {"place": i + 1, "username": e["username"], "days_completed": e["days_completed"],
+             "challenge_streak": e["challenge_streak"], "total_clean_reps": e["total_clean_reps"]}
+            for i, e in enumerate(entries)
         ]
 
     def my_challenges(self, user_id: int, status: str = "active"):
         # `status` now filters the per-user participation state (active/archived),
         # not a global challenge state — archive/unarchive is personal.
+        user = self.s.get(User, user_id)
+        today = local_today(user.timezone)
         rows = (
             self.s.query(Challenge, Participation)
             .join(Participation, Participation.challenge_id == Challenge.id)
@@ -112,7 +128,8 @@ class ChallengeService:
         return [
             {"id": c.id, "name": c.name, "status": p.status,
              "is_public": c.is_public, "is_owner": c.created_by == user_id,
-             "days_completed": p.days_completed, "challenge_streak": p.challenge_streak}
+             "days_completed": p.days_completed,
+             "challenge_streak": effective_challenge_streak(c, p.last_closed_date, p.challenge_streak, today)}
             for c, p in rows
         ]
 

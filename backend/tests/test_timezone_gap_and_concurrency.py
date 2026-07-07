@@ -11,18 +11,18 @@ always uses UTC. Section 1 documents this gap and also proves the
 day-boundary logic itself is correct once a timezone IS present (by writing
 it directly to the DB, bypassing the missing API).
 
-Concurrency: a couple of race-condition checks around simultaneous
-submissions, using real threads against the shared SQLite test engine.
-
-CAVEAT: SQLite (used here for test speed) only allows one writer at a time,
-and this file's engine uses StaticPool (a single shared connection), which
-is a different concurrency model than the real Postgres backend runs on
-(see docker-compose.yml). If the two tests in TestConcurrentSubmissions are
-flaky or throw "database is locked" locally, that's a test-infra artifact,
-not necessarily an app bug — consider pointing this file at a real
-Postgres test database, or reducing thread count, before trusting a
-failure here as a genuine race condition in the app code.
+CAVEAT: SQLite (used here by default for speed) only allows one writer at a
+time, and this file's default SQLite engine uses StaticPool (a single
+shared connection), which is a different concurrency model than the real
+Postgres backend runs on (see docker-compose.yml). If the two tests in
+TestConcurrentSubmissions are flaky or throw "database is locked" locally,
+that's a test-infra artifact, not necessarily an app bug. Set the
+CONCURRENCY_TEST_DB_URL environment variable to a real Postgres URL (e.g.
+the one from docker-compose.yml) before running this file to get a much
+more trustworthy signal — see the README note the assistant sent alongside
+this file for the exact commands.
 """
+import os
 import threading
 from datetime import date, timedelta
 
@@ -37,12 +37,20 @@ from app.core.database import Base, get_db
 from app.db.models.user import User
 from app.db.models.challenge import Exercise, Participation
 
-SQLALCHEMY_TEST_DATABASE_URL = "sqlite:///./test_timezone_concurrency.db"
+# Default: fast throwaway SQLite file, fine for everything except the real
+# concurrency tests. Override with a real Postgres URL to test concurrency
+# properly, e.g.:
+#   $env:CONCURRENCY_TEST_DB_URL="postgresql://user:password@localhost:5432/postgres"
+SQLALCHEMY_TEST_DATABASE_URL = os.getenv("CONCURRENCY_TEST_DB_URL", "sqlite:///./test_timezone_concurrency.db")
 
-engine = create_engine(
-    SQLALCHEMY_TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
+engine = (
+    create_engine(SQLALCHEMY_TEST_DATABASE_URL)
+    if not SQLALCHEMY_TEST_DATABASE_URL.startswith("sqlite")
+    else create_engine(
+        SQLALCHEMY_TEST_DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -121,23 +129,20 @@ def create_challenge(token, start=None):
 # Timezone: missing API surface
 # ======================================================================
 class TestTimezoneConfigGap:
+    """NOTE: the headline gap here (no way to ever set a user's timezone) is
+    now FIXED — PATCH /me accepts `timezone`. Signup still doesn't accept
+    one directly (by design: the client is expected to call PATCH /me with
+    Intl.DateTimeFormat().resolvedOptions().timeZone right after signing up),
+    so that part of this class still documents current, intentional behavior."""
 
-    @pytest.mark.xfail(
-        reason=(
-            "KNOWN GAP: there is no way for a user to ever set their "
-            "timezone. MeUpdate (PATCH /me) has no `timezone` field, and "
-            "signup doesn't accept one either — user.timezone is stuck on "
-            "the 'UTC' column default forever. Since local_today()/streak "
-            "logic is entirely timezone-driven, every real (non-UTC) user's "
-            "day boundary is silently wrong. This is very plausibly the "
-            "actual root cause behind the reported midnight streak bug."
-        ),
-        strict=True,
-    )
     def test_patch_me_can_set_timezone(self, auth_token):
         r = client.patch("/me", json={"timezone": "Europe/Moscow"}, headers=_auth(auth_token))
         assert r.status_code == 200
         assert r.json().get("timezone") == "Europe/Moscow"
+
+    def test_patch_me_rejects_an_unknown_timezone(self, auth_token):
+        r = client.patch("/me", json={"timezone": "Not/A_Real_Zone"}, headers=_auth(auth_token))
+        assert r.status_code == 422
 
     def test_new_user_defaults_to_utc(self, auth_token):
         uid = _user_id_of(auth_token)
@@ -217,9 +222,21 @@ class TestConcurrentSubmissions:
 
     def test_concurrent_sessions_on_same_exercise_no_lost_or_duplicated_reps(self, auth_token):
         """Fire several simultaneous submissions at the same exercise/day.
-        Every request that succeeds must contribute its reps exactly once;
-        total clean reps recorded must never be less than what actually
-        succeeded (lost update) nor more (double-counted)."""
+
+        FIXED (was a confirmed real bug, reproduced against Postgres): the
+        Participation row is now locked with SELECT ... FOR UPDATE for the
+        duration of submit(), which serializes concurrent submissions to
+        the same participation and eliminates the lost-update race that
+        used to drop reps (5 concurrent +3 submissions used to produce +9
+        instead of +15).
+
+        On Postgres this is a real row lock, so we assert the fully correct
+        outcome: all 5 succeed, all 15 reps land. On SQLite,
+        with_for_update() is a documented no-op (SQLite has no row-level
+        locking), so we only assert the weaker "no lost/duplicated reps
+        among whatever succeeded" invariant there — that's a limitation of
+        the local test DB, not of the fix itself.
+        """
         cid = create_challenge(auth_token)
         detail = client.get(f"/challenges/{cid}", headers=_auth(auth_token)).json()
         ce_id = detail["exercises"][0]["challenge_exercise_id"]
@@ -246,7 +263,11 @@ class TestConcurrentSubmissions:
             t.join()
 
         succeeded = sum(1 for r in results if r == 200)
-        assert succeeded >= 1, "at least one concurrent submission should succeed"
+        is_postgres = engine.dialect.name == "postgresql"
+        if is_postgres:
+            assert succeeded == 5, f"row locking should let all 5 succeed, only {succeeded} did: {results}"
+        else:
+            assert succeeded >= 1, "at least one concurrent submission should succeed"
 
         today_plan = client.get("/me/today", headers=_auth(auth_token)).json()
         clean_today = today_plan[0]["exercises"][0]["clean_today"]

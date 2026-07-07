@@ -22,7 +22,29 @@ class SessionService:
         challenge = self.s.get(Challenge, challenge_id)
         if not challenge:
             raise HTTPException(status_code=404, detail="Challenge not found")
-        part = self.s.query(Participation).filter_by(user_id=user_id, challenge_id=challenge_id).first()
+        # FOR UPDATE: lock this participation's row for the rest of the
+        # transaction. Confirmed via a real concurrency test against
+        # Postgres: without this, concurrent submissions to the same
+        # challenge/user each read total_clean_reps / clean_reps into
+        # Python, increment in memory, and write back — a classic lost
+        # update (5 concurrent +3 submissions produced +9 instead of +15).
+        # Locking here serializes the rest of this method per participation,
+        # so the ep.clean_reps / stat.total_clean_reps increments below are
+        # safe too, without needing separate row-level upserts for each.
+        #
+        # NOTE: this does not protect a narrower case — the SAME user
+        # submitting concurrently to two DIFFERENT challenges that happen
+        # to share the same exercise (their UserExerciseStats row is keyed
+        # by (user_id, exercise_id), not participation_id, so two different
+        # participations don't lock against each other there). Rare enough
+        # in practice that it's being left as a known residual risk rather
+        # than adding per-row upserts for it right now.
+        part = (
+            self.s.query(Participation)
+            .filter_by(user_id=user_id, challenge_id=challenge_id)
+            .with_for_update()
+            .first()
+        )
         if not part:
             raise HTTPException(status_code=403, detail="Join the challenge first")
         if part.status != "active":

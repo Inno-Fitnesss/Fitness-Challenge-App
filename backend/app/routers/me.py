@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.scheduling import local_today
+from app.core.scheduling import local_today, effective_user_streak
 from app.core.security.hashHelper import HashHelper
 from app.util.protectRoute import get_current_user
 from app.db.schema.user import UserOutput, MeUpdate
@@ -25,12 +25,14 @@ def _serialize_me(db: Session, user_id: int) -> dict:
         .join(Exercise, UserExerciseStats.exercise_id == Exercise.id)
         .filter(UserExerciseStats.user_id == user_id).all()
     )
+    today = local_today(u.timezone)
     return {
         "id": u.id, "username": u.username, "email": u.email,
         "first_name": u.first_name, "last_name": u.last_name,
         "height_cm": u.height_cm, "weight_kg": u.weight_kg,
-        "fitness_level": u.fitness_level,
-        "streak_current": u.streak_current, "streak_longest": u.streak_longest,
+        "fitness_level": u.fitness_level, "timezone": u.timezone,
+        "streak_current": effective_user_streak(u.last_activity_date, u.streak_current, today),
+        "streak_longest": u.streak_longest,
         "volume": [{"exercise": ex.name, "metric": ex.metric, "total": s.total_clean_reps}
                    for s, ex in stats],
     }
@@ -57,7 +59,7 @@ def update_me(data: MeUpdate, user: UserOutput = Depends(get_current_user),
         if db.query(User).filter(User.email == email, User.id != u.id).first():
             raise HTTPException(status_code=400, detail="Email already in use")
         u.email = email
-    for field in ("first_name", "last_name", "height_cm", "weight_kg", "fitness_level"):
+    for field in ("first_name", "last_name", "height_cm", "weight_kg", "fitness_level", "timezone"):
         value = getattr(data, field)
         if value is not None:
             setattr(u, field, value)
@@ -102,5 +104,5 @@ def week(week_start: Optional[date] = None, user: UserOutput = Depends(get_curre
         "week_start": start.isoformat(),
         "week_end": end.isoformat(),
         "completed_dates": [d.isoformat() for d in completed],
-        "streak_current": u.streak_current or 0,
+        "streak_current": effective_user_streak(u.last_activity_date, u.streak_current, today_local) or 0,
     }

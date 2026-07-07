@@ -1,5 +1,6 @@
 from pydantic import EmailStr, BaseModel, Field, model_validator
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 class UserInCreate(BaseModel):
     username: str
@@ -34,11 +35,21 @@ class MeUpdate(BaseModel):
     fitness_level: Optional[str] = Field(default=None, max_length=20)
     new_password: Optional[str] = Field(default=None, min_length=8)
     confirm_password: Optional[str] = None
+    timezone: Optional[str] = Field(default=None, max_length=50)
 
     @model_validator(mode="after")
     def _passwords_match(self):
         if self.new_password and self.new_password != self.confirm_password:
             raise ValueError("passwords do not match")
+        return self
+
+    @model_validator(mode="after")
+    def _valid_timezone(self):
+        if self.timezone is not None:
+            try:
+                ZoneInfo(self.timezone)
+            except Exception:
+                raise ValueError(f"Unknown timezone: {self.timezone!r}")
         return self
 
 class RefreshIn(BaseModel):
