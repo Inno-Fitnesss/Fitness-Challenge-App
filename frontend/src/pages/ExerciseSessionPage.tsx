@@ -233,8 +233,9 @@ export function ExerciseSessionPage() {
   }, [parsedChallengeId, parsedExerciseId]);
 
   useEffect(() => {
+    if (isLoading || !context) return;
     startCamera();
-  }, [startCamera]);
+  }, [context, isLoading, startCamera]);
 
   useEffect(() => {
     if (!techniqueContent || isLoading) return;

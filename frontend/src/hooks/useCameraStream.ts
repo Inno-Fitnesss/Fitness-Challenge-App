@@ -10,6 +10,48 @@ interface UseCameraStreamResult {
   stopCamera: () => void;
 }
 
+function waitForVideoFrame(video: HTMLVideoElement): Promise<void> {
+  if (
+    video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+    video.videoWidth > 0
+  ) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    let timeoutId: number | undefined;
+    let cleanup = () => {};
+
+    const handleReady = () => {
+      if (
+        video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+        video.videoWidth > 0
+      ) {
+        cleanup();
+        resolve();
+      }
+    };
+
+    cleanup = () => {
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+      video.removeEventListener('loadeddata', handleReady);
+      video.removeEventListener('canplay', handleReady);
+      video.removeEventListener('playing', handleReady);
+    };
+
+    video.addEventListener('loadeddata', handleReady);
+    video.addEventListener('canplay', handleReady);
+    video.addEventListener('playing', handleReady);
+    timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('Camera video frame timeout'));
+    }, 6000);
+    handleReady();
+  });
+}
+
 export function useCameraStream(): UseCameraStreamResult {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -48,12 +90,18 @@ export function useCameraStream(): UseCameraStreamResult {
 
       streamRef.current = stream;
       const video = videoRef.current;
-      if (video) {
-        video.srcObject = stream;
-        await video.play();
+      if (!video) {
+        throw new Error('Camera preview is not ready');
       }
+
+      video.muted = true;
+      video.playsInline = true;
+      video.srcObject = stream;
+      await video.play();
+      await waitForVideoFrame(video);
       setStatus('active');
     } catch (err) {
+      stopCamera();
       const name = err instanceof DOMException ? err.name : '';
       if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
         setStatus('denied');
