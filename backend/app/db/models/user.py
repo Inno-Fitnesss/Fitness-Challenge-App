@@ -7,6 +7,14 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False)
     email = Column(String(70), unique=True, nullable=False)
     password_hash = Column(String(250), nullable=False)
+    # Google OAuth subject (stable Google user id). Set once the account is
+    # created via / linked to "Sign in with Google"; NULL for password-only accounts.
+    google_sub = Column(String(64), unique=True)
+    # "Forgot password" one-time code: bcrypt hash of the 6-digit code, its
+    # expiry, and how many wrong guesses were made (anti-bruteforce).
+    reset_code_hash = Column(String(250))
+    reset_code_expires_at = Column(DateTime)
+    reset_code_attempts = Column(Integer, default=0)
     first_name = Column(String(50))
     last_name = Column(String(100))
     height_cm = Column(Integer)

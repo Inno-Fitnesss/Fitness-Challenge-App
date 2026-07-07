@@ -54,3 +54,24 @@ class MeUpdate(BaseModel):
 
 class RefreshIn(BaseModel):
     refresh_token: str
+
+class GoogleLoginIn(BaseModel):
+    """POST /auth/google — Google ID token issued to our client id."""
+    id_token: str
+
+class ForgotPasswordIn(BaseModel):
+    """POST /auth/forgot-password — request a reset code by email."""
+    email: EmailStr
+
+class ResetPasswordIn(BaseModel):
+    """POST /auth/reset-password — set a new password using the emailed code."""
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+    new_password: str = Field(min_length=8)
+    confirm_password: str
+
+    @model_validator(mode="after")
+    def _passwords_match(self):
+        if self.new_password != self.confirm_password:
+            raise ValueError("passwords do not match")
+        return self

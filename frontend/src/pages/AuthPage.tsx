@@ -6,6 +6,7 @@ import { AuthLandingHero } from '../components/auth/AuthLandingHero.tsx';
 import { AuthBrandMark } from '../components/auth/AuthBrandMark.tsx';
 import { SignInForm } from '../components/auth/SignInForm.tsx';
 import { SignUpForm } from '../components/auth/SignUpForm.tsx';
+import { GoogleAuthButton } from '../components/auth/GoogleAuthButton.tsx';
 import { useAuth } from '../context/AuthContext.tsx';
 
 const AUTH_TABS = [
@@ -78,6 +79,8 @@ export function AuthPage() {
                 <SignInForm redirectTo={redirectTo} />
               )}
             </div>
+
+            <GoogleAuthButton redirectTo={redirectTo} />
           </div>
         </div>
       </main>

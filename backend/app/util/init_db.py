@@ -21,6 +21,11 @@ _PG_COLUMN_MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS height_cm INTEGER",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS weight_kg INTEGER",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS fitness_level VARCHAR(20)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(64)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google_sub ON users (google_sub)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_hash VARCHAR(250)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_expires_at TIMESTAMP",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_attempts INTEGER DEFAULT 0",
 ]
 
 

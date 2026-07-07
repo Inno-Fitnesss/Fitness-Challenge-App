@@ -69,6 +69,14 @@ export const authApi = {
     return data;
   },
 
+  /** POST /auth/google — вход/регистрация по Google ID-токену */
+  async loginWithGoogle(idToken: string): Promise<UserWithToken> {
+    const { data } = await apiClient.post<UserWithToken>('/auth/google', {
+      id_token: idToken,
+    });
+    return data;
+  },
+
   /** POST /auth/refresh — обмен refresh-токена на новый access-токен */
   async refresh(refreshToken: string): Promise<UserWithToken> {
     const { data } = await apiClient.post<UserWithToken>('/auth/refresh', {

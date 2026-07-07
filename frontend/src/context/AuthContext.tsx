@@ -129,6 +129,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [completeSession],
   );
 
+  const loginWithGoogle = useCallback(
+    async (idToken: string, redirectTo = '/dashboard') => {
+      const { token: authToken, refresh_token } = await authApi.loginWithGoogle(idToken);
+      storeRefreshToken(refresh_token);
+      await completeSession(authToken, redirectTo);
+    },
+    [completeSession],
+  );
+
   const register = useCallback(
     async (data: RegisterData, redirectTo = '/dashboard') => {
       await authApi.register(data);
@@ -169,12 +178,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!token && !!user,
       isLoading,
       login,
+      loginWithGoogle,
       register,
       logout,
       checkAuth,
       refreshProfile,
     }),
-    [user, token, isLoading, login, register, logout, checkAuth, refreshProfile],
+    [user, token, isLoading, login, loginWithGoogle, register, logout, checkAuth, refreshProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

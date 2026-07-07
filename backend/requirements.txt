@@ -11,3 +11,5 @@ email-validator
 python-decouple
 tzdata
 alembic
+google-auth
+requests
