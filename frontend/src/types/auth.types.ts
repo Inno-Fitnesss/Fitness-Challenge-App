@@ -68,6 +68,14 @@ export interface LoginCredentials {
   password: string;
 }
 
+/** Данные для POST /auth/reset-password (camelCase, маппится в snake_case) */
+export interface ResetPasswordData {
+  email: string;
+  code: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export interface RegisterData {
   username: string;
   email: string;

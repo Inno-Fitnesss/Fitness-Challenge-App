@@ -1,8 +1,11 @@
+import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.utils import formataddr
 
 from decouple import config
+
+logger = logging.getLogger(__name__)
 
 SMTP_HOST = config("SMTP_HOST", default="smtp.gmail.com")
 SMTP_PORT = config("SMTP_PORT", default=587, cast=int)
@@ -23,6 +26,14 @@ class Mailer:
 
     @staticmethod
     def send_reset_code(to_email: str, code: str) -> None:
+        if not Mailer.is_configured():
+            # Dev fallback: without SMTP credentials the email can't be sent,
+            # but the flow stays testable — the code shows up in server logs.
+            logger.warning(
+                "SMTP is not configured (empty SMTP_USER/SMTP_PASSWORD); "
+                "password reset code for %s: %s", to_email, code)
+            return
+
         body = (
             "Вы запросили восстановление пароля в WOWFIT.\n\n"
             f"Ваш код: {code}\n\n"

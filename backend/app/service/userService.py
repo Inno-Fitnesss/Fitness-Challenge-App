@@ -45,12 +45,10 @@ class UserService:
 
         Always answers the same way regardless of whether the account exists,
         so the endpoint can't be used to probe registered emails.
-        """
-        if not Mailer.is_configured():
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Password reset emails are not configured on the server")
 
+        With empty SMTP credentials (dev) the code is not emailed — the
+        Mailer logs it on the server instead, so the flow stays testable.
+        """
         email = email.lower()
         user = self.__userRepository.get_user_by_email(email=email)
         if user:
