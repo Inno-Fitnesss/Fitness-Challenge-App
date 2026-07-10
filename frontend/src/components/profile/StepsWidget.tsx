@@ -1,5 +1,7 @@
-import { Footprints } from 'lucide-react';
+import { useState } from 'react';
+import { Footprints, Loader2 } from 'lucide-react';
 import type { ApiStepsRange } from '../../api/stepsApi.ts';
+import { withingsApi } from '../../api/withingsApi.ts';
 
 const WEEKDAY_LABELS = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
 
@@ -9,6 +11,18 @@ interface StepsWidgetProps {
 }
 
 export function StepsWidget({ data, isLoading }: StepsWidgetProps) {
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const handleConnect = async () => {
+    setIsConnecting(true);
+    try {
+      const url = await withingsApi.getAuthorizeUrl();
+      window.location.href = url; // полный переход браузера — не fetch
+    } catch {
+      setIsConnecting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <section className="bg-white rounded-3xl shadow-card p-5 sm:p-6 h-full min-h-[220px] flex items-center justify-center">
@@ -19,13 +33,23 @@ export function StepsWidget({ data, isLoading }: StepsWidgetProps) {
 
   if (!data || !data.connected) {
     return (
-      <section className="bg-white rounded-3xl shadow-card p-5 sm:p-6 h-full min-h-[220px] flex flex-col items-center justify-center text-center gap-2">
+      <section className="bg-white rounded-3xl shadow-card p-5 sm:p-6 h-full min-h-[220px] flex flex-col items-center justify-center text-center gap-3">
         <Footprints size={28} className="text-neutral-muted mb-1" />
         <p className="text-sm font-semibold text-neutral-text">Шаги ещё не подключены</p>
         <p className="text-xs text-neutral-muted max-w-xs">
-          Установи приложение-компаньон и залогинься в нём тем же аккаунтом — шаги
-          начнут появляться здесь автоматически.
+          Подключи Withings (бесплатное приложение, трекает шаги через сенсоры
+          телефона — своё устройство не нужно) — шаги начнут появляться здесь
+          автоматически.
         </p>
+        <button
+          type="button"
+          onClick={() => void handleConnect()}
+          disabled={isConnecting}
+          className="mt-1 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-60"
+        >
+          {isConnecting && <Loader2 size={16} className="animate-spin" />}
+          Подключить Withings
+        </button>
       </section>
     );
   }
