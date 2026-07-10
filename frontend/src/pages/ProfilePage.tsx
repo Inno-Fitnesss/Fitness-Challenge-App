@@ -122,6 +122,14 @@ export function ProfilePage() {
   const loadSteps = useCallback(async () => {
     setIsStepsLoading(true);
     try {
+      // Тихая попытка подтянуть свежие данные из Withings при каждом заходе
+      // на страницу — если аккаунт ещё не подключен, sync() просто упадёт
+      // с 400, и это нормально, тогда просто показываем то, что есть.
+      try {
+        await withingsApi.sync();
+      } catch {
+        /* не подключено или Withings временно недоступен — не блокируем показ */
+      }
       const data = await stepsApi.getRecent(7);
       setStepsData(data);
     } catch {
@@ -131,11 +139,36 @@ export function ProfilePage() {
     }
   }, []);
 
+  const handleStepsRefresh = useCallback(async () => {
+    try {
+      await withingsApi.sync();
+    } catch {
+      setError('Не удалось обновить шаги из Withings — попробуй ещё раз чуть позже.');
+    }
+    const data = await stepsApi.getRecent(7);
+    setStepsData(data);
+  }, []);
+
   useEffect(() => {
     void loadProfile();
     void loadChart();
     void loadSteps();
   }, [loadProfile, loadChart, loadSteps]);
+
+  // Пока страница открыта — тихо обновляем шаги из Withings каждые пару
+  // минут сами, без участия пользователя. Ошибки специально проглатываются:
+  // это фоновый опрос, а не действие по клику, лишний раз пугать не нужно.
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      withingsApi
+        .sync()
+        .then(() => stepsApi.getRecent(7))
+        .then(setStepsData)
+        .catch(() => {});
+    }, 2 * 60 * 1000); // каждые 2 минуты
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   // После возврата с OAuth-логина Withings (?withings=connected) сразу
   // подтягиваем шаги один раз и убираем параметр из адресной строки.
@@ -260,7 +293,7 @@ export function ProfilePage() {
           <PlankCard secondsParts={plank} />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <StepsWidget data={stepsData} isLoading={isStepsLoading} />
+            <StepsWidget data={stepsData} isLoading={isStepsLoading} onRefresh={handleStepsRefresh} />
             <ProfileActivityChart data={chartData} isLoading={isChartLoading} />
           </div>
         </div>

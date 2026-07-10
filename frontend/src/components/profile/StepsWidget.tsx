@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Footprints, Loader2 } from 'lucide-react';
+import { Footprints, Loader2, RefreshCw } from 'lucide-react';
 import type { ApiStepsRange } from '../../api/stepsApi.ts';
 import { withingsApi } from '../../api/withingsApi.ts';
 
@@ -8,10 +8,12 @@ const WEEKDAY_LABELS = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
 interface StepsWidgetProps {
   data: ApiStepsRange | null;
   isLoading?: boolean;
+  onRefresh?: () => void | Promise<void>;
 }
 
-export function StepsWidget({ data, isLoading }: StepsWidgetProps) {
+export function StepsWidget({ data, isLoading, onRefresh }: StepsWidgetProps) {
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleConnect = async () => {
     setIsConnecting(true);
@@ -20,6 +22,16 @@ export function StepsWidget({ data, isLoading }: StepsWidgetProps) {
       window.location.href = url; // полный переход браузера — не fetch
     } catch {
       setIsConnecting(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (!onRefresh || isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -77,7 +89,18 @@ export function StepsWidget({ data, isLoading }: StepsWidgetProps) {
           <h3 className="text-sm sm:text-base font-bold text-neutral-text">Шаги</h3>
           <p className="text-xs text-neutral-muted">За последние 7 дней</p>
         </div>
-        <Footprints size={20} className="text-brand" />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void handleRefresh()}
+            disabled={isRefreshing}
+            title="Обновить шаги из Withings"
+            className="p-1.5 rounded-lg text-neutral-muted hover:text-brand hover:bg-neutral-card transition-colors disabled:opacity-60"
+          >
+            <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+          </button>
+          <Footprints size={20} className="text-brand" />
+        </div>
       </div>
 
       <p className="text-2xl sm:text-3xl font-extrabold text-brand mt-3 mb-1">
