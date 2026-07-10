@@ -29,6 +29,10 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-WOWFIT}
+      WITHINGS_CLIENT_ID: 8757257514f493dad3e2a502ec1ae93263f13494ed7a6d60132a45d3ebe39d1b
+      WITHINGS_CLIENT_SECRET: fa5e7275d571c65c1db80465e11d4f45e88d10fea6d85fc04b3d922d6c387f6d
+      WITHINGS_REDIRECT_URI: https://hi-baam.space/api/me/withings/callback
+      FRONTEND_URL: https://hi-baam.space
     ports:
       - "127.0.0.1:8001:80"
     depends_on:

@@ -1,7 +1,7 @@
 from sqlalchemy import text
 
 from app.core.database import Base, engine, SessionLocal
-from app.db.models import user, challenge  # noqa: F401  -- import registers tables on Base
+from app.db.models import user, challenge, steps, withings  # noqa: F401  -- import registers tables on Base
 from app.db.models.challenge import Exercise
 
 
