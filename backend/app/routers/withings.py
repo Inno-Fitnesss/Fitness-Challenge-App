@@ -47,7 +47,7 @@ def callback(code: str, state: str, db: Session = Depends(get_db)):
     try:
         tokens = WithingsService.exchange_code(code)
     except WithingsError:
-        return RedirectResponse(f"{FRONTEND_URL}/profile?withings=error")
+        return RedirectResponse(f"{FRONTEND_URL}/settings?withings=error")
 
     expires_at = datetime.utcnow() + timedelta(seconds=tokens["expires_in"])
     existing = db.query(WithingsConnection).filter(WithingsConnection.user_id == user_id).first()
@@ -66,7 +66,7 @@ def callback(code: str, state: str, db: Session = Depends(get_db)):
         ))
     db.commit()
 
-    return RedirectResponse(f"{FRONTEND_URL}/profile?withings=connected")
+    return RedirectResponse(f"{FRONTEND_URL}/settings?withings=connected")
 
 
 @withingsRouter.get("/status", response_model=WithingsStatus)
