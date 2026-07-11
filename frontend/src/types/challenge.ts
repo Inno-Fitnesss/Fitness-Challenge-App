@@ -31,8 +31,10 @@ export interface ExerciseProgress {
 export interface LeaderboardEntry {
   rank: number;
   username: string;
-  streakDays: number;
-  progressPercent: number;
+  /** User's global (cross-challenge) streak — shown next to the flame icon. */
+  globalStreakDays: number;
+  /** Current streak within THIS challenge — also what the ranking is based on. */
+  challengeStreakDays: number;
   isCurrentUser?: boolean;
   avatarColor: string;
 }

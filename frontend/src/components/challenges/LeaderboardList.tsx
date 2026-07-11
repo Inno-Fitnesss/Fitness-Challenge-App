@@ -1,6 +1,5 @@
 import type { LeaderboardEntry } from '../../types/challenge.ts';
 import { pluralizeRu } from '../../utils/russianPlural.ts';
-import { ProgressBar } from '../ui/ProgressBar.tsx';
 
 function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
   const medalColors: Record<number, string> = {
@@ -26,14 +25,13 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-neutral-text truncate">{entry.username}</p>
         <p className="text-xs text-neutral-muted flex items-center gap-1">
-          🔥 {entry.streakDays} {pluralizeRu(entry.streakDays, ['день', 'дня', 'дней'])}
+          🔥 {entry.globalStreakDays} {pluralizeRu(entry.globalStreakDays, ['день', 'дня', 'дней'])}
         </p>
       </div>
-      <div className="w-16 sm:w-24 flex-shrink-0">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-neutral-muted">{entry.progressPercent}%</span>
-        </div>
-        <ProgressBar value={entry.progressPercent} color="orange" />
+      <div className="w-16 sm:w-24 flex-shrink-0 text-right">
+        <span className="text-sm font-semibold text-neutral-text">
+          {entry.challengeStreakDays} {pluralizeRu(entry.challengeStreakDays, ['день', 'дня', 'дней'])}
+        </span>
       </div>
     </div>
   );

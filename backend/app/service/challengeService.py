@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.scheduling import local_today, is_scheduled, effective_challenge_streak
+from app.core.scheduling import local_today, is_scheduled, effective_challenge_streak, effective_user_streak
 from app.db.models.user import User
 from app.db.models.challenge import (
     Exercise, Challenge, ChallengeExercise, Participation,
@@ -83,7 +83,7 @@ class ChallengeService:
     def leaderboard(self, challenge_id: int):
         c = self._get_challenge(challenge_id)
         rows = (
-            self.s.query(Participation, User.username)
+            self.s.query(Participation, User)
             .join(User, Participation.user_id == User.id)
             .filter(Participation.challenge_id == challenge_id)
             .all()
@@ -94,23 +94,28 @@ class ChallengeService:
         today = local_today("UTC")
         entries = [
             {
-                "username": username,
+                "username": user.username,
                 "days_completed": p.days_completed,
                 "challenge_streak": effective_challenge_streak(c, p.last_closed_date, p.challenge_streak, today),
+                # Global (cross-challenge) streak, shown next to the flame icon —
+                # deliberately separate from the per-challenge streak below.
+                "user_streak": effective_user_streak(user.last_activity_date, user.streak_current, today),
                 "total_clean_reps": p.total_clean_reps,
                 "joined_at": p.joined_at,
             }
-            for p, username in rows
+            for p, user in rows
         ]
-        # Sort on the CORRECTED streak, not the raw (possibly stale) stored
-        # value — otherwise someone whose streak just read as broken above
-        # could still rank above someone with a genuinely-higher live streak.
+        # Rank by the CURRENT streak *within this challenge* (corrected, not the
+        # raw possibly-stale stored value) — this is what's shown on the row, so
+        # someone's position should always be explainable from that one number.
+        # days_completed / total_clean_reps only break ties.
         entries.sort(key=lambda e: (
-            -e["days_completed"], -e["challenge_streak"], -e["total_clean_reps"], e["joined_at"],
+            -e["challenge_streak"], -e["days_completed"], -e["total_clean_reps"], e["joined_at"],
         ))
         return [
             {"place": i + 1, "username": e["username"], "days_completed": e["days_completed"],
-             "challenge_streak": e["challenge_streak"], "total_clean_reps": e["total_clean_reps"]}
+             "challenge_streak": e["challenge_streak"], "user_streak": e["user_streak"],
+             "total_clean_reps": e["total_clean_reps"]}
             for i, e in enumerate(entries)
         ]
 

@@ -137,13 +137,11 @@ export function mapLeaderboard(
   entries: ApiLeaderboardEntry[],
   currentUsername?: string,
 ): LeaderboardEntry[] {
-  const maxDays = Math.max(...entries.map((e) => e.days_completed), 1);
-
   return entries.map((entry) => ({
     rank: entry.place,
     username: entry.username,
-    streakDays: entry.challenge_streak,
-    progressPercent: Math.round((entry.days_completed / maxDays) * 100),
+    globalStreakDays: entry.user_streak,
+    challengeStreakDays: entry.challenge_streak,
     isCurrentUser: entry.username === currentUsername,
     avatarColor: avatarColorForUsername(entry.username),
   }));
