@@ -27,8 +27,17 @@ interface TooltipPosition {
 }
 
 const OVERLAY_COLOR = 'rgba(55, 65, 81, 0.82)';
-const TOOLTIP_ESTIMATED_HEIGHT = 260;
 const MARGIN = 16;
+
+// Компактный тултип на телефоне: занижаем оценку высоты и ширину,
+// чтобы позиционирование не резервировало лишнее место на маленьком экране.
+function tooltipEstimatedHeight(): number {
+  return window.innerWidth < 640 ? 200 : 260;
+}
+
+function tooltipMaxWidth(): number {
+  return Math.min(window.innerWidth < 640 ? 320 : 360, window.innerWidth - MARGIN * 2);
+}
 
 function resolvePlacement(
   rect: DOMRect | null,
@@ -40,14 +49,15 @@ function resolvePlacement(
     return 'fixed-bottom';
   }
 
+  const estimatedHeight = tooltipEstimatedHeight();
   const spaceBelow = window.innerHeight - rect.bottom - MARGIN;
   const spaceAbove = rect.top - MARGIN;
 
   const flipIfNeeded = (choice: 'top' | 'bottom'): 'top' | 'bottom' => {
-    if (choice === 'bottom' && spaceBelow < TOOLTIP_ESTIMATED_HEIGHT && spaceAbove > spaceBelow) {
+    if (choice === 'bottom' && spaceBelow < estimatedHeight && spaceAbove > spaceBelow) {
       return 'top';
     }
-    if (choice === 'top' && spaceAbove < TOOLTIP_ESTIMATED_HEIGHT && spaceBelow > spaceAbove) {
+    if (choice === 'top' && spaceAbove < estimatedHeight && spaceBelow > spaceAbove) {
       return 'bottom';
     }
     return choice;
@@ -67,8 +77,8 @@ function resolvePlacement(
 
   if (rect.top > window.innerHeight * 0.65) return 'top';
   if (spaceRight > 320 && rect.left < 200) return 'right';
-  if (spaceBelow > TOOLTIP_ESTIMATED_HEIGHT) return 'bottom';
-  if (spaceAbove > TOOLTIP_ESTIMATED_HEIGHT) return 'top';
+  if (spaceBelow > estimatedHeight) return 'bottom';
+  if (spaceAbove > estimatedHeight) return 'top';
   return 'fixed-bottom';
 }
 
@@ -76,7 +86,8 @@ function getTooltipPosition(
   rect: DOMRect | null,
   placement: ResolvedPlacement,
 ): TooltipPosition {
-  const tooltipWidth = Math.min(360, window.innerWidth - MARGIN * 2);
+  const tooltipWidth = tooltipMaxWidth();
+  const estimatedHeight = tooltipEstimatedHeight();
 
   if (!rect || placement === 'center') {
     return {
@@ -124,13 +135,13 @@ function getTooltipPosition(
   );
 
   if (placement === 'bottom') {
-    top = Math.min(top, window.innerHeight - TOOLTIP_ESTIMATED_HEIGHT - MARGIN);
+    top = Math.min(top, window.innerHeight - estimatedHeight - MARGIN);
   } else if (placement === 'top') {
-    top = Math.max(top, TOOLTIP_ESTIMATED_HEIGHT + MARGIN);
+    top = Math.max(top, estimatedHeight + MARGIN);
   } else if (placement === 'left' || placement === 'right') {
     top = Math.min(
-      Math.max(top, TOOLTIP_ESTIMATED_HEIGHT / 2 + MARGIN),
-      window.innerHeight - TOOLTIP_ESTIMATED_HEIGHT / 2 - MARGIN,
+      Math.max(top, estimatedHeight / 2 + MARGIN),
+      window.innerHeight - estimatedHeight / 2 - MARGIN,
     );
   }
 
@@ -236,24 +247,26 @@ export function SpotlightOverlay({
                 }
         }
       >
-        <div className="bg-white rounded-3xl shadow-modal p-5 sm:p-6 pointer-events-auto">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <p className="text-xs font-semibold text-brand uppercase tracking-wide">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-modal p-4 sm:p-6 pointer-events-auto">
+          <div className="flex items-center justify-between gap-3 mb-2 sm:mb-3">
+            <p className="text-[11px] sm:text-xs font-semibold text-brand uppercase tracking-wide">
               Шаг {stepIndex + 1} из {totalSteps}
             </p>
             <button
               type="button"
               onClick={onSkip}
-              className="text-xs font-medium text-neutral-muted hover:text-neutral-secondary"
+              className="text-[11px] sm:text-xs font-medium text-neutral-muted hover:text-neutral-secondary"
             >
               Пропустить
             </button>
           </div>
 
-          <h2 id="tour-title" className="text-lg sm:text-xl font-extrabold text-neutral-text mb-2">
+          <h2 id="tour-title" className="text-base sm:text-xl font-extrabold text-neutral-text mb-1.5 sm:mb-2">
             {title}
           </h2>
-          <p className="text-sm text-neutral-secondary leading-relaxed mb-5">{description}</p>
+          <p className="text-[13px] sm:text-sm text-neutral-secondary leading-relaxed mb-4 sm:mb-5">
+            {description}
+          </p>
 
           <div className="flex gap-2">
             {!isFirst && (
