@@ -164,7 +164,7 @@ function StepsHistoryModal({ onClose }: { onClose: () => void }) {
           {isLoading ? (
             <p className="text-sm text-neutral-muted text-center py-12">Загрузка…</p>
           ) : (
-            <div className="overflow-x-auto pb-2">
+            <div className="overflow-x-auto pt-12 -mt-12 pb-2">
               <StepsBarChart days={days30} variant="detailed" />
             </div>
           )}
