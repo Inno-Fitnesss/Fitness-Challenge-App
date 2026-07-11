@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from app.util.init_db import create_tables, seed_exercises, sync_schema
+from app.util.init_db import create_tables, seed_exercises, seed_preset_challenges, sync_schema
 from app.routers.auth import authRouter
 from app.routers.admin import adminRouter
 from app.routers.challenges import challengeRouter
@@ -17,6 +17,7 @@ async def lifespan(app : FastAPI):
     create_tables()
     sync_schema()
     seed_exercises()
+    seed_preset_challenges()
     yield
 
 app = FastAPI(lifespan=lifespan)
