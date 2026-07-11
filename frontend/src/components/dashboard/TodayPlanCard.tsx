@@ -18,18 +18,23 @@ export function TodayPlanCard({ item, onClick }: TodayPlanCardProps) {
       type="button"
       onClick={onClick}
       className={`w-full text-left rounded-2xl sm:rounded-3xl shadow-card p-4 sm:p-6 transition-all hover:shadow-card-hover ${
-        isCompleted ? 'bg-lime-pale border border-lime-light' : 'bg-white'
+        isCompleted ? 'max-lg:bg-success/60 bg-lime-pale border border-lime-light' : 'bg-white'
       }`}
     >
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
+      <div className="flex items-start justify-between gap-4 mb-3 lg:mb-4">
+        <div className="min-w-0">
           <h3 className="text-base sm:text-lg font-bold text-neutral-text mb-2 truncate" title={challenge.title}>{challenge.title}</h3>
+          {challenge.description && (
+            <p className="lg:hidden text-sm text-neutral-muted line-clamp-2 mb-2">
+              {challenge.description}
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             <Badge variant="orange" icon={<Clock size={12} />}>
               {challenge.dateLabel}
             </Badge>
-            <ChallengeScheduleBadge label={challenge.scheduleLabel} />
-            <Badge variant="grey">{formatParticipants(challenge.participantCount)}</Badge>
+            <ChallengeScheduleBadge label={challenge.scheduleLabel} className="max-lg:bg-accent/30 max-lg:text-[#DD8E1B]" />
+            <Badge variant="grey" className="max-lg:hidden">{formatParticipants(challenge.participantCount)}</Badge>
           </div>
         </div>
         {isCompleted && (
