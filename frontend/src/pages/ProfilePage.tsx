@@ -2,8 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Flame, Pencil, Trophy } from 'lucide-react';
 import type { AxiosError } from 'axios';
 import { authApi } from '../api/authApi.ts';
+import { stepsApi, type ApiStepsRange } from '../api/stepsApi.ts';
+import { withingsApi } from '../api/withingsApi.ts';
 import { PageContainer } from '../components/layout/PageContainer.tsx';
 import { ProfileActivityChart } from '../components/profile/ProfileActivityChart.tsx';
+import { StepsWidget } from '../components/profile/StepsWidget.tsx';
 import { ProfileAvatar } from '../components/profile/ProfileAvatar.tsx';
 import { ProfileEditModal } from '../components/profile/ProfileEditModal.tsx';
 import { useAuth } from '../context/AuthContext.tsx';
@@ -80,6 +83,8 @@ export function ProfilePage() {
   const [chartData, setChartData] = useState<DailyChallengeActivity[]>([]);
   const [isLoading, setIsLoading] = useState(!authUser);
   const [isChartLoading, setIsChartLoading] = useState(true);
+  const [stepsData, setStepsData] = useState<ApiStepsRange | null>(null);
+  const [isStepsLoading, setIsStepsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -114,10 +119,73 @@ export function ProfilePage() {
     }
   }, []);
 
+  const loadSteps = useCallback(async () => {
+    setIsStepsLoading(true);
+    try {
+      // Тихая попытка подтянуть свежие данные из Withings при каждом заходе
+      // на страницу — если аккаунт ещё не подключен, sync() просто упадёт
+      // с 400, и это нормально, тогда просто показываем то, что есть.
+      try {
+        await withingsApi.sync();
+      } catch {
+        /* не подключено или Withings временно недоступен — не блокируем показ */
+      }
+      const data = await stepsApi.getRecent(7);
+      setStepsData(data);
+    } catch {
+      setStepsData(null);
+    } finally {
+      setIsStepsLoading(false);
+    }
+  }, []);
+
+  const handleStepsRefresh = useCallback(async () => {
+    try {
+      await withingsApi.sync();
+    } catch {
+      setError('Не удалось обновить шаги из Withings — попробуй ещё раз чуть позже.');
+    }
+    const data = await stepsApi.getRecent(7);
+    setStepsData(data);
+  }, []);
+
   useEffect(() => {
     void loadProfile();
     void loadChart();
-  }, [loadProfile, loadChart]);
+    void loadSteps();
+  }, [loadProfile, loadChart, loadSteps]);
+
+  // Пока страница открыта — тихо обновляем шаги из Withings каждые пару
+  // минут сами, без участия пользователя. Ошибки специально проглатываются:
+  // это фоновый опрос, а не действие по клику, лишний раз пугать не нужно.
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      withingsApi
+        .sync()
+        .then(() => stepsApi.getRecent(7))
+        .then(setStepsData)
+        .catch(() => {});
+    }, 2 * 60 * 1000); // каждые 2 минуты
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // После возврата с OAuth-логина Withings (?withings=connected) сразу
+  // подтягиваем шаги один раз и убираем параметр из адресной строки.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const withingsResult = params.get('withings');
+    if (!withingsResult) return;
+
+    window.history.replaceState({}, '', window.location.pathname);
+
+    if (withingsResult === 'connected') {
+      void withingsApi.sync().then(() => void loadSteps());
+    } else if (withingsResult === 'error') {
+      setError('Не удалось подключить Withings — попробуй ещё раз.');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSaveProfile = async (username: string, nextAvatarUrl: string | null) => {
     if (!profile || isSaving) return;
@@ -224,7 +292,10 @@ export function ProfilePage() {
 
           <PlankCard secondsParts={plank} />
 
-          <ProfileActivityChart data={chartData} isLoading={isChartLoading} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <StepsWidget data={stepsData} isLoading={isStepsLoading} onRefresh={handleStepsRefresh} />
+            <ProfileActivityChart data={chartData} isLoading={isChartLoading} />
+          </div>
         </div>
       </div>
 

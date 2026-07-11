@@ -6,7 +6,7 @@ from sqlalchemy import text
 
 from app.core.database import Base, engine, SessionLocal
 from app.core.security.hashHelper import HashHelper
-from app.db.models import user, challenge  # noqa: F401  -- import registers tables on Base
+from app.db.models import user, challenge, steps, withings  # noqa: F401  -- import registers tables on Base
 from app.db.models.challenge import Challenge, ChallengeExercise, Exercise
 from app.db.models.user import User
 

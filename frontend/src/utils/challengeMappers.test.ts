@@ -206,29 +206,36 @@ describe('mapExerciseProgress', () => {
 describe('mapLeaderboard', () => {
   it('flags the current user by username', () => {
     const entries = [
-      { place: 1, username: 'alice', days_completed: 5, challenge_streak: 3, total_clean_reps: 100 },
-      { place: 2, username: 'bob', days_completed: 3, challenge_streak: 1, total_clean_reps: 50 },
+      { place: 1, username: 'alice', days_completed: 5, challenge_streak: 3, user_streak: 3, total_clean_reps: 100 },
+      { place: 2, username: 'bob', days_completed: 3, challenge_streak: 1, user_streak: 7, total_clean_reps: 50 },
     ];
     const mapped = mapLeaderboard(entries, 'bob');
     expect(mapped.find((e) => e.username === 'bob')?.isCurrentUser).toBe(true);
     expect(mapped.find((e) => e.username === 'alice')?.isCurrentUser).toBe(false);
   });
 
-  it('scales progressPercent relative to the leader\'s days_completed', () => {
+  it('keeps the per-challenge streak and the global streak separate', () => {
     const entries = [
-      { place: 1, username: 'alice', days_completed: 10, challenge_streak: 3, total_clean_reps: 100 },
-      { place: 2, username: 'bob', days_completed: 5, challenge_streak: 1, total_clean_reps: 50 },
+      { place: 1, username: 'alice', days_completed: 10, challenge_streak: 3, user_streak: 12, total_clean_reps: 100 },
+      { place: 2, username: 'bob', days_completed: 5, challenge_streak: 1, user_streak: 1, total_clean_reps: 50 },
     ];
     const mapped = mapLeaderboard(entries);
-    expect(mapped.find((e) => e.username === 'alice')?.progressPercent).toBe(100);
-    expect(mapped.find((e) => e.username === 'bob')?.progressPercent).toBe(50);
+    expect(mapped.find((e) => e.username === 'alice')).toMatchObject({
+      challengeStreakDays: 3,
+      globalStreakDays: 12,
+    });
+    expect(mapped.find((e) => e.username === 'bob')).toMatchObject({
+      challengeStreakDays: 1,
+      globalStreakDays: 1,
+    });
   });
 
-  it('does not divide by zero when every entry has 0 days_completed', () => {
+  it('handles an entry with zero streaks without throwing', () => {
     const entries = [
-      { place: 1, username: 'alice', days_completed: 0, challenge_streak: 0, total_clean_reps: 0 },
+      { place: 1, username: 'alice', days_completed: 0, challenge_streak: 0, user_streak: 0, total_clean_reps: 0 },
     ];
     const mapped = mapLeaderboard(entries);
-    expect(Number.isFinite(mapped[0].progressPercent)).toBe(true);
+    expect(mapped[0].challengeStreakDays).toBe(0);
+    expect(mapped[0].globalStreakDays).toBe(0);
   });
 });

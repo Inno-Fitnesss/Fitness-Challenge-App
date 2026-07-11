@@ -9,6 +9,8 @@ from app.routers.challenges import challengeRouter
 from app.routers.exercises import exerciseRouter
 from app.routers.me import meRouter
 from app.routers.public import publicRouter
+from app.routers.steps import stepsRouter
+from app.routers.withings import withingsRouter
 from app.util.protectRoute import get_current_user
 from app.db.schema.user import UserOutput
 
@@ -36,6 +38,8 @@ app.include_router(router=challengeRouter, tags=["challenges"], prefix="/challen
 app.include_router(router=exerciseRouter, tags=["exercises"], prefix="/exercises")
 app.include_router(router=meRouter, tags=["me"], prefix="/me")
 app.include_router(router=publicRouter, tags=["public"], prefix="/public")
+app.include_router(router=stepsRouter, tags=["steps"], prefix="/me/steps")
+app.include_router(router=withingsRouter, tags=["withings"], prefix="/me/withings")
 
 @app.get("/health")
 def health():
