@@ -52,40 +52,66 @@ function formatLastSynced(iso: string): string {
 
 function StepsBarChart({
   days,
-  compact = false,
+  variant = 'compact',
 }: {
   days: ReturnType<typeof buildLastNDays>;
-  compact?: boolean;
+  variant?: 'compact' | 'detailed';
 }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const maxSteps = Math.max(...days.map((d) => d.steps), 1);
+  const isDetailed = variant === 'detailed';
+
   return (
-    <div className={`flex items-end gap-1.5 sm:gap-2 ${compact ? 'min-h-[100px]' : 'min-h-[220px]'} flex-1`}>
-      {days.map((day) => {
+    <div
+      className={`flex items-end ${isDetailed ? 'gap-3' : 'gap-1.5 sm:gap-2 flex-1'} ${
+        isDetailed ? 'min-h-[200px]' : 'min-h-[100px]'
+      }`}
+    >
+      {days.map((day, index) => {
         const heightPercent = day.steps > 0 ? Math.max(10, (day.steps / maxSteps) * 100) : 4;
+        const isHovered = hoveredIndex === index;
         return (
           <div
             key={day.isoDate}
-            className="flex-1 min-w-0 flex flex-col items-center justify-end gap-1.5 h-full"
+            className={`${isDetailed ? 'w-9 shrink-0' : 'flex-1 min-w-0'} flex flex-col items-center justify-end gap-1.5 h-full`}
           >
-            {!compact && (
+            {!isDetailed && (
               <span className="text-[10px] text-neutral-muted font-semibold tabular-nums leading-tight text-center">
                 {day.steps > 0 ? day.steps.toLocaleString('ru-RU') : '—'}
               </span>
             )}
             <div
-              className={`w-full flex items-end justify-center ${compact ? 'h-[80px] sm:h-[100px]' : 'h-[160px]'}`}
+              className={`relative w-full flex items-end justify-center ${
+                isDetailed ? 'h-[140px]' : 'h-[80px] sm:h-[100px]'
+              }`}
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
             >
+              {isHovered && (
+                <div className="absolute -top-11 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-lg bg-neutral-text text-white text-xs font-semibold px-2.5 py-1.5 shadow-modal pointer-events-none">
+                  {day.steps.toLocaleString('ru-RU')} шагов
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-text" />
+                </div>
+              )}
               <div
-                className={`w-full max-w-[2.25rem] rounded-t-xl transition-all ${
+                className={`w-full rounded-t-xl transition-all cursor-default ${
+                  isDetailed ? 'max-w-[1.75rem]' : 'max-w-[2.25rem]'
+                } ${
                   day.steps > 0 ? 'bg-gradient-to-t from-brand to-brand/70' : 'bg-neutral-card'
-                }`}
+                } ${isHovered ? 'brightness-110' : ''}`}
                 style={{ height: `${heightPercent}%` }}
-                title={`${day.weekdayLabel}: ${day.steps} шагов`}
               />
             </div>
-            <span className="text-[10px] sm:text-xs text-neutral-muted font-medium">
-              {day.weekdayLabel}
-            </span>
+            {isDetailed ? (
+              <div className="text-center leading-tight">
+                <div className="text-[11px] text-neutral-text font-semibold">{day.date.getDate()}</div>
+                <div className="text-[10px] text-neutral-muted">{day.weekdayLabel}</div>
+              </div>
+            ) : (
+              <span className="text-[10px] sm:text-xs text-neutral-muted font-medium">
+                {day.weekdayLabel}
+              </span>
+            )}
           </div>
         );
       })}
@@ -139,9 +165,7 @@ function StepsHistoryModal({ onClose }: { onClose: () => void }) {
             <p className="text-sm text-neutral-muted text-center py-12">Загрузка…</p>
           ) : (
             <div className="overflow-x-auto pb-2">
-              <div className="min-w-[640px]">
-                <StepsBarChart days={days30} />
-              </div>
+              <StepsBarChart days={days30} variant="detailed" />
             </div>
           )}
         </div>
@@ -254,7 +278,7 @@ export function StepsWidget({ data, isLoading, onRefresh }: StepsWidgetProps) {
           )}
         </div>
 
-        <StepsBarChart days={last7} compact />
+        <StepsBarChart days={last7} variant="compact" />
       </section>
 
       {isHistoryOpen && <StepsHistoryModal onClose={() => setIsHistoryOpen(false)} />}
