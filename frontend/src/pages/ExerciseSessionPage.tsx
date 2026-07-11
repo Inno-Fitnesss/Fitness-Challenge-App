@@ -31,33 +31,64 @@ function formatSessionValue(metric: ExerciseMetric, value: number): string {
   return metric === 'seconds' ? formatDuration(value) : String(value);
 }
 
-type WindowWithWebkitAudio = Window &
-  typeof globalThis & {
-    webkitAudioContext?: typeof AudioContext;
-  };
+const REP_CONFIRM_SOUND_URL = '/sounds/rep-confirm.wav';
+const COMPLETION_SOUND_URL = '/sounds/completion-ta-da.wav';
 
-function createAudioContext(): AudioContext | null {
-  const AudioContextConstructor =
-    window.AudioContext ?? (window as WindowWithWebkitAudio).webkitAudioContext;
-  if (!AudioContextConstructor) return null;
+function createSessionAudio(src: string, volume: number): HTMLAudioElement | null {
+  if (typeof Audio === 'undefined') return null;
 
   try {
-    return new AudioContextConstructor();
+    const audio = new Audio(src);
+    audio.preload = 'auto';
+    audio.volume = volume;
+    return audio;
   } catch {
     return null;
   }
 }
 
-const MIN_AUDIO_GAIN = 0.0001;
+function unlockSessionAudio(audio: HTMLAudioElement | null): void {
+  if (!audio) return;
 
-function disconnectAudioNodeLater(audioNode: AudioNode, delayMs: number): void {
-  window.setTimeout(() => {
-    try {
-      audioNode.disconnect();
-    } catch {
-      return;
-    }
-  }, delayMs);
+  const wasMuted = audio.muted;
+  const volume = audio.volume;
+  audio.muted = true;
+  audio.load();
+  void audio
+    .play()
+    .then(() => {
+      audio.pause();
+      audio.currentTime = 0;
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      audio.muted = wasMuted;
+      audio.volume = volume;
+    });
+}
+
+function playSessionAudio(audio: HTMLAudioElement | null): void {
+  if (!audio) return;
+
+  try {
+    audio.pause();
+    audio.currentTime = 0;
+    void audio.play().catch(() => undefined);
+  } catch {
+    return;
+  }
+}
+
+function disposeSessionAudio(audio: HTMLAudioElement | null): void {
+  if (!audio) return;
+
+  try {
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
+  } catch {
+    return;
+  }
 }
 
 export function ExerciseSessionPage() {
@@ -76,7 +107,8 @@ export function ExerciseSessionPage() {
   const [isFinishing, setIsFinishing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isTechniqueOpen, setIsTechniqueOpen] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const repSoundRef = useRef<HTMLAudioElement | null>(null);
+  const completionSoundRef = useRef<HTMLAudioElement | null>(null);
   const lastCleanRepsRef = useRef(0);
   const hasPlayedCompletionSoundRef = useRef(false);
   const soundSessionKeyRef = useRef<string | null>(null);
@@ -122,131 +154,32 @@ export function ExerciseSessionPage() {
     ? `${context.challengeId}:${context.challengeExerciseId}:${context.metric}:${context.goal}`
     : null;
 
-  const getAudioContext = useCallback(() => {
-    if (audioContextRef.current?.state === 'closed') {
-      audioContextRef.current = null;
+  const getRepSound = useCallback(() => {
+    if (!repSoundRef.current) {
+      repSoundRef.current = createSessionAudio(REP_CONFIRM_SOUND_URL, 0.72);
     }
+    return repSoundRef.current;
+  }, []);
 
-    if (!audioContextRef.current) {
-      audioContextRef.current = createAudioContext();
+  const getCompletionSound = useCallback(() => {
+    if (!completionSoundRef.current) {
+      completionSoundRef.current = createSessionAudio(COMPLETION_SOUND_URL, 0.82);
     }
-
-    return audioContextRef.current;
+    return completionSoundRef.current;
   }, []);
 
   const prepareAudio = useCallback(() => {
-    const audioContext = getAudioContext();
-    if (audioContext?.state === 'suspended') {
-      void audioContext.resume().catch(() => undefined);
-    }
-  }, [getAudioContext]);
-
-  const playWithAudio = useCallback((play: (audioContext: AudioContext) => void) => {
-    const audioContext = getAudioContext();
-    if (!audioContext) return;
-
-    const playSafely = () => {
-      try {
-        play(audioContext);
-      } catch {
-        // Audio feedback is non-critical for the workout flow.
-      }
-    };
-
-    if (audioContext.state === 'suspended') {
-      void audioContext.resume().then(playSafely).catch(() => undefined);
-      return;
-    }
-
-    playSafely();
-  }, [getAudioContext]);
+    unlockSessionAudio(getRepSound());
+    unlockSessionAudio(getCompletionSound());
+  }, [getCompletionSound, getRepSound]);
 
   const playRepSound = useCallback(() => {
-    playWithAudio((audioContext) => {
-      const now = audioContext.currentTime;
-      const masterGain = audioContext.createGain();
-      masterGain.gain.setValueAtTime(MIN_AUDIO_GAIN, now);
-      masterGain.gain.exponentialRampToValueAtTime(0.22, now + 0.008);
-      masterGain.gain.exponentialRampToValueAtTime(0.08, now + 0.045);
-      masterGain.gain.exponentialRampToValueAtTime(MIN_AUDIO_GAIN, now + 0.13);
-      masterGain.connect(audioContext.destination);
-
-      const partials: Array<{
-        frequency: number;
-        gain: number;
-        stopAt: number;
-        type: OscillatorType;
-      }> = [
-        { frequency: 1760, gain: 0.95, stopAt: 0.13, type: 'triangle' },
-        { frequency: 2637.02, gain: 0.32, stopAt: 0.09, type: 'sine' },
-      ];
-
-      partials.forEach(({ frequency, gain, stopAt, type }) => {
-        const oscillator = audioContext.createOscillator();
-        const partialGain = audioContext.createGain();
-
-        oscillator.type = type;
-        oscillator.frequency.setValueAtTime(frequency, now);
-        oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.025, now + stopAt);
-        partialGain.gain.setValueAtTime(MIN_AUDIO_GAIN, now);
-        partialGain.gain.exponentialRampToValueAtTime(gain, now + 0.006);
-        partialGain.gain.exponentialRampToValueAtTime(MIN_AUDIO_GAIN, now + stopAt);
-
-        oscillator.connect(partialGain);
-        partialGain.connect(masterGain);
-        oscillator.start(now);
-        oscillator.stop(now + stopAt);
-      });
-      disconnectAudioNodeLater(masterGain, 180);
-    });
-  }, [playWithAudio]);
+    playSessionAudio(getRepSound());
+  }, [getRepSound]);
 
   const playCompletionSound = useCallback(() => {
-    playWithAudio((audioContext) => {
-      const now = audioContext.currentTime;
-      const startOffset = 0.08;
-      const masterGain = audioContext.createGain();
-      masterGain.gain.setValueAtTime(MIN_AUDIO_GAIN, now);
-      masterGain.gain.exponentialRampToValueAtTime(0.18, now + startOffset + 0.02);
-      masterGain.gain.exponentialRampToValueAtTime(0.12, now + startOffset + 0.34);
-      masterGain.gain.exponentialRampToValueAtTime(MIN_AUDIO_GAIN, now + startOffset + 0.72);
-      masterGain.connect(audioContext.destination);
-
-      const notes: Array<{
-        frequency: number;
-        gain: number;
-        startAt: number;
-        stopAt: number;
-        type: OscillatorType;
-      }> = [
-        { frequency: 1046.5, gain: 0.56, startAt: 0, stopAt: 0.18, type: 'triangle' },
-        { frequency: 1318.51, gain: 0.52, startAt: 0.14, stopAt: 0.34, type: 'triangle' },
-        { frequency: 1567.98, gain: 0.4, startAt: 0.3, stopAt: 0.68, type: 'sine' },
-        { frequency: 2093, gain: 0.36, startAt: 0.3, stopAt: 0.7, type: 'triangle' },
-        { frequency: 3135.96, gain: 0.12, startAt: 0.34, stopAt: 0.58, type: 'sine' },
-      ];
-
-      notes.forEach(({ frequency, gain, startAt, stopAt, type }) => {
-        const oscillator = audioContext.createOscillator();
-        const partialGain = audioContext.createGain();
-        const start = now + startOffset + startAt;
-        const stop = now + startOffset + stopAt;
-
-        oscillator.type = type;
-        oscillator.frequency.setValueAtTime(frequency, start);
-        oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.992, stop);
-        partialGain.gain.setValueAtTime(MIN_AUDIO_GAIN, start);
-        partialGain.gain.exponentialRampToValueAtTime(gain, start + 0.018);
-        partialGain.gain.exponentialRampToValueAtTime(MIN_AUDIO_GAIN, stop);
-
-        oscillator.connect(partialGain);
-        partialGain.connect(masterGain);
-        oscillator.start(start);
-        oscillator.stop(stop);
-      });
-      disconnectAudioNodeLater(masterGain, 900);
-    });
-  }, [playWithAudio]);
+    playSessionAudio(getCompletionSound());
+  }, [getCompletionSound]);
 
   useEffect(() => {
     window.addEventListener('pointerdown', prepareAudio, { once: true });
@@ -254,7 +187,10 @@ export function ExerciseSessionPage() {
     return () => {
       window.removeEventListener('pointerdown', prepareAudio);
       window.removeEventListener('keydown', prepareAudio);
-      void audioContextRef.current?.close().catch(() => undefined);
+      disposeSessionAudio(repSoundRef.current);
+      disposeSessionAudio(completionSoundRef.current);
+      repSoundRef.current = null;
+      completionSoundRef.current = null;
     };
   }, [prepareAudio]);
 
