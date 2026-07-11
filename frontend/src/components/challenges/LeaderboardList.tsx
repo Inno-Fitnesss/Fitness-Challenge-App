@@ -25,7 +25,8 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-neutral-text truncate">{entry.username}</p>
         <p className="text-xs text-neutral-muted flex items-center gap-1">
-          🔥 Глобальный стрик: {entry.globalStreakDays} {pluralizeRu(entry.globalStreakDays, ['день', 'дня', 'дней'])}
+          🔥 <span className="hidden lg:inline">Глобальный стрик:</span>{' '}
+          {entry.globalStreakDays} {pluralizeRu(entry.globalStreakDays, ['день', 'дня', 'дней'])}
         </p>
       </div>
       <div className="w-16 sm:w-24 flex-shrink-0 text-right">
