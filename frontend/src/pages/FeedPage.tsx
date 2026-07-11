@@ -30,14 +30,23 @@ export function FeedPage() {
 
   return (
     <PageContainer>
-      <header className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-text">Лента</h1>
+      {/* Мобильная шапка по макету: крупный описательный заголовок без слова «Лента» */}
+      <header className="lg:hidden mb-4">
+        <h1 className="text-2xl font-extrabold text-neutral-text leading-tight">
+          Статьи о тренировках, питании и восстановлении
+        </h1>
+      </header>
+
+      {/* Десктопная шапка — без изменений */}
+      <header className="hidden lg:block mb-8">
+        <h1 className="text-3xl font-extrabold text-neutral-text">Лента</h1>
         <p className="text-sm text-neutral-muted mt-1">
           Статьи о тренировках, питании и восстановлении
         </p>
       </header>
 
-      <div className="flex flex-wrap gap-2 mb-6 sm:mb-8">
+      {/* На мобилке чипы в одну прокручиваемую строку, на десктопе — перенос как раньше */}
+      <div className="flex flex-nowrap lg:flex-wrap gap-2 mb-5 sm:mb-8 overflow-x-auto lg:overflow-visible -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {FILTERS.map((filter) => {
           const active = activeFilter === filter.value;
           return (
@@ -45,7 +54,7 @@ export function FeedPage() {
               key={filter.value}
               type="button"
               onClick={() => setActiveFilter(filter.value)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+              className={`flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
                 active
                   ? 'bg-brand text-white'
                   : 'bg-white text-neutral-secondary hover:text-neutral-text border border-neutral-border'
