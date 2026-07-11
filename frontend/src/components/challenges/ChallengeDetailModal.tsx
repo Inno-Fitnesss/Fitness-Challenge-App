@@ -297,7 +297,7 @@ export function ChallengeDetailModal({
 
                 <section>
                   <h3 className="text-base font-bold text-neutral-text mb-1">Лидерборд</h3>
-                  <p className="text-xs text-neutral-muted mb-4">сортировка по регулярности</p>
+                  <p className="text-xs text-neutral-muted mb-4">сортировка по регулярности выполнения челленджа</p>
                   <LeaderboardList entries={data.leaderboard} />
                 </section>
               </div>
