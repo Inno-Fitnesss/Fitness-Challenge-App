@@ -211,8 +211,20 @@ export function useCvSession({
               drawPose(runtime, overlayCanvas, video, landmarks);
             }
 
+            // Соотношение сторон кадра — для приведения нормализованных
+            // координат к единым единицам (наклон к горизонту).
+            const frameAspect =
+              video.videoWidth > 0 && video.videoHeight > 0
+                ? video.videoWidth / video.videoHeight
+                : 1;
+
             const analysis = landmarks
-              ? analyzerRef.current.analyze(landmarks, worldLandmarks, timestamp)
+              ? analyzerRef.current.analyze(
+                  landmarks,
+                  worldLandmarks,
+                  timestamp,
+                  frameAspect,
+                )
               : analyzerRef.current.noPose();
 
             if (isRunning) {

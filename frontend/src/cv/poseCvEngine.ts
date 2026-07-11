@@ -345,12 +345,20 @@ function calculateAngle(
 }
 
 // Наклон отрезка к горизонту — концепт кадра/гравитации, поэтому считается по
-// 2D-координатам изображения.
+// 2D-координатам изображения. Нормализованные координаты (0..1) выражены в
+// разных единицах: x — в долях ширины кадра, y — в долях высоты. Для
+// неквадратного кадра прямое atan2(dy, dx) искажает угол (по-разному в портрете
+// и ландшафте), поэтому dx приводим к «единицам высоты кадра», умножая на
+// реальное соотношение сторон (width/height):
+// dx_px / H = dx_norm * (W / H), dy_px / H = dy_norm.
 function angleToHorizontal(
   first: PoseLandmark,
   second: PoseLandmark,
+  frameAspect: number,
 ): number | null {
-  const dx = second.x - first.x;
+  const aspect =
+    Number.isFinite(frameAspect) && frameAspect > 0 ? frameAspect : 1;
+  const dx = (second.x - first.x) * aspect;
   const dy = second.y - first.y;
   if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) return null;
 
@@ -459,6 +467,7 @@ function chooseSide(
 function measureHorizontal(
   landmarks: PoseLandmark[],
   worldLandmarks: PoseLandmark[] | undefined,
+  frameAspect: number,
 ): HorizontalMeasurement {
   const leftRequired = [
     LANDMARKS.LEFT_SHOULDER,
@@ -497,7 +506,7 @@ function measureHorizontal(
       angleSource[indices.hip],
       angleSource[indices.ankle],
     ),
-    tilt: angleToHorizontal(shoulder, ankle),
+    tilt: angleToHorizontal(shoulder, ankle, frameAspect),
     shoulder,
     hip,
     ankle,
@@ -556,19 +565,24 @@ export class ExerciseAnalyzer {
     });
   }
 
+  /**
+   * @param frameAspect — соотношение сторон кадра (videoWidth / videoHeight);
+   * нужно для корректного наклона к горизонту по нормализованным координатам.
+   */
   analyze(
     landmarks: PoseLandmark[],
     worldLandmarks: PoseLandmark[] | undefined,
     timestampMs: number,
+    frameAspect = 1,
   ): CvAnalysis {
     if (this.exercise === 'squat') {
       return this.analyzeSquat(landmarks, worldLandmarks, timestampMs);
     }
     if (this.exercise === 'pushup') {
-      return this.analyzePushup(landmarks, worldLandmarks, timestampMs);
+      return this.analyzePushup(landmarks, worldLandmarks, timestampMs, frameAspect);
     }
     if (this.exercise === 'plank') {
-      return this.analyzePlank(landmarks, worldLandmarks, timestampMs);
+      return this.analyzePlank(landmarks, worldLandmarks, timestampMs, frameAspect);
     }
     return this.result('Упражнение пока не поддерживается CV', false, {
       type: 'general',
@@ -627,8 +641,9 @@ export class ExerciseAnalyzer {
     landmarks: PoseLandmark[],
     worldLandmarks: PoseLandmark[] | undefined,
     timestampMs: number,
+    frameAspect: number,
   ): CvAnalysis {
-    const measurement = measureHorizontal(landmarks, worldLandmarks);
+    const measurement = measureHorizontal(landmarks, worldLandmarks, frameAspect);
     if (
       measurement.visibility < VISIBILITY_THRESHOLD ||
       measurement.elbowAngle === null ||
@@ -709,8 +724,9 @@ export class ExerciseAnalyzer {
     landmarks: PoseLandmark[],
     worldLandmarks: PoseLandmark[] | undefined,
     timestampMs: number,
+    frameAspect: number,
   ): CvAnalysis {
-    const measurement = measureHorizontal(landmarks, worldLandmarks);
+    const measurement = measureHorizontal(landmarks, worldLandmarks, frameAspect);
     if (
       measurement.visibility < VISIBILITY_THRESHOLD ||
       measurement.bodyLine === null ||

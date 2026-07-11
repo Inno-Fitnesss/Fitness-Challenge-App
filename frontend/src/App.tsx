@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.tsx';
 import { ProtectedRoute } from './routes/ProtectedRoute.tsx';
 import { AppShell } from './components/layout/AppShell.tsx';
+import { OrientationLockOverlay } from './components/layout/OrientationLockOverlay.tsx';
 import { AuthPage } from './pages/AuthPage.tsx';
 import { AdminPage } from './pages/AdminPage.tsx';
 import { Dashboard } from './pages/Dashboard.tsx';
@@ -18,6 +19,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <OrientationLockOverlay />
         <Routes>
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/admin" element={<AdminPage />} />
