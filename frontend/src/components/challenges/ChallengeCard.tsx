@@ -252,7 +252,8 @@ function ActionBar({
 
 export function ChallengeCard(props: ChallengeCardProps) {
   const { challenge, tab, progressPercent, onOpen } = props;
-  const dateVariant = challenge.isUnlimited || tab === 'archive' ? 'orange' : 'orange';
+  // Все варианты дат сейчас оранжевые (раньше тут был мёртвый тернарник с одинаковыми ветками)
+  const dateVariant = 'orange';
 
   return (
     <article className="bg-white rounded-2xl sm:rounded-3xl shadow-card overflow-hidden">
