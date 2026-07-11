@@ -11,6 +11,8 @@ interface DiscoveryCardProps {
 }
 
 export function DiscoveryCard({ challenge, onJoin }: DiscoveryCardProps) {
+  const isJoined = challenge.joined;
+
   return (
     <div className="bg-white rounded-2xl border border-neutral-border p-5">
       <div className="flex items-start justify-between gap-2 mb-2">
@@ -42,8 +44,14 @@ export function DiscoveryCard({ challenge, onJoin }: DiscoveryCardProps) {
           <Flame size={14} className="text-brand" />
           {formatParticipants(challenge.participantCount)}
         </span>
-        <Button variant="lime" size="sm" onClick={() => onJoin(challenge.id)} className="w-full sm:w-auto">
-          Присоединиться
+        <Button
+          variant="lime"
+          size="sm"
+          disabled={isJoined}
+          onClick={() => onJoin(challenge.id)}
+          className="w-full sm:w-auto whitespace-nowrap"
+        >
+          {isJoined ? 'Вы уже присоединились' : 'Присоединиться'}
         </Button>
       </div>
     </div>
