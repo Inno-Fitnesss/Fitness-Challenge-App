@@ -161,5 +161,6 @@ export function mapPresetToDiscovery(
     scheduleLabel: formatScheduleLabel(detail.schedule_type, detail.schedule_days),
     exerciseTags: detail.exercises.map((ex) => formatExerciseTag(ex.name, ex.goal, ex.metric)),
     participantCount: detail.participants,
+    joined: detail.joined,
   };
 }
