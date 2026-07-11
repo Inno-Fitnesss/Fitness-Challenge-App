@@ -10,6 +10,33 @@ interface UseCameraStreamResult {
   stopCamera: () => void;
 }
 
+// Мобильные (тач) устройства: под вертикальный видео-блок 3:4 запрашиваем у
+// камеры кадр 4:3 — так object-cover почти ничего не обрезает. Десктоп
+// остаётся на 16:9.
+function isCoarsePointerDevice(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(pointer: coarse)').matches
+  );
+}
+
+function buildVideoConstraints(): MediaTrackConstraints {
+  if (isCoarsePointerDevice()) {
+    return {
+      facingMode: 'user',
+      width: { ideal: 960 },
+      height: { ideal: 720 },
+      aspectRatio: { ideal: 4 / 3 },
+    };
+  }
+  return {
+    facingMode: 'user',
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+  };
+}
+
 function waitForVideoFrame(video: HTMLVideoElement): Promise<void> {
   if (
     video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
@@ -80,11 +107,7 @@ export function useCameraStream(): UseCameraStreamResult {
     try {
       stopCamera('requesting');
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+        video: buildVideoConstraints(),
         audio: false,
       });
 

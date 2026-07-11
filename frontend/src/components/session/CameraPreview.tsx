@@ -75,9 +75,11 @@ export function CameraPreview({
 
       {showVideo && (
         <>
+          {/* Внутренняя красная рамка — только на десктопе; на мобилке
+              состояние показывает внешняя оранжевая рамка страницы. */}
           {hasWarning && (
             <div
-              className={`absolute inset-0 z-10 rounded-[18px] border-red-500 pointer-events-none ${
+              className={`max-lg:hidden absolute inset-0 z-10 rounded-[18px] border-red-500 pointer-events-none ${
                 warningIsCameraFraming ? 'border-[8px]' : 'border-[5px]'
               }`}
               aria-hidden="true"

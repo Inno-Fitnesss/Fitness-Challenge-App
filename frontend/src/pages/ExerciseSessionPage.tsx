@@ -424,10 +424,52 @@ export function ExerciseSessionPage() {
   const goalDisplay = formatSessionValue(context.metric, context.goal);
   const progressTrackClassName = 'bg-[#D7D7D7]/85';
   const progressFillClassName = goalReached ? 'bg-[#8ED726]' : 'bg-[#9AE52E]';
+  // Мобильная цветная рамка-состояние вокруг камеры: зелёная — упражнение
+  // завершено, оранжевая — CV-предупреждение, иначе прозрачная.
+  const mobileFrameClassName = goalReached
+    ? 'max-lg:bg-[#9AE52E]'
+    : activeWarning
+      ? 'max-lg:bg-[#F0764A]'
+      : 'max-lg:bg-transparent';
 
   return (
-    <div className="h-[100dvh] overflow-hidden bg-white">
-      <header className="h-[56px] border-b border-neutral-border/80 bg-white sm:h-[60px]">
+    <div className="h-[100dvh] overflow-hidden bg-white max-lg:flex max-lg:flex-col">
+      {/* Мобильная шапка (< lg): назад, название, счётчик, полоса прогресса */}
+      <header className="bg-white lg:hidden">
+        <div className="flex h-[60px] items-center gap-2 px-4">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="-ml-2 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-neutral-muted transition-colors active:bg-neutral-card"
+            aria-label="Назад"
+          >
+            <ArrowLeft className="h-6 w-6" strokeWidth={2.4} />
+          </button>
+          <h1 className="min-w-0 flex-1 truncate text-[21px] font-extrabold leading-tight text-neutral-text">
+            {context.exerciseName}
+          </h1>
+          <p
+            className="flex-shrink-0 whitespace-nowrap tabular-nums"
+            aria-label={`Прогресс: ${currentDisplay} из ${goalDisplay}`}
+          >
+            <span className="text-[13px] font-semibold text-neutral-muted">
+              выполнено
+            </span>{' '}
+            <span className="text-lg font-extrabold text-neutral-text">
+              {currentDisplay} / {goalDisplay}
+            </span>
+          </p>
+        </div>
+        <div className={`h-2 w-full ${progressTrackClassName}`}>
+          <div
+            className={`h-full rounded-r-full transition-[width] duration-500 ${progressFillClassName}`}
+            style={{ width: `${sessionProgress}%` }}
+          />
+        </div>
+      </header>
+
+      {/* Десктопная шапка (lg+) — без изменений */}
+      <header className="max-lg:hidden h-[56px] border-b border-neutral-border/80 bg-white sm:h-[60px]">
         <div className="mx-auto grid h-full w-full max-w-[1920px] grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-3 px-4 sm:gap-4 sm:px-7 lg:px-12">
             <button
               type="button"
@@ -466,11 +508,29 @@ export function ExerciseSessionPage() {
       </header>
 
       <main
-        className={`flex h-[calc(100dvh-56px)] w-full flex-col px-4 py-1.5 transition-colors duration-500 sm:h-[calc(100dvh-60px)] sm:px-7 sm:py-2 lg:px-12 ${
+        className={`flex w-full flex-col transition-colors duration-500 max-lg:min-h-0 max-lg:flex-1 max-lg:px-3 max-lg:pb-3 lg:h-[calc(100dvh-60px)] lg:px-12 lg:py-2 ${
           goalReached ? 'bg-[#F3FFE2]' : 'bg-[#F2F3F5]'
         }`}
       >
-        <div className="mx-auto w-full max-w-[1920px]">
+        {/* Мобильные кнопки «Инструкция» / «Сбросить счётчик» */}
+        <div className="grid grid-cols-2 gap-3 pt-3 lg:hidden">
+          <button
+            type="button"
+            onClick={handleShowTechnique}
+            className="flex h-11 items-center justify-center rounded-xl border border-[#BCDE68] bg-[#F8F4EC] px-3 text-[15px] font-semibold text-[#93C83D] transition-colors active:bg-[#F0F2DE]"
+          >
+            Инструкция
+          </button>
+          <button
+            type="button"
+            onClick={handleRestart}
+            className="flex h-11 items-center justify-center rounded-xl border border-[#F6A97F] bg-[#FBF3EC] px-3 text-[15px] font-semibold text-[#F2652D] transition-colors active:bg-[#F8E8DB]"
+          >
+            Сбросить счётчик
+          </button>
+        </div>
+
+        <div className="max-lg:hidden mx-auto w-full max-w-[1920px]">
           <div
             className={`h-2 w-full overflow-hidden rounded-full ${progressTrackClassName}`}
           >
@@ -481,19 +541,58 @@ export function ExerciseSessionPage() {
           </div>
         </div>
 
-        <section className="flex min-h-0 flex-1 items-center pb-1 pt-4 sm:pb-1.5 sm:pt-5">
-          <CameraPreview
-            videoRef={videoRef}
-            overlayCanvasRef={overlayCanvasRef}
-            status={cameraStatus}
-            errorMessage={errorMessage}
-            activeWarning={activeWarning}
-            className="mx-auto aspect-[4/3] w-full max-w-[1840px] sm:aspect-video"
-            style={{ maxWidth: 'min(1840px, max(320px, calc((100dvh - 150px) * 1.7778)))' }}
-          />
+        <section className="flex min-h-0 flex-1 max-lg:flex-col max-lg:pt-3 lg:items-center lg:pb-1.5 lg:pt-5">
+          {/* Мобильная рамка-состояние (оранжевая/зелёная); на lg+ — нейтральная обёртка */}
+          <div
+            className={`max-lg:min-h-0 max-lg:flex-1 max-lg:rounded-[28px] max-lg:p-2 max-lg:transition-colors max-lg:duration-300 ${mobileFrameClassName} lg:w-full`}
+          >
+            {/* Мобильный тёмный блок: видео 3:4 по центру, остальное — тёмный фон */}
+            <div className="relative max-lg:flex max-lg:h-full max-lg:w-full max-lg:items-center max-lg:justify-center max-lg:overflow-hidden max-lg:rounded-[20px] max-lg:bg-[#2d414a] max-lg:[container-type:size]">
+              <CameraPreview
+                videoRef={videoRef}
+                overlayCanvasRef={overlayCanvasRef}
+                status={cameraStatus}
+                errorMessage={errorMessage}
+                activeWarning={activeWarning}
+                className="mx-auto max-lg:aspect-[3/4] max-lg:max-h-full max-lg:w-[min(100%,75cqh)] lg:aspect-video lg:w-full lg:max-w-[min(1840px,max(320px,calc((100dvh_-_150px)_*_1.7778)))]"
+              />
+
+              {/* Крупный мобильный счётчик поверх камеры */}
+              {cameraStatus === 'active' && (
+                <div
+                  className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center lg:hidden"
+                  aria-hidden="true"
+                >
+                  <span className="text-[88px] font-extrabold leading-none tracking-tight text-white/95 tabular-nums drop-shadow-[0_4px_20px_rgba(0,0,0,0.45)]">
+                    {currentDisplay}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
         </section>
 
-        <footer className="rounded-2xl bg-white/70 p-2 shadow-sm backdrop-blur-sm sm:p-2.5">
+        {/* Мобильная кнопка «Сохранить и выйти» */}
+        <div className="pt-3 lg:hidden">
+          {saveError && (
+            <div
+              className="mb-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-medium text-red-600"
+              role="alert"
+            >
+              {saveError}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleFinish}
+            disabled={!goalReached || isFinishing}
+            className="flex h-14 w-full items-center justify-center rounded-2xl bg-[#9AE52E] text-lg font-bold text-white transition-colors active:bg-[#8ED726] disabled:cursor-not-allowed disabled:bg-[#D6F0A8]"
+          >
+            {isFinishing ? 'Сохраняем…' : 'Сохранить и выйти'}
+          </button>
+        </div>
+
+        <footer className="max-lg:hidden rounded-2xl bg-white/70 p-2 shadow-sm backdrop-blur-sm sm:p-2.5">
           {saveError && (
             <div
               className="mx-auto mb-3 max-w-3xl rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-medium text-red-600"

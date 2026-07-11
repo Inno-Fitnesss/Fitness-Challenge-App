@@ -10,9 +10,9 @@ interface ArticleViewProps {
 
 export function ArticleView({ article, onBack }: ArticleViewProps) {
   return (
-    <div className="min-h-[calc(100dvh-72px)] lg:min-h-screen flex flex-col">
+    <div className="min-h-[calc(100dvh-76px)] lg:min-h-screen flex flex-col">
       <div className="relative w-full">
-        <ArticlePoster article={article} className="w-full aspect-[16/9] sm:aspect-[21/9] max-h-[50vh]" />
+        <ArticlePoster article={article} className="w-full aspect-[16/10] sm:aspect-[21/9] max-h-[50vh]" />
 
         <button
           type="button"

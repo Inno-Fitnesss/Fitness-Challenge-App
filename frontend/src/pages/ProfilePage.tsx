@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Flame, Pencil, Trophy } from 'lucide-react';
+import { Flame, LogOut, Pencil, Trophy } from 'lucide-react';
 import type { AxiosError } from 'axios';
 import { authApi } from '../api/authApi.ts';
 import { stepsApi, type ApiStepsRange } from '../api/stepsApi.ts';
@@ -75,7 +75,7 @@ function PlankCard({ secondsParts }: { secondsParts: ReturnType<typeof getPlankD
 }
 
 export function ProfilePage() {
-  const { user: authUser, refreshProfile } = useAuth();
+  const { user: authUser, refreshProfile, logout } = useAuth();
   const [profile, setProfile] = useState<User | null>(authUser);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     authUser ? getStoredAvatarUrl(authUser.id) : null,
@@ -226,9 +226,20 @@ export function ProfilePage() {
 
   return (
     <PageContainer>
-      <header className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-text">Мой профиль</h1>
-        <p className="text-sm text-neutral-muted mt-1">Управление аккаунтом</p>
+      <header className="mb-6 sm:mb-8 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-text">Мой профиль</h1>
+          <p className="text-sm text-neutral-muted mt-1">Управление аккаунтом</p>
+        </div>
+        {/* На десктопе «Выйти» живёт в сайдбаре — тут кнопка только для мобилки */}
+        <button
+          type="button"
+          onClick={logout}
+          className="lg:hidden inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-brand bg-brand-light hover:bg-brand-light/70 transition-colors flex-shrink-0"
+        >
+          <LogOut size={16} />
+          Выйти
+        </button>
       </header>
 
       {error && !isEditOpen && (
