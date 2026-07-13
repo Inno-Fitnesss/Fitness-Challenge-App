@@ -24,6 +24,7 @@ import {
   canInviteToChallenge,
   canLeaveChallenge,
   canPublishChallenge,
+  canResumeChallenge,
 } from '../../utils/challengePermissions.ts';
 
 interface ChallengeDetailModalProps {
@@ -283,7 +284,9 @@ export function ChallengeDetailModal({
                 {isArchived && (
                   <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <p className="text-sm text-amber-900">
-                      Челлендж в архиве. Возобновите его, чтобы снова начать выполнение упражнений.
+                      {canResumeChallenge(challenge)
+                        ? 'Челлендж в архиве. Возобновите его, чтобы снова начать выполнение упражнений.'
+                        : `Челлендж завершился ${challenge.dateLabel} — возобновить нельзя, дата окончания прошла.`}
                     </p>
                     {onResume && (
                       <Button
@@ -291,6 +294,12 @@ export function ChallengeDetailModal({
                         size="sm"
                         className="w-full sm:w-auto flex-shrink-0"
                         onClick={() => onResume(challengeId)}
+                        disabled={!canResumeChallenge(challenge)}
+                        title={
+                          canResumeChallenge(challenge)
+                            ? undefined
+                            : 'Дата окончания уже прошла'
+                        }
                       >
                         Возобновить
                       </Button>
