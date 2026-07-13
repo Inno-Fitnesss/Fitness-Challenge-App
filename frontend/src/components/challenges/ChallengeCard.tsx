@@ -11,6 +11,7 @@ import {
   canInviteToChallenge,
   canLeaveChallenge,
   canPublishChallenge,
+  canResumeChallenge,
 } from '../../utils/challengePermissions.ts';
 
 interface ChallengeCardProps {
@@ -225,24 +226,38 @@ function ActionBar({
   }
 
   if (tab === 'archive') {
+    const resumeDisabled = !canResumeChallenge(challenge);
     return (
-      <div className="flex border-t border-neutral-border bg-neutral-card/80 rounded-b-3xl overflow-hidden">
-        <button type="button" className={`${btnClass} flex-1`} onClick={() => onResume?.(challengeId)}>
-          Возобновить
-        </button>
-        {challenge.isOwner && challenge.isPrivate && (
-          <>
-            {divider}
-            <button
-              type="button"
-              className={`${btnClass} flex-1 flex items-center justify-center gap-1 text-red-400 hover:text-red-500`}
-              onClick={() => onDelete?.(challengeId)}
-            >
-              <Trash2 size={14} />
-              Удалить
-            </button>
-          </>
+      <div className="border-t border-neutral-border bg-neutral-card/80 rounded-b-3xl overflow-hidden">
+        {resumeDisabled && (
+          <p className="px-3 sm:px-4 pt-2 text-xs text-neutral-muted text-center sm:text-left">
+            Челлендж завершился {challenge.dateLabel} — возобновить нельзя
+          </p>
         )}
+        <div className="flex">
+          <button
+            type="button"
+            className={`${btnClass} flex-1 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-neutral-secondary`}
+            onClick={() => onResume?.(challengeId)}
+            disabled={resumeDisabled}
+            title={resumeDisabled ? 'Дата окончания уже прошла — измените её, чтобы продолжить' : undefined}
+          >
+            Возобновить
+          </button>
+          {challenge.isOwner && challenge.isPrivate && (
+            <>
+              {divider}
+              <button
+                type="button"
+                className={`${btnClass} flex-1 flex items-center justify-center gap-1 text-red-400 hover:text-red-500`}
+                onClick={() => onDelete?.(challengeId)}
+              >
+                <Trash2 size={14} />
+                Удалить
+              </button>
+            </>
+          )}
+        </div>
       </div>
     );
   }
