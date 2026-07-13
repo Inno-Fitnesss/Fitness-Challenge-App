@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { challengeApi } from '../api/challengeApi.ts';
 import { useAuth } from '../context/AuthContext.tsx';
+import { useStreakCelebration } from '../context/StreakCelebrationContext.tsx';
 import { resolveExerciseReturnPath } from '../utils/exerciseNavigation.ts';
 import { todayIso } from '../utils/dateFormat.ts';
 import { CameraPreview } from '../components/session/CameraPreview.tsx';
@@ -94,7 +95,8 @@ function disposeSessionAudio(audio: HTMLAudioElement | null): void {
 export function ExerciseSessionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { refreshProfile } = useAuth();
+  const { user, refreshProfile } = useAuth();
+  const { triggerCelebration } = useStreakCelebration();
   const { challengeId, challengeExerciseId } = useParams<{
     challengeId: string;
     challengeExerciseId: string;
@@ -360,13 +362,19 @@ export function ExerciseSessionPage() {
           : currentStats.cleanReps
         : 0;
 
-      await challengeApi.submitSession(context.challengeId, {
+      const previousStreak = user?.streakCurrent ?? 0;
+
+      const result = await challengeApi.submitSession(context.challengeId, {
         challenge_exercise_id: context.challengeExerciseId,
         total_reps: measuredValue,
         clean_reps: cleanValue,
         duration_seconds:
           context.metric === 'seconds' ? currentStats.elapsedSeconds : null,
       });
+
+      if (result.user_streak > previousStreak) {
+        triggerCelebration(previousStreak, result.user_streak);
+      }
 
       await refreshProfile();
       stopCamera();
@@ -391,6 +399,8 @@ export function ExerciseSessionPage() {
     returnPath,
     refreshProfile,
     stopCamera,
+    user,
+    triggerCelebration,
   ]);
 
   const handleRestart = useCallback(() => {

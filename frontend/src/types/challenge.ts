@@ -71,10 +71,16 @@ export interface ChallengeListItem {
   dateLabel: string;
 }
 
+export interface TodayPlanExerciseTag {
+  label: string;
+  completed: boolean;
+}
+
 export interface TodayPlanItem {
   challenge: ChallengeListItem;
   progressPercent: number;
   isCompleted: boolean;
+  exercises: TodayPlanExerciseTag[];
 }
 
 export interface DiscoveryChallenge {

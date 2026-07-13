@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-type BadgeVariant = 'default' | 'orange' | 'green' | 'grey';
+type BadgeVariant = 'default' | 'orange' | 'amber' | 'green' | 'grey';
 
 interface BadgeProps {
   children: ReactNode;
@@ -12,6 +12,7 @@ interface BadgeProps {
 const variantClasses: Record<BadgeVariant, string> = {
   default: 'bg-neutral-card text-neutral-secondary',
   orange: 'bg-brand-light text-brand',
+  amber: 'bg-accent/30 text-[#F5A623]',
   green: 'bg-lime-light text-lime-hover',
   grey: 'bg-neutral-card text-neutral-secondary',
 };

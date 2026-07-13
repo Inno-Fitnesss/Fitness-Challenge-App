@@ -221,20 +221,8 @@ export function ChallengeDetailModal({
                       challenge.dateLabel
                     )}
                   </Badge>
-                  <ChallengeScheduleBadge
-                    label={challenge.scheduleLabel}
-                    className="max-lg:bg-accent/30 max-lg:text-[#DD8E1B]"
-                  />
-                  <Badge
-                    variant="grey"
-                    className={
-                      challenge.isPrivate && challenge.isOwner
-                        ? 'max-lg:hidden'
-                        : 'max-lg:bg-lime-light max-lg:text-lime-hover'
-                    }
-                  >
-                    {formatParticipants(challenge.participantCount)}
-                  </Badge>
+                  <ChallengeScheduleBadge label={challenge.scheduleLabel} />
+                  <Badge variant="green">{formatParticipants(challenge.participantCount)}</Badge>
                   {challenge.isOwner && !challenge.isPrivate && !isArchived && (
                     <Badge variant="green">Публичный</Badge>
                   )}

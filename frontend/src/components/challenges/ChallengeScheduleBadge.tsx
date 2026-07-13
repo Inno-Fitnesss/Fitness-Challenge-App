@@ -8,7 +8,7 @@ interface ChallengeScheduleBadgeProps {
 
 export function ChallengeScheduleBadge({ label, className = '' }: ChallengeScheduleBadgeProps) {
   return (
-    <Badge variant="grey" icon={<CalendarDays size={12} />} className={className}>
+    <Badge variant="amber" icon={<CalendarDays size={12} />} className={className}>
       {label}
     </Badge>
   );

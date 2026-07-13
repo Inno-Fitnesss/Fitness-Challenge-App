@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, ArrowRight, Flame, Footprints } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.tsx';
+import { useStreakCelebration, type StreakCelebration } from '../context/StreakCelebrationContext.tsx';
 import { meApi } from '../api/challengeApi.ts';
 import { stepsApi } from '../api/stepsApi.ts';
 import { pluralizeRu } from '../utils/russianPlural.ts';
@@ -42,7 +43,9 @@ function getDisplayName(username?: string, email?: string): string {
 export function Dashboard() {
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
+  const { consumeCelebration } = useStreakCelebration();
   const displayName = getDisplayName(user?.username, user?.email);
+  const [celebration, setCelebration] = useState<StreakCelebration | null>(null);
   const [selectedChallengeId, setSelectedChallengeId] = useState<number | null>(null);
   const [todayPlan, setTodayPlan] = useState<TodayPlanItem[]>([]);
   const [activeChallenges, setActiveChallenges] = useState<ChallengeListItem[]>([]);
@@ -98,6 +101,11 @@ export function Dashboard() {
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
+
+  useEffect(() => {
+    const pending = consumeCelebration();
+    if (pending) setCelebration(pending);
+  }, [consumeCelebration]);
 
   useEffect(() => {
     stepsApi
@@ -199,7 +207,11 @@ export function Dashboard() {
         </div>
         {/* На мобилке стрик показан чипом в шапке — карточка только с lg */}
         <div className="hidden lg:block">
-          <StreakWidget days={streakDays} />
+          <StreakWidget
+            days={streakDays}
+            celebration={celebration}
+            onCelebrationComplete={() => setCelebration(null)}
+          />
         </div>
       </div>
 
