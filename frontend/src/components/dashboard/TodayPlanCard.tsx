@@ -3,7 +3,6 @@ import { Badge } from '../ui/Badge.tsx';
 import { ProgressBar } from '../ui/ProgressBar.tsx';
 import { ChallengeScheduleBadge } from '../challenges/ChallengeScheduleBadge.tsx';
 import type { TodayPlanItem } from '../../types/challenge.ts';
-import { formatParticipants } from '../../utils/challengeMappers.ts';
 
 interface TodayPlanCardProps {
   item: TodayPlanItem;
@@ -11,7 +10,7 @@ interface TodayPlanCardProps {
 }
 
 export function TodayPlanCard({ item, onClick }: TodayPlanCardProps) {
-  const { challenge, progressPercent, isCompleted } = item;
+  const { challenge, progressPercent, isCompleted, exercises } = item;
 
   return (
     <button
@@ -33,8 +32,7 @@ export function TodayPlanCard({ item, onClick }: TodayPlanCardProps) {
             <Badge variant="orange" icon={<Clock size={12} />}>
               {challenge.dateLabel}
             </Badge>
-            <ChallengeScheduleBadge label={challenge.scheduleLabel} className="max-lg:bg-accent/30 max-lg:text-[#DD8E1B]" />
-            <Badge variant="grey" className="max-lg:hidden">{formatParticipants(challenge.participantCount)}</Badge>
+            <ChallengeScheduleBadge label={challenge.scheduleLabel} />
           </div>
         </div>
         {isCompleted && (
@@ -45,12 +43,14 @@ export function TodayPlanCard({ item, onClick }: TodayPlanCardProps) {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-5">
-        {challenge.exerciseTags.map((tag) => (
+        {exercises.map((exercise) => (
           <span
-            key={tag}
-            className="px-2.5 py-1 bg-neutral-card text-neutral-secondary text-xs rounded-lg"
+            key={exercise.label}
+            className={`px-2.5 py-1 text-xs rounded-lg ${
+              exercise.completed ? 'bg-lime-light text-lime-hover' : 'bg-neutral-card text-neutral-secondary'
+            }`}
           >
-            {tag}
+            {exercise.label}
           </span>
         ))}
       </div>

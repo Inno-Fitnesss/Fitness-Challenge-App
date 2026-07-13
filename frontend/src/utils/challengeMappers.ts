@@ -103,11 +103,16 @@ export function mapTodayToPlanItem(
 ): TodayPlanItem {
   const progressPercent = calcExerciseProgressPercent(today.exercises);
   const isCompleted = today.exercises.length > 0 && today.exercises.every((ex) => ex.closed);
+  const exercises = today.exercises.map((ex) => ({
+    label: formatExerciseTag(ex.name, ex.goal, ex.metric),
+    completed: Boolean(ex.closed),
+  }));
 
   return {
     challenge: mapChallengeDetailToListItem(detail),
     progressPercent,
     isCompleted,
+    exercises,
   };
 }
 

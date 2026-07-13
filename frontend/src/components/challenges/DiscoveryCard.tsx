@@ -1,4 +1,4 @@
-import { Clock, Flame } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { Badge } from '../ui/Badge.tsx';
 import { Button } from '../ui/Button.tsx';
 import { ChallengeScheduleBadge } from './ChallengeScheduleBadge.tsx';
@@ -29,13 +29,8 @@ export function DiscoveryCard({ challenge, onJoin }: DiscoveryCardProps) {
       <p className="hidden lg:block text-sm text-neutral-muted mb-3">{challenge.description}</p>
 
       <div className="flex flex-wrap gap-2 mb-3">
-        <ChallengeScheduleBadge
-          label={challenge.scheduleLabel}
-          className="max-lg:bg-accent/30 max-lg:text-[#DD8E1B]"
-        />
-        <Badge variant="green" className="lg:hidden">
-          {formatParticipants(challenge.participantCount)}
-        </Badge>
+        <ChallengeScheduleBadge label={challenge.scheduleLabel} />
+        <Badge variant="green">{formatParticipants(challenge.participantCount)}</Badge>
       </div>
 
       <div className="flex flex-wrap gap-1.5 max-lg:gap-2 mb-4">
@@ -49,11 +44,7 @@ export function DiscoveryCard({ challenge, onJoin }: DiscoveryCardProps) {
         ))}
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <span className="hidden lg:flex items-center gap-1.5 text-xs text-neutral-secondary">
-          <Flame size={14} className="text-brand" />
-          {formatParticipants(challenge.participantCount)}
-        </span>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
         <Button
           variant="lime"
           size="sm"
