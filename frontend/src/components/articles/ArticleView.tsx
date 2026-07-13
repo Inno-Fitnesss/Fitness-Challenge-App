@@ -40,11 +40,20 @@ export function ArticleView({ article, onBack }: ArticleViewProps) {
           </h1>
 
           <div className="space-y-5">
-            {article.content.map((paragraph, index) => (
-              <p key={index} className="text-base sm:text-lg text-neutral-secondary leading-relaxed">
-                {paragraph}
-              </p>
-            ))}
+            {article.content.map((block, index) =>
+              block.type === 'heading' ? (
+                <h2
+                  key={index}
+                  className="text-xl sm:text-2xl font-bold text-neutral-text pt-2 leading-snug"
+                >
+                  {block.text}
+                </h2>
+              ) : (
+                <p key={index} className="text-base sm:text-lg text-neutral-secondary leading-relaxed">
+                  {block.text}
+                </p>
+              ),
+            )}
           </div>
         </div>
       </div>
