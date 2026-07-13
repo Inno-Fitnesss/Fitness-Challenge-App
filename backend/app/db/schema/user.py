@@ -36,6 +36,19 @@ class MeUpdate(BaseModel):
     new_password: Optional[str] = Field(default=None, min_length=8)
     confirm_password: Optional[str] = None
     timezone: Optional[str] = Field(default=None, max_length=50)
+    # Partial UI-flag update: sent keys are merged into users.ui_flags
+    # (true sets the flag, false removes it); omitted keys stay untouched.
+    ui_flags: Optional[dict[str, bool]] = None
+
+    @model_validator(mode="after")
+    def _valid_ui_flags(self):
+        if self.ui_flags is not None:
+            if len(self.ui_flags) > 50:
+                raise ValueError("too many ui_flags keys")
+            for key in self.ui_flags:
+                if not key or len(key) > 100:
+                    raise ValueError("ui_flags keys must be 1-100 chars")
+        return self
 
     @model_validator(mode="after")
     def _passwords_match(self):

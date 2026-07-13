@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, Eye, EyeOff, X } from 'lucide-react';
@@ -47,6 +47,7 @@ function ForgotPasswordDialog({
   const [resendNotice, setResendNotice] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -109,20 +110,19 @@ function ForgotPasswordDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] overflow-hidden">
-      <button
-        type="button"
-        aria-label="Закрыть"
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
-
-      <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-6 pointer-events-none">
+    <div
+      ref={overlayRef}
+      onClick={(e) => {
+        if (e.target === overlayRef.current) onClose();
+      }}
+      className="fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-black/40 backdrop-blur-[2px]
+        flex items-start justify-center px-4 py-[max(3.5rem,env(safe-area-inset-top))] sm:items-center sm:py-6"
+    >
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="forgot-password-title"
-          className="pointer-events-auto relative bg-white rounded-t-3xl sm:rounded-3xl shadow-modal w-full sm:max-w-[440px] mx-auto p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:pb-6 animate-fade-in"
+          className="relative bg-white rounded-3xl shadow-modal w-full sm:max-w-[440px] p-6 animate-fade-in"
         >
           <button
             type="button"
@@ -335,7 +335,6 @@ function ForgotPasswordDialog({
             </div>
           )}
         </div>
-      </div>
     </div>
   );
 }

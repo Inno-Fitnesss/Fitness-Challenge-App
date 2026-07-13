@@ -141,9 +141,9 @@ function StepsHistoryModal({ onClose }: { onClose: () => void }) {
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
         onClick={onClose}
       />
-      <div className="absolute inset-0 flex items-center justify-center modal-safe-x py-4 pointer-events-none">
+      <div className="absolute inset-x-0 top-0 h-[100dvh] flex items-center justify-center modal-safe-x py-4 pointer-events-none">
         <div
-          className="pointer-events-auto w-full max-w-2xl max-h-[90dvh] overflow-y-auto overflow-x-hidden bg-white rounded-3xl shadow-modal p-6 sm:p-8"
+          className="pointer-events-auto w-full max-w-2xl max-h-[92dvh] overflow-y-auto overflow-x-hidden bg-white rounded-3xl shadow-modal p-6 sm:p-8"
           onClick={(event) => event.stopPropagation()}
         >
           <div className="flex items-start justify-between mb-6">

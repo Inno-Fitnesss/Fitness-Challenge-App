@@ -48,6 +48,7 @@ export interface User {
   timezone?: string;
   streakCurrent?: number;
   streakLongest?: number;
+  uiFlags?: Record<string, boolean>;
   volume?: { exercise: string; metric: string; total: number }[];
 }
 
@@ -95,6 +96,8 @@ export interface AuthContextValue {
   logout: () => void;
   checkAuth: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  /** Обновить UI-флаг аккаунта (онбординг, «больше не показывать»). Оптимистично + PATCH /me. */
+  setUiFlag: (key: string, value: boolean) => Promise<void>;
 }
 
 export interface ApiError {

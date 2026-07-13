@@ -28,6 +28,7 @@ function mapMeToUser(data: ApiMeResponse): User {
     timezone: data.timezone ?? undefined,
     streakCurrent: data.streak_current,
     streakLongest: data.streak_longest,
+    uiFlags: data.ui_flags ?? {},
     volume: data.volume,
   };
 }
@@ -129,6 +130,12 @@ export const authApi = {
     } catch {
       return currentTimezone;
     }
+  },
+
+  /** PATCH /me — обновить UI-флаги аккаунта (онбординг, «больше не показывать») */
+  async updateUiFlags(flags: Record<string, boolean>): Promise<User> {
+    const { data } = await apiClient.patch<ApiMeResponse>('/me', { ui_flags: flags });
+    return mapMeToUser(data);
   },
 
   /** GET /protected — fallback для совместимости */
