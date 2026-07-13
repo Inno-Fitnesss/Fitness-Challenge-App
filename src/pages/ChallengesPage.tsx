@@ -17,6 +17,7 @@ import type { AxiosError } from 'axios';
 import {
   fetchChallengeListItems,
   fetchDiscoveryChallenges,
+  fetchTodayProgressMap,
 } from '../api/challengeQueries.ts';
 import type { ChallengeListItem, ChallengeTab, DiscoveryChallenge } from '../types/challenge.ts';
 import { canEditChallenge } from '../utils/challengePermissions.ts';
@@ -128,6 +129,7 @@ export function ChallengesPage() {
   const [activeChallenges, setActiveChallenges] = useState<ChallengeListItem[]>([]);
   const [archivedChallenges, setArchivedChallenges] = useState<ChallengeListItem[]>([]);
   const [discovery, setDiscovery] = useState<DiscoveryChallenge[]>([]);
+  const [todayProgress, setTodayProgress] = useState<Map<number, number>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -143,14 +145,16 @@ export function ChallengesPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [active, archived, presets] = await Promise.all([
+      const [active, archived, presets, progressMap] = await Promise.all([
         fetchChallengeListItems('active'),
         fetchChallengeListItems('archived'),
         fetchDiscoveryChallenges(),
+        fetchTodayProgressMap(),
       ]);
       setActiveChallenges(active);
       setArchivedChallenges(archived);
       setDiscovery(presets);
+      setTodayProgress(progressMap);
     } catch (err) {
       const apiErr = err as { message?: string };
       setError(apiErr.message ?? 'Не удалось загрузить челленджи');
@@ -388,6 +392,9 @@ export function ChallengesPage() {
                   key={challenge.id}
                   challenge={challenge}
                   tab={activeTab}
+                  todayProgressPercent={
+                    activeTab === 'archive' ? undefined : todayProgress.get(challenge.id) ?? 0
+                  }
                   onOpen={openChallenge}
                   onCopyLink={() => void handleCopyLink(challenge)}
                   onPublish={(cid) => void handlePublish(cid)}

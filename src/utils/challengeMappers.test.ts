@@ -128,13 +128,25 @@ describe('calcExerciseProgressPercent', () => {
     expect(calcExerciseProgressPercent([])).toBe(0);
   });
 
-  it('rounds the fraction of closed exercises to a whole percent', () => {
-    const exercises = [makeExercise({ closed: true }), makeExercise({ closed: false }), makeExercise({ closed: false })];
+  it('rounds the average normalized exercise progress to a whole percent', () => {
+    const exercises = [
+      makeExercise({ goal: 50, clean_today: 25 }),
+      makeExercise({ goal: 20, clean_today: 0 }),
+      makeExercise({ goal: 120, clean_today: 60, metric: 'seconds' }),
+    ];
     expect(calcExerciseProgressPercent(exercises)).toBe(33);
   });
 
-  it('100% when every exercise is closed', () => {
-    const exercises = [makeExercise({ closed: true }), makeExercise({ closed: true })];
+  it('100% when every exercise meets its daily goal', () => {
+    const exercises = [
+      makeExercise({ goal: 10, clean_today: 10, closed: true }),
+      makeExercise({ goal: 60, clean_today: 60, metric: 'seconds', closed: true }),
+    ];
+    expect(calcExerciseProgressPercent(exercises)).toBe(100);
+  });
+
+  it('caps each exercise at 100% of its goal', () => {
+    const exercises = [makeExercise({ goal: 10, clean_today: 20, closed: true })];
     expect(calcExerciseProgressPercent(exercises)).toBe(100);
   });
 });

@@ -3,6 +3,7 @@ import { Badge } from '../ui/Badge.tsx';
 import { ChallengeScheduleBadge } from './ChallengeScheduleBadge.tsx';
 import type { ChallengeListItem, ChallengeTab } from '../../types/challenge.ts';
 import { formatParticipants } from '../../utils/challengeMappers.ts';
+import { CircularProgress } from '../ui/CircularProgress.tsx';
 import { useCopyFeedback } from '../../hooks/useCopyFeedback.ts';
 import {
   canArchiveChallenge,
@@ -15,6 +16,8 @@ import {
 interface ChallengeCardProps {
   challenge: ChallengeListItem;
   tab: ChallengeTab;
+  /** Daily progress 0–100 when the challenge is scheduled for today; omit on archive/off-days. */
+  todayProgressPercent?: number;
   onOpen: (id: number) => void;
   onCopyLink?: (id: number) => void;
   onPublish?: (id: number) => void;
@@ -175,42 +178,56 @@ function ActionBar({
 }
 
 export function ChallengeCard(props: ChallengeCardProps) {
-  const { challenge, tab, onOpen } = props;
+  const { challenge, tab, todayProgressPercent, onOpen } = props;
   const dateVariant = challenge.isUnlimited || tab === 'archive' ? 'orange' : 'orange';
+  const showTodayProgress = tab !== 'archive' && todayProgressPercent != null;
 
   return (
     <article className="bg-white rounded-2xl sm:rounded-3xl shadow-card overflow-hidden">
-      <button
-        type="button"
-        onClick={() => onOpen(challenge.id)}
-        className="w-full text-left p-4 sm:p-6 hover:bg-neutral-card/30 transition-colors"
-      >
-        <h3 className="text-base sm:text-lg font-bold text-neutral-text mb-3 truncate" title={challenge.title}>
-          {challenge.title}
-        </h3>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => onOpen(challenge.id)}
+          className={`w-full text-left p-4 sm:p-6 hover:bg-neutral-card/30 transition-colors ${
+            showTodayProgress ? 'pr-32 sm:pr-36' : ''
+          }`}
+        >
+          <h3 className="text-base sm:text-lg font-bold text-neutral-text mb-3 truncate" title={challenge.title}>
+            {challenge.title}
+          </h3>
 
-        <div className="flex flex-wrap gap-2 mb-3 sm:mb-4">
-          <Badge variant={dateVariant} icon={<Clock size={12} />}>
-            {challenge.dateLabel}
-          </Badge>
-          <ChallengeScheduleBadge label={challenge.scheduleLabel} />
-          <Badge variant="grey">{formatParticipants(challenge.participantCount)}</Badge>
-          {tab === 'group' && !challenge.isPrivate && (
-            <Badge variant="green">Публичный</Badge>
-          )}
-        </div>
+          <div className="flex flex-wrap gap-2 mb-3 sm:mb-4">
+            <Badge variant={dateVariant} icon={<Clock size={12} />}>
+              {challenge.dateLabel}
+            </Badge>
+            <ChallengeScheduleBadge label={challenge.scheduleLabel} />
+            <Badge variant="grey">{formatParticipants(challenge.participantCount)}</Badge>
+            {tab === 'group' && !challenge.isPrivate && (
+              <Badge variant="green">Публичный</Badge>
+            )}
+          </div>
 
-        <div className="flex flex-wrap gap-2">
-          {challenge.exerciseTags.map((tag) => (
-            <span
-              key={tag}
-              className="px-2.5 py-1 bg-neutral-card text-neutral-secondary text-xs rounded-lg"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </button>
+          <div className="flex flex-wrap gap-2">
+            {challenge.exerciseTags.map((tag) => (
+              <span
+                key={tag}
+                className="px-2.5 py-1 bg-neutral-card text-neutral-secondary text-xs rounded-lg"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </button>
+
+        {showTodayProgress && (
+          <div
+            className="absolute right-24 sm:right-28 top-8 sm:top-10 pointer-events-none"
+            aria-hidden="true"
+          >
+            <CircularProgress value={todayProgressPercent} size={84} strokeWidth={6} />
+          </div>
+        )}
+      </div>
 
       <ActionBar {...props} />
     </article>
