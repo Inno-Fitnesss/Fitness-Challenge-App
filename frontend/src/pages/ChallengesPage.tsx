@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/Button.tsx';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog.tsx';
 import { PageTabs } from '../components/ui/PageTabs.tsx';
@@ -107,6 +107,8 @@ function DiscoveryCarousel({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  // Развёрнутый список всех готовых челленджей (только мобильный вид)
+  const [expanded, setExpanded] = useState(false);
 
   const handleScroll = () => {
     const el = scrollRef.current;
@@ -116,13 +118,55 @@ function DiscoveryCarousel({
     setActiveIndex(Math.min(Math.max(index, 0), discovery.length - 1));
   };
 
+  const canExpand = discovery.length > 0;
+
+  if (expanded) {
+    return (
+      <section className="lg:hidden mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            aria-label="Назад"
+            className="flex items-center gap-0.5 -ml-1 py-1 pr-2 text-sm font-semibold text-neutral-muted active:opacity-70"
+          >
+            <ChevronLeft size={22} />
+            Назад
+          </button>
+          <h2 className="text-2xl font-extrabold text-neutral-text">Готовые челленджи</h2>
+        </div>
+
+        <div className="space-y-3">
+          {discovery.map((challenge) => (
+            <DiscoveryCard
+              key={challenge.id}
+              challenge={challenge}
+              onJoin={() => onJoin(challenge.id)}
+            />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="lg:hidden mb-6">
       <div className="flex items-baseline justify-between gap-3 mb-4">
         <h2 className="text-2xl font-extrabold text-neutral-text">Обзор</h2>
-        <span className="text-sm font-semibold text-neutral-muted text-right">
-          Готовые челленджи
-        </span>
+        {canExpand ? (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="flex items-center gap-0.5 text-sm font-semibold text-neutral-muted text-right active:opacity-70"
+          >
+            Готовые челленджи
+            <ChevronRight size={16} />
+          </button>
+        ) : (
+          <span className="text-sm font-semibold text-neutral-muted text-right">
+            Готовые челленджи
+          </span>
+        )}
       </div>
 
       {discovery.length === 0 && !isLoading && (
