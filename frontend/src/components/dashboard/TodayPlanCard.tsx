@@ -29,7 +29,7 @@ export function TodayPlanCard({ item, onClick }: TodayPlanCardProps) {
             </p>
           )}
           <div className="flex flex-wrap gap-2">
-            <Badge variant="orange" icon={<Clock size={12} />}>
+            <Badge variant="orange" icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap">
               {challenge.dateLabel}
             </Badge>
             <ChallengeScheduleBadge label={challenge.scheduleLabel} />
