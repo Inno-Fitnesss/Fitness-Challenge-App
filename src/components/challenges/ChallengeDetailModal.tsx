@@ -18,10 +18,13 @@ import {
 import { ChallengeScheduleBadge } from './ChallengeScheduleBadge.tsx';
 import { LeaderboardList } from './LeaderboardList.tsx';
 import {
+  canArchiveChallenge,
+  canDeleteChallenge,
   canEditChallenge,
   canInviteToChallenge,
   canLeaveChallenge,
   canPublishChallenge,
+  canResumeChallenge,
 } from '../../utils/challengePermissions.ts';
 
 interface ChallengeDetailModalProps {
@@ -32,6 +35,8 @@ interface ChallengeDetailModalProps {
   onPublish?: (challengeId: number) => void;
   onCopyLink?: () => void;
   onLeave?: (challengeId: number) => void;
+  onArchive?: (challengeId: number) => void;
+  onDelete?: (challengeId: number) => void;
   returnTarget?: ExerciseReturnTarget;
 }
 
@@ -70,24 +75,38 @@ function ExerciseItem({ exercise, challengeId, isArchived, returnTarget, onStart
 
   return (
     <div className="py-4 border-b border-neutral-border last:border-0">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
+      {/* На мобильном макете строка: название и цель слева, кнопка справа */}
+      <div className="flex flex-row items-center sm:items-start justify-between gap-3 lg:mb-2">
         <div className="min-w-0">
-          <h4 className="font-semibold text-neutral-text">{exercise.name}</h4>
+          <h4 className="font-semibold text-neutral-text max-lg:text-base">{exercise.name}</h4>
           <p className="text-sm text-neutral-muted">{formatGoal(exercise)}</p>
         </div>
         <Button
           variant={isCompleted ? 'lime' : 'primary'}
           size="sm"
-          className={`w-full sm:w-auto flex-shrink-0 ${isCompleted && !isArchived ? 'opacity-90' : ''}`}
+          className={`flex-shrink-0 max-lg:rounded-2xl max-lg:px-4 max-lg:py-2.5 max-lg:text-sm ${isCompleted && !isArchived ? 'opacity-90' : ''}`}
           onClick={handleStart}
           disabled={isArchived}
           title={isArchived ? 'Сначала возобновите челлендж из архива' : undefined}
         >
-          {isArchived ? 'Недоступно' : isCompleted ? 'Повторить' : 'Начать'}
+          {isArchived ? (
+            'Недоступно'
+          ) : isCompleted ? (
+            <>
+              <span className="lg:hidden">Выполнено</span>
+              <span className="hidden lg:inline">Повторить</span>
+            </>
+          ) : (
+            'Начать'
+          )}
         </Button>
       </div>
-      <ProgressBar value={percent} color={isCompleted ? 'orange' : 'grey'} className="mb-1.5" />
-      <p className={`text-xs ${isCompleted ? 'text-lime-hover' : 'text-neutral-muted'}`}>
+      <ProgressBar
+        value={percent}
+        color={isCompleted ? 'orange' : 'grey'}
+        className="mb-1.5 max-lg:hidden"
+      />
+      <p className={`max-lg:hidden text-xs ${isCompleted ? 'text-lime-hover' : 'text-neutral-muted'}`}>
         {isArchived
           ? 'Выполнение недоступно — челлендж в архиве'
           : formatStatus(exercise)}
@@ -104,6 +123,8 @@ export function ChallengeDetailModal({
   onPublish,
   onCopyLink,
   onLeave,
+  onArchive,
+  onDelete,
   returnTarget = { type: 'challenge', challengeId },
 }: ChallengeDetailModalProps) {
   const { user } = useAuth();
@@ -192,16 +213,24 @@ export function ChallengeDetailModal({
                 </h2>
                 <div className="flex flex-wrap gap-2 mb-3">
                   <Badge variant="orange" icon={<Clock size={12} />}>
-                    {challenge.dateLabel}
+                    {challenge.isUnlimited ? (
+                      <>
+                        <span className="lg:hidden">бессрочный</span>
+                        <span className="hidden lg:inline">{challenge.dateLabel}</span>
+                      </>
+                    ) : (
+                      challenge.dateLabel
+                    )}
                   </Badge>
                   <ChallengeScheduleBadge label={challenge.scheduleLabel} />
-                  <Badge variant="grey">{formatParticipants(challenge.participantCount)}</Badge>
+                  <Badge variant="green">{formatParticipants(challenge.participantCount)}</Badge>
                   {challenge.isOwner && !challenge.isPrivate && !isArchived && (
                     <Badge variant="green">Публичный</Badge>
                   )}
                   {isArchived && <Badge variant="grey">В архиве</Badge>}
                 </div>
-                <div className="flex flex-wrap gap-2 mb-3">
+                {/* Действия в шапке — только десктоп; на мобильных кнопки внизу модалки */}
+                <div className="hidden lg:flex flex-wrap gap-2 mb-3">
                   {canEditChallenge(challenge) && onEdit && (
                     <Button
                       variant="secondary"
@@ -255,7 +284,9 @@ export function ChallengeDetailModal({
                 {isArchived && (
                   <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <p className="text-sm text-amber-900">
-                      Челлендж в архиве. Возобновите его, чтобы снова начать выполнение упражнений.
+                      {canResumeChallenge(challenge)
+                        ? 'Челлендж в архиве. Возобновите его, чтобы снова начать выполнение упражнений.'
+                        : `Челлендж завершился ${challenge.dateLabel} — возобновить нельзя, дата окончания прошла.`}
                     </p>
                     {onResume && (
                       <Button
@@ -263,6 +294,12 @@ export function ChallengeDetailModal({
                         size="sm"
                         className="w-full sm:w-auto flex-shrink-0"
                         onClick={() => onResume(challengeId)}
+                        disabled={!canResumeChallenge(challenge)}
+                        title={
+                          canResumeChallenge(challenge)
+                            ? undefined
+                            : 'Дата окончания уже прошла'
+                        }
                       >
                         Возобновить
                       </Button>
@@ -278,7 +315,7 @@ export function ChallengeDetailModal({
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
                 <section>
-                  <h3 className="text-base font-bold text-neutral-text mb-2">Упражнения</h3>
+                  <h3 className="text-base max-lg:text-lg font-bold text-neutral-text mb-2">Упражнения</h3>
                   {data.exercises.length === 0 ? (
                     <p className="text-sm text-neutral-muted">Нет упражнений</p>
                   ) : (
@@ -295,12 +332,79 @@ export function ChallengeDetailModal({
                   )}
                 </section>
 
-                <section>
-                  <h3 className="text-base font-bold text-neutral-text mb-1">Лидерборд</h3>
-                  <p className="text-xs text-neutral-muted mb-4">сортировка по регулярности</p>
+                {/* На мобильном макете личного челленджа рейтинга нет */}
+                <section className={challenge.isPrivate && challenge.isOwner ? 'max-lg:hidden' : ''}>
+                  <h3 className="text-base max-lg:text-lg font-bold text-neutral-text mb-1">
+                    <span className="lg:hidden">Рейтинг</span>
+                    <span className="hidden lg:inline">Лидерборд</span>
+                  </h3>
+                  <p className="text-xs text-neutral-muted mb-4">сортировка по регулярности выполнения челленджа</p>
                   <LeaderboardList entries={data.leaderboard} />
                 </section>
               </div>
+
+              {/* Мобильный блок действий внизу модалки (по макету) */}
+              {!isArchived && (
+                <div className="lg:hidden mt-6 space-y-2.5">
+                  {canInviteToChallenge(challenge) && onCopyLink && (
+                    <Button
+                      variant="lime"
+                      size="lg"
+                      fullWidth
+                      onClick={() => {
+                        markLinkCopied();
+                        onCopyLink?.();
+                      }}
+                      disabled={linkCopied}
+                    >
+                      {linkCopied ? 'Скопировано!' : 'Скопировать ссылку-приглашение'}
+                    </Button>
+                  )}
+                  {canPublishChallenge(challenge) && onPublish && (
+                    <Button variant="lime" size="lg" fullWidth onClick={() => onPublish(challengeId)}>
+                      Сделать публичным
+                    </Button>
+                  )}
+                  {canEditChallenge(challenge) && onEdit && (
+                    <button
+                      type="button"
+                      onClick={() => onEdit(challengeId)}
+                      className="w-full px-6 py-3 text-sm font-semibold text-lime-hover border border-lime rounded-2xl hover:bg-lime-pale transition-colors"
+                    >
+                      Редактировать
+                    </button>
+                  )}
+                  {((canDeleteChallenge(challenge) && onDelete) ||
+                    (canArchiveChallenge(challenge) && onArchive)) && (
+                    <div className="flex gap-2.5">
+                      {canDeleteChallenge(challenge) && onDelete && (
+                        <Button
+                          variant="primary"
+                          size="lg"
+                          className="flex-1"
+                          onClick={() => onDelete(challengeId)}
+                        >
+                          Удалить
+                        </Button>
+                      )}
+                      {canArchiveChallenge(challenge) && onArchive && (
+                        <button
+                          type="button"
+                          onClick={() => onArchive(challengeId)}
+                          className="flex-1 px-6 py-3 text-sm font-semibold text-brand border border-brand rounded-2xl hover:bg-brand-light transition-colors"
+                        >
+                          В архив
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {canLeaveChallenge(challenge) && onLeave && (
+                    <Button variant="primary" size="lg" fullWidth onClick={() => onLeave(challengeId)}>
+                      Покинуть
+                    </Button>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>

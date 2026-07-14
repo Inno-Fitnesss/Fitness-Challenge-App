@@ -383,15 +383,16 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
         type="button"
         onClick={requestClose}
         disabled={isSubmitting}
-        className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 bg-brand text-white text-sm font-semibold rounded-2xl hover:bg-brand-hover transition-colors disabled:opacity-50"
+        className="flex-1 lg:flex-none px-4 lg:px-5 py-2.5 max-lg:py-3 bg-brand text-white text-sm font-semibold rounded-2xl max-lg:rounded-full hover:bg-brand-hover transition-colors disabled:opacity-50"
       >
-        {isEdit ? 'Отменить' : 'Закрыть'}
+        <span className="lg:hidden">Отменить</span>
+        <span className="hidden lg:inline">{isEdit ? 'Отменить' : 'Закрыть'}</span>
       </button>
       <button
         type="button"
         onClick={() => void handleSubmit()}
         disabled={!valid || isSubmitting || isLoading}
-        className={`flex-1 sm:flex-none px-4 sm:px-5 py-2.5 text-sm font-semibold rounded-2xl transition-colors disabled:cursor-not-allowed ${
+        className={`flex-1 lg:flex-none px-4 lg:px-5 py-2.5 max-lg:py-3 text-sm font-semibold rounded-2xl max-lg:rounded-full transition-colors disabled:cursor-not-allowed ${
           valid && !isLoading
             ? 'bg-lime text-neutral-text hover:bg-lime-hover'
             : 'bg-neutral-border text-neutral-secondary'
@@ -417,10 +418,10 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
         onClick={requestClose}
       />
 
-      <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-start sm:justify-center sm:p-6 pointer-events-none">
+      <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-6 pointer-events-none">
         <div
           className="pointer-events-auto relative flex flex-col w-full max-w-full sm:max-w-3xl mx-auto bg-white rounded-t-3xl sm:rounded-3xl shadow-modal animate-fade-in
-            max-h-[min(92dvh,100%)] sm:max-h-[calc(100dvh-3rem)] sm:my-8 min-h-0 min-w-0 overflow-hidden"
+            max-h-[min(92dvh,100%)] sm:max-h-[calc(100dvh-3rem)] min-h-0 min-w-0 overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
         {showDiscardConfirm && (
@@ -477,7 +478,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
                 {name.length}/{CHALLENGE_NAME_MAX_LENGTH}
               </p>
             </div>
-            <div className="hidden sm:flex gap-3 flex-shrink-0">{actionButtons}</div>
+            <div className="hidden lg:flex gap-3 flex-shrink-0">{actionButtons}</div>
           </div>
         </div>
 
@@ -493,7 +494,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
           ) : (
             <div className="space-y-5 sm:space-y-6 pb-2 min-w-0 w-full">
               <section className="min-w-0">
-                <h2 className="text-sm font-bold text-neutral-text mb-3">Длительность</h2>
+                <h2 className="max-lg:hidden text-sm font-bold text-neutral-text mb-3">Длительность</h2>
                 <div className="space-y-4">
                   <DateField
                     id="start-date"
@@ -569,7 +570,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
                     type="button"
                     onClick={addRow}
                     disabled={rows.length >= exercises.length}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-brand text-white text-xs sm:text-sm font-semibold rounded-xl hover:bg-brand-hover transition-colors disabled:opacity-50 w-full sm:w-auto"
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 max-lg:py-2.5 bg-brand text-white text-xs sm:text-sm font-semibold rounded-xl max-lg:rounded-full hover:bg-brand-hover transition-colors disabled:opacity-50 w-full lg:w-auto"
                   >
                     <Plus size={14} />
                     Добавить упражнение
@@ -594,7 +595,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
           )}
         </div>
 
-        <div className="flex-shrink-0 sm:hidden flex gap-2 modal-safe-x pt-4 border-t border-neutral-border bg-white pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="flex-shrink-0 lg:hidden flex gap-2.5 modal-safe-x pt-4 border-t border-neutral-border bg-white pb-[max(1rem,env(safe-area-inset-bottom))]">
           {actionButtons}
         </div>
         </div>

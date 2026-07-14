@@ -28,7 +28,7 @@ export function CameraSetupOverlay({ message, type = 'camera' }: CameraSetupOver
 
   return (
     <div
-      className="flex items-start gap-2.5 rounded-2xl border border-red-400/60 bg-red-600/90 text-white px-3.5 py-2.5 shadow-lg backdrop-blur-sm animate-fade-in"
+      className="flex max-w-[min(92%,520px)] items-start gap-2.5 rounded-2xl border-2 border-red-300/80 bg-red-600/90 text-white px-3.5 py-2.5 shadow-lg backdrop-blur-sm animate-fade-in"
       role="alert"
       aria-live="assertive"
     >

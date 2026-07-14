@@ -4,7 +4,6 @@ import {
   mapLeaderboard,
   mapPresetToDiscovery,
   mapTodayToPlanItem,
-  calcExerciseProgressPercent,
 } from '../utils/challengeMappers.ts';
 import { meApi, challengeApi } from './challengeApi.ts';
 import type { ChallengeListItem, DiscoveryChallenge, TodayPlanItem } from '../types/challenge.ts';
@@ -51,15 +50,6 @@ export async function fetchDiscoveryChallenges(): Promise<DiscoveryChallenge[]> 
     presets.map((p) => challengeApi.getDetail(p.id)),
   );
   return presets.map((preset, i) => mapPresetToDiscovery(preset, details[i]));
-}
-
-export async function fetchTodayProgressMap(): Promise<Map<number, number>> {
-  const today = await meApi.getToday();
-  const map = new Map<number, number>();
-  for (const item of today) {
-    map.set(item.id, calcExerciseProgressPercent(item.exercises));
-  }
-  return map;
 }
 
 export async function fetchTodayPlan(): Promise<TodayPlanItem[]> {

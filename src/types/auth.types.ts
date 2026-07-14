@@ -68,6 +68,14 @@ export interface LoginCredentials {
   password: string;
 }
 
+/** Данные для POST /auth/reset-password (camelCase, маппится в snake_case) */
+export interface ResetPasswordData {
+  email: string;
+  code: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export interface RegisterData {
   username: string;
   email: string;
@@ -82,6 +90,7 @@ export interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials, redirectTo?: string) => Promise<void>;
+  loginWithGoogle: (idToken: string, redirectTo?: string) => Promise<void>;
   register: (data: RegisterData, redirectTo?: string) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;

@@ -59,6 +59,7 @@ export interface ApiLeaderboardEntry {
   username: string;
   days_completed: number;
   challenge_streak: number;
+  user_streak: number;
   total_clean_reps: number;
 }
 

@@ -91,10 +91,8 @@ export function mapChallengeDetailToListItem(detail: ApiChallengeDetail): Challe
 export function calcExerciseProgressPercent(exercises: ApiChallengeExercise[]): number {
   if (exercises.length === 0) return 0;
   const sum = exercises.reduce((acc, ex) => {
-    if (ex.closed) return acc + 1;
-    if (ex.goal <= 0) return acc;
-    const done = ex.clean_today ?? 0;
-    return acc + Math.min(done / ex.goal, 1);
+    if (!ex.closed) return acc;
+    return acc + 1;
   }, 0);
   return Math.round((sum / exercises.length) * 100);
 }
@@ -105,11 +103,16 @@ export function mapTodayToPlanItem(
 ): TodayPlanItem {
   const progressPercent = calcExerciseProgressPercent(today.exercises);
   const isCompleted = today.exercises.length > 0 && today.exercises.every((ex) => ex.closed);
+  const exercises = today.exercises.map((ex) => ({
+    label: formatExerciseTag(ex.name, ex.goal, ex.metric),
+    completed: Boolean(ex.closed),
+  }));
 
   return {
     challenge: mapChallengeDetailToListItem(detail),
     progressPercent,
     isCompleted,
+    exercises,
   };
 }
 
@@ -139,13 +142,11 @@ export function mapLeaderboard(
   entries: ApiLeaderboardEntry[],
   currentUsername?: string,
 ): LeaderboardEntry[] {
-  const maxDays = Math.max(...entries.map((e) => e.days_completed), 1);
-
   return entries.map((entry) => ({
     rank: entry.place,
     username: entry.username,
-    streakDays: entry.challenge_streak,
-    progressPercent: Math.round((entry.days_completed / maxDays) * 100),
+    globalStreakDays: entry.user_streak,
+    challengeStreakDays: entry.challenge_streak,
     isCurrentUser: entry.username === currentUsername,
     avatarColor: avatarColorForUsername(entry.username),
   }));
@@ -165,5 +166,6 @@ export function mapPresetToDiscovery(
     scheduleLabel: formatScheduleLabel(detail.schedule_type, detail.schedule_days),
     exerciseTags: detail.exercises.map((ex) => formatExerciseTag(ex.name, ex.goal, ex.metric)),
     participantCount: detail.participants,
+    joined: detail.joined,
   };
 }

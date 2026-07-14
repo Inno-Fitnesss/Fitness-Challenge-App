@@ -8,6 +8,7 @@ const ERROR_TRANSLATIONS: Record<string, string> = {
   'Invalid Authentication Credentials': 'Сессия истекла. Войдите снова.',
   'Email already taken': 'Этот email уже используется.',
   'passwords do not match': 'Пароли не совпадают.',
+  'Invalid or expired code': 'Неверный или истёкший код. Проверьте код или запросите новый.',
   'both password fields are required': 'Заполните оба поля пароля.',
   'Already joined': 'Вы уже участвуете в этом челлендже.',
   'Challenge not found': 'Челлендж не найден.',

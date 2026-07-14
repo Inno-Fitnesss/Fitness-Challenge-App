@@ -31,8 +31,10 @@ export interface ExerciseProgress {
 export interface LeaderboardEntry {
   rank: number;
   username: string;
-  streakDays: number;
-  progressPercent: number;
+  /** User's global (cross-challenge) streak — shown next to the flame icon. */
+  globalStreakDays: number;
+  /** Current streak within THIS challenge — also what the ranking is based on. */
+  challengeStreakDays: number;
   isCurrentUser?: boolean;
   avatarColor: string;
 }
@@ -69,10 +71,16 @@ export interface ChallengeListItem {
   dateLabel: string;
 }
 
+export interface TodayPlanExerciseTag {
+  label: string;
+  completed: boolean;
+}
+
 export interface TodayPlanItem {
   challenge: ChallengeListItem;
   progressPercent: number;
   isCompleted: boolean;
+  exercises: TodayPlanExerciseTag[];
 }
 
 export interface DiscoveryChallenge {
@@ -85,6 +93,7 @@ export interface DiscoveryChallenge {
   scheduleLabel: string;
   exerciseTags: string[];
   participantCount: number;
+  joined: boolean;
 }
 
 export interface ChallengeModalData {
