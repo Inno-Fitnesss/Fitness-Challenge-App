@@ -12,7 +12,7 @@ import { StreakWidget } from '../components/dashboard/StreakWidget.tsx';
 import { TodayPlanCard } from '../components/dashboard/TodayPlanCard.tsx';
 import { ChallengeDetailModal } from '../components/challenges/ChallengeDetailModal.tsx';
 import { ArticleCompactCard } from '../components/articles/ArticleCompactCard.tsx';
-import { EXERCISE_ARTICLES } from '../data/articles.ts';
+import { ALL_ARTICLES } from '../data/articles.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { fetchChallengeListItems, fetchTodayPlan } from '../api/challengeQueries.ts';
 import {
@@ -280,7 +280,7 @@ export function Dashboard() {
           </div>
 
           <div className="space-y-4">
-            {EXERCISE_ARTICLES.map((article) => (
+            {ALL_ARTICLES.map((article) => (
               <ArticleCompactCard
                 key={article.id}
                 article={article}

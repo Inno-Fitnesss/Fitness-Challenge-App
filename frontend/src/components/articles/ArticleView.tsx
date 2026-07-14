@@ -10,9 +10,9 @@ interface ArticleViewProps {
 
 export function ArticleView({ article, onBack }: ArticleViewProps) {
   return (
-    <div className="min-h-[calc(100dvh-76px)] lg:min-h-screen flex flex-col">
+    <div className="min-h-[calc(100dvh-72px)] lg:min-h-screen flex flex-col">
       <div className="relative w-full">
-        <ArticlePoster article={article} className="w-full aspect-[16/10] sm:aspect-[21/9] max-h-[50vh]" />
+        <ArticlePoster article={article} className="w-full aspect-[16/9] sm:aspect-[21/9] max-h-[50vh]" />
 
         <button
           type="button"
@@ -40,11 +40,20 @@ export function ArticleView({ article, onBack }: ArticleViewProps) {
           </h1>
 
           <div className="space-y-5">
-            {article.content.map((paragraph, index) => (
-              <p key={index} className="text-base sm:text-lg text-neutral-secondary leading-relaxed">
-                {paragraph}
-              </p>
-            ))}
+            {article.content.map((block, index) =>
+              block.type === 'heading' ? (
+                <h2
+                  key={index}
+                  className="text-xl sm:text-2xl font-bold text-neutral-text pt-2 leading-snug"
+                >
+                  {block.text}
+                </h2>
+              ) : (
+                <p key={index} className="text-base sm:text-lg text-neutral-secondary leading-relaxed">
+                  {block.text}
+                </p>
+              ),
+            )}
           </div>
         </div>
       </div>

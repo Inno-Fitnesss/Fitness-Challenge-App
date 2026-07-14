@@ -294,7 +294,7 @@ export function ChallengeCard(props: ChallengeCardProps) {
         </div>
 
         <div className="flex flex-wrap gap-2 mb-3 sm:mb-4">
-          <Badge variant={dateVariant} icon={<Clock size={12} />}>
+          <Badge variant={dateVariant} icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap">
             {challenge.isUnlimited ? (
               <>
                 <span className="lg:hidden">бессрочный</span>
