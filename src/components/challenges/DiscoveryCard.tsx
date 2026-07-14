@@ -19,7 +19,7 @@ export function DiscoveryCard({ challenge, onJoin }: DiscoveryCardProps) {
         <h3 className="font-bold text-neutral-text truncate min-w-0 max-lg:text-lg" title={challenge.title}>
           {challenge.title}
         </h3>
-        <Badge variant="orange" icon={<Clock size={12} />}>
+        <Badge variant="orange" icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap">
           <span className="lg:hidden">бессрочный</span>
           <span className="hidden lg:inline">без ограничений</span>
         </Badge>

@@ -212,7 +212,7 @@ export function ChallengeDetailModal({
                   {challenge.title}
                 </h2>
                 <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge variant="orange" icon={<Clock size={12} />}>
+                  <Badge variant="orange" icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap">
                     {challenge.isUnlimited ? (
                       <>
                         <span className="lg:hidden">бессрочный</span>
