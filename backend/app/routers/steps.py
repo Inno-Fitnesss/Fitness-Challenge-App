@@ -10,6 +10,7 @@ from app.db.schema.steps import (
     StepsSyncPayload, StepsSyncResult, StepsRangeOut, StepsDayOut,
 )
 from app.db.models.steps import StepsDaily
+from app.db.models.withings import WithingsConnection
 
 stepsRouter = APIRouter()
 
@@ -61,13 +62,22 @@ def get_steps(
         .order_by(StepsDaily.date.asc())
         .all()
     )
+    # "Connected" means steps can be expected here: either some steps were
+    # ever synced (mobile companion app path, which has no connection row)
+    # or a Withings account is linked — even if it has no step data yet,
+    # otherwise the widget keeps offering to connect right after linking.
     any_row_ever = (
         db.query(StepsDaily.id).filter(StepsDaily.user_id == user.id).first() is not None
+    )
+    withings_linked = (
+        db.query(WithingsConnection.id)
+        .filter(WithingsConnection.user_id == user.id)
+        .first() is not None
     )
     last_synced = max((r.synced_at for r in rows if r.synced_at), default=None)
     return StepsRangeOut(
         days=[StepsDayOut(date=r.date, step_count=r.step_count, source=r.source) for r in rows],
         total_steps=sum(r.step_count for r in rows),
-        connected=any_row_ever,
+        connected=any_row_ever or withings_linked,
         last_synced_at=last_synced.isoformat() if last_synced else None,
     )
