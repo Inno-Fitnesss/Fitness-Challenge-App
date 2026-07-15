@@ -4,6 +4,7 @@ import { StreakCelebrationProvider } from './context/StreakCelebrationContext.ts
 import { ProtectedRoute } from './routes/ProtectedRoute.tsx';
 import { AppShell } from './components/layout/AppShell.tsx';
 import { OrientationLockOverlay } from './components/layout/OrientationLockOverlay.tsx';
+import { OfflineBanner } from './components/ui/OfflineBanner.tsx';
 import { AuthPage } from './pages/AuthPage.tsx';
 import { AdminPage } from './pages/AdminPage.tsx';
 import { Dashboard } from './pages/Dashboard.tsx';
@@ -22,6 +23,7 @@ function App() {
       <AuthProvider>
         <StreakCelebrationProvider>
           <OrientationLockOverlay />
+          <OfflineBanner />
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/admin" element={<AdminPage />} />

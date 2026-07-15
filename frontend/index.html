@@ -2,12 +2,66 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>WowFit — Фитнес-платформа</title>
+    <meta name="theme-color" content="#FF5722" />
+    <!-- iOS игнорирует иконки из манифеста — только apple-touch-icon -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="WOWFIT" />
     <meta property="og:image" content="https://bolt.new/static/og_default.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://bolt.new/static/og_default.png" />
+    <script>
+    // Boot-вотчдог: если SPA не смонтировалась за 15с, вместо белого экрана
+    // показываем пойманные JS-ошибки (диагностика инцидента 2026-07-15 с
+    // iOS Safari). Само себя убирает, если приложение всё же поднялось.
+    (function () {
+      var errs = [];
+      function fmt(e) {
+        if (e && e.message !== undefined) {
+          var s = e.message + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?');
+          if (e.error && e.error.stack) s += '\n' + String(e.error.stack).slice(0, 600);
+          return s;
+        }
+        return String(e).slice(0, 600);
+      }
+      window.addEventListener('error', function (e) {
+        if (e.target && e.target !== window && e.target.tagName) {
+          errs.push('resource failed: <' + e.target.tagName + '> ' + (e.target.src || e.target.href || ''));
+        } else {
+          errs.push(fmt(e));
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', function (e) {
+        errs.push('unhandledrejection: ' + (e.reason && e.reason.stack ? String(e.reason.stack).slice(0, 600) : String(e.reason).slice(0, 600)));
+      });
+      setTimeout(function () {
+        var r = document.getElementById('root');
+        if (r && r.childNodes.length > 0) return;
+        var d = document.createElement('pre');
+        d.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;margin:0;background:#fff;color:#b00020;font:11px/1.5 monospace;padding:12px;white-space:pre-wrap;word-break:break-word;overflow:auto;-webkit-overflow-scrolling:touch';
+        d.textContent = 'WOWFIT DEBUG — приложение не запустилось за 15 секунд\n\n'
+          + (errs.length ? 'Ошибки (' + errs.length + '):\n' + errs.join('\n---\n') : 'JS-ошибок не поймано — похоже, страница ещё грузится (медленная сеть?). Если этот экран не исчезнет сам — пришлите скриншот.')
+          + '\n\nUA: ' + navigator.userAgent
+          + '\nURL: ' + location.href
+          + '\ncookieEnabled: ' + navigator.cookieEnabled;
+        try { d.textContent += '\nlocalStorage: ok, keys=' + localStorage.length; }
+        catch (e2) { d.textContent += '\nlocalStorage: THROWS — ' + e2; }
+        (document.body || document.documentElement).appendChild(d);
+        var iv = setInterval(function () {
+          var root = document.getElementById('root');
+          if (root && root.childNodes.length > 0) {
+            clearInterval(iv);
+            if (d.parentNode) d.parentNode.removeChild(d);
+          }
+        }, 1000);
+      }, 15000);
+    })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

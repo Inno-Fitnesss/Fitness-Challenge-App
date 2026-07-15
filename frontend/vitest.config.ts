@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
@@ -5,6 +6,15 @@ import react from '@vitejs/plugin-react';
 // config untouched. Run with: npm run test
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      // Виртуальный модуль vite-plugin-pwa существует только в vite-сборке;
+      // в тестах подменяем заглушкой (см. src/pwa.test.ts).
+      'virtual:pwa-register': fileURLToPath(
+        new URL('./src/test/mocks/pwa-register.ts', import.meta.url),
+      ),
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,
