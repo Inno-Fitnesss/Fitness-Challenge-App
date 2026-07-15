@@ -418,10 +418,10 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
         onClick={requestClose}
       />
 
-      <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-6 pointer-events-none">
+      <div className="absolute inset-x-0 top-0 h-[100dvh] flex items-end justify-center sm:items-start sm:p-6 pointer-events-none">
         <div
           className="pointer-events-auto relative flex flex-col w-full max-w-full sm:max-w-3xl mx-auto bg-white rounded-t-3xl sm:rounded-3xl shadow-modal animate-fade-in
-            max-h-[min(92dvh,100%)] sm:max-h-[calc(100dvh-3rem)] min-h-0 min-w-0 overflow-hidden"
+            max-h-[92dvh] sm:max-h-[calc(100dvh-3rem)] sm:my-8 min-h-0 min-w-0 overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
         {showDiscardConfirm && (
