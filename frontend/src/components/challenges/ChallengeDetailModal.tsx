@@ -182,10 +182,10 @@ export function ChallengeDetailModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="challenge-modal-title"
-        className="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-6 pointer-events-none"
+        className="absolute inset-x-0 top-0 h-[100dvh] flex items-end justify-center sm:items-center sm:p-6 pointer-events-none"
       >
       <div
-        className="pointer-events-auto relative bg-white rounded-t-3xl sm:rounded-3xl shadow-modal w-full max-w-full sm:max-w-[900px] max-h-[min(92dvh,100%)] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden animate-fade-in min-w-0 mx-auto"
+        className="pointer-events-auto relative bg-white rounded-t-3xl sm:rounded-3xl shadow-modal w-full max-w-full sm:max-w-[900px] max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden overscroll-contain animate-fade-in min-w-0 mx-auto"
       >
         <button
           type="button"
