@@ -74,4 +74,20 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    // `npm run preview -- --host` — прод-сборка, доступная из локальной сети
+    // (проверка PWA с телефона). API проксируется на локальный бэкенд,
+    // как и в dev (поднимите его: см. backend/README или docker compose).
+    host: true,
+    // Для проверки PWA с телефона через HTTPS-туннель:
+    //   cloudflared tunnel --url http://localhost:4173
+    allowedHosts: ['.trycloudflare.com'],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
 });
