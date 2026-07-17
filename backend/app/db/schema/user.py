@@ -15,6 +15,8 @@ class UserOutput(BaseModel):
     email: EmailStr
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    # False right after signup while the emailed confirmation code is pending.
+    email_verified: bool = True
 
 class UserInLogin(BaseModel):
     email: EmailStr
@@ -61,6 +63,15 @@ class GoogleLoginIn(BaseModel):
 
 class ForgotPasswordIn(BaseModel):
     """POST /auth/forgot-password — request a reset code by email."""
+    email: EmailStr
+
+class VerifyEmailIn(BaseModel):
+    """POST /auth/verify-email — confirm the address with the emailed code."""
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+class ResendVerificationIn(BaseModel):
+    """POST /auth/resend-verification — request a fresh verification code."""
     email: EmailStr
 
 class ResetPasswordIn(BaseModel):

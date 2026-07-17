@@ -5,6 +5,8 @@ export function mapUserOutputToUser(output: UserOutput): User {
     id: output.id,
     username: output.username,
     email: output.email,
+    // Старые ответы сервера поля не содержат — считаем подтверждённым.
+    emailVerified: output.email_verified ?? true,
     firstName: output.first_name ?? undefined,
     lastName: output.last_name ?? undefined,
   };

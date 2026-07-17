@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from app.db.repository.userRepo import UserRepository
 from app.db.schema.user import UserOutput, UserInCreate, UserInLogin, UserWithToken
-from app.core.mailer import Mailer, RESET_CODE_TTL_MINUTES
+from app.core.mailer import Mailer, RESET_CODE_TTL_MINUTES, VERIFY_CODE_TTL_MINUTES
 from app.core.security.hashHelper import HashHelper
 from app.core.security.authHandler import AuthHandler
 from app.core.security.googleVerifier import GoogleVerifier
@@ -18,16 +18,82 @@ class UserService:
     def __init__(self, session: Session):
         self.__userRepository = UserRepository(session=session)
 
-    def signup(self, user_details: UserInCreate) -> UserOutput:
+    @staticmethod
+    def _verification_required() -> bool:
+        """Email confirmation is enforced only when SMTP is configured.
+        Without credentials nobody could ever receive a code, so requiring it
+        would lock every new user out (dev/test setups run without SMTP)."""
+        return Mailer.is_configured()
+
+    def signup(self, user_details: UserInCreate, background_tasks=None) -> UserOutput:
         user_details.email = user_details.email.lower()
-
-        if self.__userRepository.user_exist_by_email(email=user_details.email):
-            raise HTTPException(status_code=400, detail="Please Login")
-        if self.__userRepository.user_exist_by_username(username=user_details.username):
-            raise HTTPException(status_code=400, detail="Username already taken")
-
         password_hash = HashHelper.get_password_hash(plain_password=user_details.password)
-        return self.__userRepository.create_user(user_data=user_details, password_hash=password_hash)
+
+        existing = self.__userRepository.get_user_by_email(email=user_details.email)
+        if existing:
+            if existing.email_verified or not self._verification_required():
+                raise HTTPException(status_code=400, detail="Please Login")
+            # The email was registered but never confirmed — whoever signed up
+            # didn't prove ownership, so this attempt takes the account over.
+            username_owner = self.__userRepository.get_user_by_username(
+                username=user_details.username)
+            if username_owner and username_owner.id != existing.id:
+                raise HTTPException(status_code=400, detail="Username already taken")
+            user = self.__userRepository.update_unverified_signup(
+                user=existing, user_data=user_details, password_hash=password_hash)
+        else:
+            if self.__userRepository.user_exist_by_username(username=user_details.username):
+                raise HTTPException(status_code=400, detail="Username already taken")
+            user = self.__userRepository.create_user(
+                user_data=user_details,
+                password_hash=password_hash,
+                email_verified=not self._verification_required(),
+            )
+
+        if self._verification_required():
+            self._send_verification_code(user=user, background_tasks=background_tasks)
+        return user
+
+    def _send_verification_code(self, user, background_tasks=None) -> None:
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        self.__userRepository.set_verify_code(
+            user=user,
+            code_hash=HashHelper.get_password_hash(plain_password=code),
+            expires_at=datetime.utcnow() + timedelta(minutes=VERIFY_CODE_TTL_MINUTES),
+        )
+        if background_tasks is not None:
+            background_tasks.add_task(Mailer.send_verification_code, user.email, code)
+        else:
+            Mailer.send_verification_code(user.email, code)
+
+    def verify_email(self, email: str, code: str) -> UserWithToken:
+        """Confirm the address with the emailed code; log the user in on success."""
+        generic = HTTPException(status_code=400, detail="Invalid or expired code")
+
+        user = self.__userRepository.get_user_by_email(email=email.lower())
+        if not user or user.email_verified:
+            raise generic
+        if not user.verify_code_hash or not user.verify_code_expires_at:
+            raise generic
+        if user.verify_code_expires_at < datetime.utcnow():
+            raise generic
+        if (user.verify_code_attempts or 0) >= MAX_RESET_CODE_ATTEMPTS:
+            raise generic
+        if not HashHelper.verify_password(plain_password=code,
+                                          hashed_password=user.verify_code_hash):
+            self.__userRepository.bump_verify_attempts(user=user)
+            raise generic
+
+        self.__userRepository.mark_email_verified(user=user)
+        return self._issue_tokens(user.id)
+
+    def resend_verification(self, email: str, background_tasks) -> dict:
+        """Send a fresh verification code. Same generic answer whether or not
+        the account exists, so the endpoint can't probe registered emails."""
+        user = self.__userRepository.get_user_by_email(email=email.lower())
+        if user and not user.email_verified and self._verification_required():
+            self._send_verification_code(user=user, background_tasks=background_tasks)
+        return {"detail": "If this email is registered, a verification code has been sent"}
 
     def login(self, login_details: UserInLogin) -> UserWithToken:
         login_details.email = login_details.email.lower()
@@ -37,6 +103,8 @@ class UserService:
 
         user = self.__userRepository.get_user_by_email(email=login_details.email)
         if HashHelper.verify_password(plain_password=login_details.password, hashed_password=user.password_hash):
+            if not user.email_verified and self._verification_required():
+                raise HTTPException(status_code=403, detail="Email not verified")
             return self._issue_tokens(user.id)
         raise HTTPException(status_code=400, detail="Please check your Credentials")
 
