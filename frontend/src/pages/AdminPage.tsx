@@ -109,7 +109,7 @@ export function AdminPage() {
         {/* Большие цифры */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
           <BigNumberCard label="Всего пользователей" value={stats.total_users} />
-          <BigNumberCard label="Всего соревнований" value={stats.challenges.total} />
+          <BigNumberCard label="Всего челленджей" value={stats.challenges.total} />
           {stats.exercise_totals.map((ex) => (
             <BigNumberCard
               key={ex.exercise}
