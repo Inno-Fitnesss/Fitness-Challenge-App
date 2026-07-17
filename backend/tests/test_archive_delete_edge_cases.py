@@ -43,6 +43,9 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def setup_database():
     app.dependency_overrides[get_db] = override_get_db
+    # drop_all first: без него оборванный прошлый прогон оставляет данные в
+    # sqlite-файле, и вставка упражнений с фиксированными id падает по UNIQUE.
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
     db.add_all([

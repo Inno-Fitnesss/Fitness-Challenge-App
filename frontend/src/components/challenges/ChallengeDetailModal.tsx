@@ -399,9 +399,15 @@ export function ChallengeDetailModal({
                     </div>
                   )}
                   {canLeaveChallenge(challenge) && onLeave && (
-                    <Button variant="primary" size="lg" fullWidth onClick={() => onLeave(challengeId)}>
-                      Покинуть
-                    </Button>
+                    <div className="pt-1 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => onLeave(challengeId)}
+                        className="px-5 py-2 text-sm font-semibold text-neutral-muted rounded-full hover:text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        Покинуть челлендж
+                      </button>
+                    </div>
                   )}
                 </div>
               )}

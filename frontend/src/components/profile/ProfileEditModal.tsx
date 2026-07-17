@@ -63,9 +63,9 @@ export function ProfileEditModal({
           if (!isSaving) onClose();
         }}
       />
-      <div className="absolute inset-0 flex items-center justify-center modal-safe-x py-4 pointer-events-none">
+      <div className="absolute inset-x-0 top-0 h-[100dvh] flex items-center justify-center modal-safe-x py-4 pointer-events-none">
       <div
-        className="pointer-events-auto w-full max-w-md max-h-[90dvh] overflow-y-auto overflow-x-hidden bg-white rounded-3xl shadow-modal p-6 sm:p-8"
+        className="pointer-events-auto w-full max-w-md max-h-[92dvh] overflow-y-auto overflow-x-hidden bg-white rounded-3xl shadow-modal p-6 sm:p-8"
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id="profile-edit-title" className="text-lg font-bold text-neutral-text text-center mb-6">

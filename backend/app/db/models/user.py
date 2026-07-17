@@ -1,5 +1,5 @@
 from app.core.database import Base
-from sqlalchemy import Column, Integer, String, Date, DateTime, Boolean, func
+from sqlalchemy import Column, Integer, String, Date, DateTime, Boolean, JSON, func
 
 class User(Base):
     __tablename__ = "users"
@@ -31,5 +31,9 @@ class User(Base):
     streak_longest = Column(Integer, default=0)
     last_activity_date = Column(Date)
     timezone = Column(String(50), default="UTC")
+    # Account-level UI flags (onboarding completed, "don't show again" dismissals).
+    # Flat {key: bool} map merged by PATCH /me so the flags follow the account
+    # across devices instead of living in localStorage.
+    ui_flags = Column(JSON, default=dict)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

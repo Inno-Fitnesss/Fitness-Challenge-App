@@ -155,6 +155,7 @@ _PG_COLUMN_MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code_hash VARCHAR(250)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code_expires_at TIMESTAMP",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code_attempts INTEGER DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS ui_flags JSON",
 ]
 
 

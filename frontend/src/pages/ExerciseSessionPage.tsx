@@ -18,6 +18,11 @@ import {
   setExerciseOnboardingDismissed,
 } from '../utils/exerciseOnboardingStorage.ts';
 
+/** Account UI-flag key for "don't show the technique modal again" per exercise. */
+function techniqueDismissFlagKey(exerciseKey: string): string {
+  return `technique_dismissed:${exerciseKey}`;
+}
+
 function formatDuration(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
   const secs = totalSeconds % 60;
@@ -95,7 +100,7 @@ function disposeSessionAudio(audio: HTMLAudioElement | null): void {
 export function ExerciseSessionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, refreshProfile } = useAuth();
+  const { user, refreshProfile, setUiFlag } = useAuth();
   const { triggerCelebration } = useStreakCelebration();
   const { challengeId, challengeExerciseId } = useParams<{
     challengeId: string;
@@ -300,18 +305,25 @@ export function ExerciseSessionPage() {
 
   useEffect(() => {
     if (!techniqueContent || isLoading) return;
-    if (isExerciseOnboardingDismissed(techniqueContent.exerciseKey)) return;
+    // Account-level flag is the source of truth (follows the user across
+    // devices); localStorage is only an offline fallback for the same device.
+    const flagKey = techniqueDismissFlagKey(techniqueContent.exerciseKey);
+    const dismissed =
+      Boolean(user?.uiFlags?.[flagKey]) ||
+      isExerciseOnboardingDismissed(techniqueContent.exerciseKey);
+    if (dismissed) return;
     setIsTechniqueOpen(true);
-  }, [techniqueContent, isLoading]);
+  }, [techniqueContent, isLoading, user?.uiFlags]);
 
   const handleCloseTechnique = useCallback(
     (dontShowAgain: boolean) => {
       if (techniqueContent && dontShowAgain) {
         setExerciseOnboardingDismissed(techniqueContent.exerciseKey, true);
+        void setUiFlag(techniqueDismissFlagKey(techniqueContent.exerciseKey), true);
       }
       setIsTechniqueOpen(false);
     },
-    [techniqueContent],
+    [techniqueContent, setUiFlag],
   );
 
   const handleShowTechnique = useCallback(() => {

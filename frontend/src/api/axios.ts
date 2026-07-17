@@ -5,6 +5,7 @@ import axios, {
 } from 'axios';
 import { STORAGE_KEYS } from '../constants/storage.ts';
 import { parseApiError } from '../utils/parseApiError.ts';
+import { safeStorage } from '../utils/safeStorage.ts';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
@@ -26,7 +27,7 @@ const rawClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    const token = safeStorage.getItem(STORAGE_KEYS.TOKEN);
     // Don't clobber an Authorization header a caller already set explicitly
     // (e.g. admin panel requests, which use their own short-lived token).
     if (token && config.headers && !config.headers.Authorization) {
@@ -38,10 +39,10 @@ apiClient.interceptors.request.use(
 );
 
 function clearSession(): void {
-  localStorage.removeItem(STORAGE_KEYS.TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.USER);
-  localStorage.removeItem(STORAGE_KEYS.REMEMBER_ME);
+  safeStorage.removeItem(STORAGE_KEYS.TOKEN);
+  safeStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+  safeStorage.removeItem(STORAGE_KEYS.USER);
+  safeStorage.removeItem(STORAGE_KEYS.REMEMBER_ME);
 }
 
 function forceLogout(): void {
@@ -63,16 +64,16 @@ function flushWaiters(token: string | null): void {
 }
 
 async function runRefresh(): Promise<string | null> {
-  const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+  const refreshToken = safeStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
   if (!refreshToken) return null;
   try {
     const { data } = await rawClient.post<{ token: string; refresh_token?: string }>(
       '/auth/refresh',
       { refresh_token: refreshToken },
     );
-    localStorage.setItem(STORAGE_KEYS.TOKEN, data.token);
+    safeStorage.setItem(STORAGE_KEYS.TOKEN, data.token);
     if (data.refresh_token) {
-      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+      safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
     }
     return data.token;
   } catch {
