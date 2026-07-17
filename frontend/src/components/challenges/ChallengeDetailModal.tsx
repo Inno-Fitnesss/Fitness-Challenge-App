@@ -225,7 +225,7 @@ export function ChallengeDetailModal({
                   <ChallengeScheduleBadge label={challenge.scheduleLabel} />
                   <Badge variant="green">{formatParticipants(challenge.participantCount)}</Badge>
                   {challenge.isOwner && !challenge.isPrivate && !isArchived && (
-                    <Badge variant="green">Публичный</Badge>
+                    <Badge variant="green">Групповой</Badge>
                   )}
                   {isArchived && <Badge variant="grey">В архиве</Badge>}
                 </div>
@@ -248,7 +248,7 @@ export function ChallengeDetailModal({
                       className="w-full sm:w-auto flex-shrink-0"
                       onClick={() => onPublish(challengeId)}
                     >
-                      Сделать публичным
+                      Сделать групповым
                     </Button>
                   )}
                   {canInviteToChallenge(challenge) && onCopyLink && (
@@ -278,7 +278,7 @@ export function ChallengeDetailModal({
                 </div>
                 {challenge.isOwner && !challenge.isPrivate && !isArchived && (
                   <p className="text-xs text-neutral-muted mt-3">
-                    Публичный челлендж нельзя редактировать. Вы можете приглашать участников по ссылке.
+                    Групповой челлендж нельзя редактировать. Вы можете приглашать участников по ссылке.
                   </p>
                 )}
                 {isArchived && (
@@ -336,7 +336,7 @@ export function ChallengeDetailModal({
                 <section className={challenge.isPrivate && challenge.isOwner ? 'max-lg:hidden' : ''}>
                   <h3 className="text-base max-lg:text-lg font-bold text-neutral-text mb-1">
                     <span className="lg:hidden">Рейтинг</span>
-                    <span className="hidden lg:inline">Лидерборд</span>
+                    <span className="hidden lg:inline">Таблица лидеров</span>
                   </h3>
                   <p className="text-xs text-neutral-muted mb-4">сортировка по регулярности выполнения челленджа</p>
                   <LeaderboardList entries={data.leaderboard} />
@@ -362,7 +362,7 @@ export function ChallengeDetailModal({
                   )}
                   {canPublishChallenge(challenge) && onPublish && (
                     <Button variant="lime" size="lg" fullWidth onClick={() => onPublish(challengeId)}>
-                      Сделать публичным
+                      Сделать групповым
                     </Button>
                   )}
                   {canEditChallenge(challenge) && onEdit && (

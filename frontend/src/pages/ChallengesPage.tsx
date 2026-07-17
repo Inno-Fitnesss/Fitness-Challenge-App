@@ -127,7 +127,7 @@ function DiscoveryCarousel({
 
       {discovery.length === 0 && !isLoading && (
         <p className="text-sm font-medium text-neutral-muted text-center py-2">
-          Пока что нет доступных челленджей :(
+          Пока нет доступных челленджей:(
         </p>
       )}
 
@@ -311,10 +311,10 @@ export function ChallengesPage() {
 
   const handlePublish = (id: number) => {
     setConfirmState({
-      title: 'Сделать челлендж публичным?',
+      title: 'Сделать челлендж групповым?',
       description:
         'После этого его нельзя будет редактировать, он переместится в «Групповые».',
-      confirmLabel: 'Сделать публичным',
+      confirmLabel: 'Сделать групповым',
       action: async () => {
         try {
           await challengeApi.publish(id);
@@ -424,7 +424,7 @@ export function ChallengesPage() {
   const handleOpenEdit = (id: number) => {
     const challenge = allChallenges.find((item) => item.id === id);
     if (!challenge || !canEditChallenge(challenge)) {
-      showToast('Публичный челлендж нельзя редактировать');
+      showToast('Групповой челлендж нельзя редактировать');
       return;
     }
     closeChallenge();
@@ -494,7 +494,7 @@ export function ChallengesPage() {
               {challenges.length === 0 && (
                 <p className="text-neutral-muted text-center py-12 sm:py-16">
                   {activeTab === 'individual' && 'Создайте индивидуальный челлендж — его можно редактировать до публикации'}
-                  {activeTab === 'group' && 'Здесь появятся публичные челленджи и те, к которым вы присоединились'}
+                  {activeTab === 'group' && 'Здесь появятся групповые челленджи и те, к которым вы присоединились'}
                   {activeTab === 'archive' && 'Архив пуст'}
                 </p>
               )}

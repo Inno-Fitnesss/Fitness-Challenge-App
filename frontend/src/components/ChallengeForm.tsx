@@ -228,7 +228,7 @@ export function ChallengeForm({ onValuesChange, onExercisesChange, onSubmit, isS
                 render={({ field }) => (
                   <select id="type" {...field} className={selectClass(!!errors.type)}>
                     <option value="individual">Индивидуальный</option>
-                    <option value="team">Командный</option>
+                    <option value="team">Групповой</option>
                   </select>
                 )}
               />
@@ -250,8 +250,8 @@ export function ChallengeForm({ onValuesChange, onExercisesChange, onSubmit, isS
           </div>
 
           <div>
-            <Label htmlFor="privacy-group" required>Приватность</Label>
-            <div id="privacy-group" role="radiogroup" aria-label="Приватность" className="flex gap-3">
+            <Label htmlFor="privacy-group" required>Доступность</Label>
+            <div id="privacy-group" role="radiogroup" aria-label="Доступность" className="flex gap-3">
               {(['public', 'private'] as const).map((val) => (
                 <Controller
                   key={val}
@@ -287,7 +287,7 @@ export function ChallengeForm({ onValuesChange, onExercisesChange, onSubmit, isS
                           {checked && <span className="w-2 h-2 rounded-full bg-brand" />}
                         </span>
                         <span className={`text-sm font-semibold ${checked ? 'text-brand' : 'text-neutral-text'}`}>
-                          {val === 'public' ? 'Публичный' : 'Приватный'}
+                          {val === 'public' ? 'Групповой' : 'Индивидуальный'}
                         </span>
                       </label>
                     );
