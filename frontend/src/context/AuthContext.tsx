@@ -183,13 +183,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return optimistic;
       });
       if (optimistic) {
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(optimistic));
+        safeStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(optimistic));
       }
-      if (!localStorage.getItem(STORAGE_KEYS.TOKEN)) return;
+      if (!safeStorage.getItem(STORAGE_KEYS.TOKEN)) return;
       try {
         const updated = await authApi.updateUiFlags({ [key]: value });
         setUser(updated);
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updated));
+        safeStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updated));
       } catch {
         // Keep the optimistic value; it will re-sync on next successful /me.
       }

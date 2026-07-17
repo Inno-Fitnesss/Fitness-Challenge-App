@@ -1,9 +1,15 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // VITE_PROXY_TARGET (из .env или переменной окружения) позволяет направить
+  // dev/preview-прокси на нестандартный адрес бэкенда, не трогая конфиг.
+  const proxyTarget =
+    loadEnv(mode, '.', 'VITE_').VITE_PROXY_TARGET || 'http://localhost:8001';
+
+  return {
   plugins: [
     react(),
     VitePWA({
@@ -68,7 +74,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:8001',
+        target: proxyTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
@@ -84,10 +90,11 @@ export default defineConfig({
     allowedHosts: ['.trycloudflare.com'],
     proxy: {
       '/api': {
-        target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:8001',
+        target: proxyTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },
+  };
 });
