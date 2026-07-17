@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { challengeApi } from '../api/challengeApi.ts';
 import { useAuth } from '../context/AuthContext.tsx';
@@ -114,6 +114,7 @@ export function ExerciseSessionPage() {
   const [isFinishing, setIsFinishing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isTechniqueOpen, setIsTechniqueOpen] = useState(false);
+  const [showSkeleton, setShowSkeleton] = useState(true);
   const repSoundRef = useRef<HTMLAudioElement | null>(null);
   const completionSoundRef = useRef<HTMLAudioElement | null>(null);
   const lastCleanRepsRef = useRef(0);
@@ -330,6 +331,10 @@ export function ExerciseSessionPage() {
     setIsTechniqueOpen(true);
   }, []);
 
+  const toggleSkeleton = useCallback(() => {
+    setShowSkeleton((current) => !current);
+  }, []);
+
   const currentValue = context ? getSessionValue(context.metric, stats) : 0;
   const goalReached = useMemo(() => {
     if (!context) return false;
@@ -492,7 +497,7 @@ export function ExerciseSessionPage() {
 
       {/* Десктопная шапка (lg+) — без изменений */}
       <header className="max-lg:hidden h-[56px] border-b border-neutral-border/80 bg-white sm:h-[60px]">
-        <div className="mx-auto grid h-full w-full max-w-[1920px] grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-3 px-4 sm:gap-4 sm:px-7 lg:px-12">
+        <div className="mx-auto grid h-full w-full max-w-[1920px] grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:gap-4 sm:px-7 lg:px-12">
             <button
               type="button"
               onClick={handleBack}
@@ -511,20 +516,6 @@ export function ExerciseSessionPage() {
               <h1 className="mt-0.5 truncate text-base font-extrabold leading-tight text-neutral-text">
                 {context.exerciseName}
               </h1>
-            </div>
-
-            <div
-              className="min-w-[140px] rounded-lg bg-white px-2.5 py-1.5 text-center shadow-sm tabular-nums"
-              aria-label={`Прогресс: ${currentDisplay} из ${goalDisplay}`}
-            >
-              <span className="text-[10px] font-extrabold uppercase tracking-wide text-[#6f7b80]">
-                Выполнено
-              </span>
-              <span className="ml-1.5 text-base font-extrabold leading-none text-[#29292d]">
-                {currentDisplay}
-              </span>
-              <span className="mx-1 text-[10px] font-bold text-[#8a9498]">из</span>
-              <span className="text-base font-extrabold leading-none text-[#29292d]">{goalDisplay}</span>
             </div>
         </div>
       </header>
@@ -576,20 +567,32 @@ export function ExerciseSessionPage() {
                 status={cameraStatus}
                 errorMessage={errorMessage}
                 activeWarning={activeWarning}
+                showPoseOverlay={showSkeleton}
                 className="mx-auto max-lg:aspect-[3/4] max-lg:max-h-full max-lg:w-[min(100%,75cqh)] lg:aspect-video lg:w-full lg:max-w-[min(1840px,max(320px,calc((100dvh_-_150px)_*_1.7778)))]"
-              />
-
-              {/* Крупный мобильный счётчик поверх камеры */}
-              {cameraStatus === 'active' && (
-                <div
-                  className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center lg:hidden"
-                  aria-hidden="true"
+              >
+                <button
+                  type="button"
+                  onClick={toggleSkeleton}
+                  className="pointer-events-auto absolute left-3 top-3 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/50 focus:outline-none focus:ring-2 focus:ring-white/80"
+                  aria-label={showSkeleton ? 'Скрыть скелет' : 'Показать скелет'}
+                  title={showSkeleton ? 'Скрыть скелет' : 'Показать скелет'}
                 >
-                  <span className="text-[88px] font-extrabold leading-none tracking-tight text-white/95 tabular-nums drop-shadow-[0_4px_20px_rgba(0,0,0,0.45)]">
+                  {showSkeleton ? (
+                    <EyeOff className="h-5 w-5" strokeWidth={2.4} />
+                  ) : (
+                    <Eye className="h-5 w-5" strokeWidth={2.4} />
+                  )}
+                </button>
+
+                <div
+                  className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center"
+                  aria-label={`Выполнено ${currentDisplay}`}
+                >
+                  <span className="tabular-nums text-[clamp(5rem,22vw,8rem)] font-black leading-none text-white/80 drop-shadow-[0_8px_24px_rgba(0,0,0,0.72)] lg:text-[clamp(6rem,12vw,11rem)]">
                     {currentDisplay}
                   </span>
                 </div>
-              )}
+              </CameraPreview>
             </div>
           </div>
         </section>

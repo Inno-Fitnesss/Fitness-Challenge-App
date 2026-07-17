@@ -57,7 +57,7 @@ export function ExerciseTechniqueModal({
       />
       <div className="absolute inset-x-0 top-0 h-[100dvh] flex items-end justify-center sm:items-center modal-safe-x sm:py-4 pointer-events-none">
         <div
-          className="pointer-events-auto flex flex-col w-full max-w-lg max-h-[90dvh] sm:max-h-[85dvh] bg-white rounded-t-3xl sm:rounded-3xl shadow-modal min-w-0 min-h-0 overflow-hidden"
+          className="pointer-events-auto flex flex-col w-full max-w-lg max-h-[90dvh] sm:max-h-[85dvh] bg-white rounded-3xl shadow-modal min-w-0 min-h-0 overflow-hidden"
           onClick={(event) => event.stopPropagation()}
         >
           {/* Fixed header — always visible so the exercise being explained is clear */}
