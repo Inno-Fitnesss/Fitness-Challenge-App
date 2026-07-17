@@ -169,6 +169,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [completeSession],
   );
 
+  const setUiFlag = useCallback(
+    async (key: string, value: boolean) => {
+      // Optimistic local update so the UI reacts immediately and survives a
+      // reload even if the network write is slow/offline.
+      let optimistic: User | null = null;
+      setUser((prev) => {
+        if (!prev) return prev;
+        const nextFlags = { ...(prev.uiFlags ?? {}) };
+        if (value) nextFlags[key] = true;
+        else delete nextFlags[key];
+        optimistic = { ...prev, uiFlags: nextFlags };
+        return optimistic;
+      });
+      if (optimistic) {
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(optimistic));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.TOKEN)) return;
+      try {
+        const updated = await authApi.updateUiFlags({ [key]: value });
+        setUser(updated);
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updated));
+      } catch {
+        // Keep the optimistic value; it will re-sync on next successful /me.
+      }
+    },
+    [],
+  );
+
   const refreshProfile = useCallback(async () => {
     const storedToken = safeStorage.getItem(STORAGE_KEYS.TOKEN);
     if (!storedToken) return;
@@ -202,8 +230,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       checkAuth,
       refreshProfile,
+      setUiFlag,
     }),
-    [user, token, isLoading, login, loginWithGoogle, register, verifyEmail, logout, checkAuth, refreshProfile],
+    [user, token, isLoading, login, loginWithGoogle, register, verifyEmail, logout, checkAuth, refreshProfile, setUiFlag],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

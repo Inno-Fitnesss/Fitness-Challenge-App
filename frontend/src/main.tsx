@@ -8,6 +8,13 @@ import './index.css';
 
 initPwa();
 
+// iOS Safari ignores `user-scalable=no`/`maximum-scale` in the viewport meta,
+// so block its pinch-zoom gestures directly. touch-action:manipulation (in CSS)
+// already covers double-tap zoom.
+for (const evt of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(evt, (e) => e.preventDefault(), { passive: false });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {GOOGLE_CLIENT_ID ? (
