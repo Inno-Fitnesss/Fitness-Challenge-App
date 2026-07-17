@@ -145,6 +145,17 @@ _PG_COLUMN_MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_hash VARCHAR(250)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_expires_at TIMESTAMP",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_attempts INTEGER DEFAULT 0",
+    # Email verification: the column is added without a default so rows that
+    # existed before the feature come out NULL; the UPDATE right after
+    # grandfathers those accounts in as verified (they could already log in,
+    # locking them out now would be a regression). New rows get an explicit
+    # False from the ORM.
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN",
+    "UPDATE users SET email_verified = true WHERE email_verified IS NULL",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code_hash VARCHAR(250)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code_expires_at TIMESTAMP",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code_attempts INTEGER DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS ui_flags JSON",
 ]
 
 

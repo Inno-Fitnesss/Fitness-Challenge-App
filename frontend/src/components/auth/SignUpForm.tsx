@@ -8,6 +8,7 @@ import { Button } from '../ui/Button.tsx';
 import { Input } from '../ui/Input.tsx';
 import { Label } from '../ui/Label.tsx';
 import { FieldError } from '../ui/FieldError.tsx';
+import { VerifyEmailModal } from './VerifyEmailModal.tsx';
 import type { ApiError } from '../../types/auth.types.ts';
 
 interface SignUpFormProps {
@@ -23,6 +24,8 @@ export function SignUpForm({ redirectTo = '/dashboard' }: SignUpFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  // Email, ожидающий подтверждения кодом из письма (null — модалка закрыта).
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
 
   const {
     register,
@@ -42,7 +45,7 @@ export function SignUpForm({ redirectTo = '/dashboard' }: SignUpFormProps) {
   const onSubmit = async (values: SignUpFormValues) => {
     setApiError(null);
     try {
-      await registerUser(
+      const result = await registerUser(
         {
           username: values.username,
           email: values.email,
@@ -50,6 +53,9 @@ export function SignUpForm({ redirectTo = '/dashboard' }: SignUpFormProps) {
         },
         redirectTo,
       );
+      if (result === 'verification_required') {
+        setVerifyEmail(values.email);
+      }
     } catch (error) {
       const apiErr = error as ApiError;
       setApiError(apiErr.message ?? 'Не удалось зарегистрироваться. Попробуйте снова.');
@@ -57,6 +63,7 @@ export function SignUpForm({ redirectTo = '/dashboard' }: SignUpFormProps) {
   };
 
   return (
+    <>
     <form
       noValidate
       onSubmit={handleSubmit(onSubmit)}
@@ -72,7 +79,7 @@ export function SignUpForm({ redirectTo = '/dashboard' }: SignUpFormProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className={fieldClass}>
           <Label htmlFor="signup-username" required className={labelClass}>
             Имя пользователя
@@ -165,6 +172,14 @@ export function SignUpForm({ redirectTo = '/dashboard' }: SignUpFormProps) {
         Создать аккаунт
       </Button>
     </form>
+
+    <VerifyEmailModal
+      open={verifyEmail !== null}
+      email={verifyEmail ?? ''}
+      redirectTo={redirectTo}
+      onClose={() => setVerifyEmail(null)}
+    />
+    </>
   );
 }
 

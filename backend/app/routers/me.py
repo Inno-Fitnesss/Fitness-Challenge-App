@@ -33,6 +33,7 @@ def _serialize_me(db: Session, user_id: int) -> dict:
         "fitness_level": u.fitness_level, "timezone": u.timezone,
         "streak_current": effective_user_streak(u.last_activity_date, u.streak_current, today),
         "streak_longest": u.streak_longest,
+        "ui_flags": u.ui_flags or {},
         "volume": [{"exercise": ex.name, "metric": ex.metric, "total": s.total_clean_reps}
                    for s, ex in stats],
     }
@@ -65,6 +66,16 @@ def update_me(data: MeUpdate, user: UserOutput = Depends(get_current_user),
             setattr(u, field, value)
     if data.new_password:
         u.password_hash = HashHelper.get_password_hash(plain_password=data.new_password)
+    if data.ui_flags is not None:
+        merged = dict(u.ui_flags or {})
+        for key, value in data.ui_flags.items():
+            if value:
+                merged[key] = True
+            else:
+                merged.pop(key, None)
+        if len(merged) > 200:
+            raise HTTPException(status_code=400, detail="Too many ui_flags")
+        u.ui_flags = merged  # reassign: plain JSON column doesn't track in-place mutation
 
     db.commit()
     return _serialize_me(db, user.id)

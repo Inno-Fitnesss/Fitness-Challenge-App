@@ -77,7 +77,7 @@ export function LeaderboardList({
     <div
       className="overflow-y-auto overflow-x-hidden pr-1 -mr-1 space-y-1 [scrollbar-width:thin]"
       style={{ maxHeight }}
-      aria-label="Лидерборд"
+      aria-label="Таблица лидеров"
     >
       {entries.map((entry) => (
         <LeaderboardRow key={`${entry.rank}-${entry.username}`} entry={entry} />

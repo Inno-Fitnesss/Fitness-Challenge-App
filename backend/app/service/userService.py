@@ -4,30 +4,109 @@ from datetime import datetime, timedelta
 
 from app.db.repository.userRepo import UserRepository
 from app.db.schema.user import UserOutput, UserInCreate, UserInLogin, UserWithToken
-from app.core.mailer import Mailer, RESET_CODE_TTL_MINUTES
+from app.core.mailer import Mailer, CODE_TTL_MINUTES
 from app.core.security.hashHelper import HashHelper
 from app.core.security.authHandler import AuthHandler
 from app.core.security.googleVerifier import GoogleVerifier
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
-MAX_RESET_CODE_ATTEMPTS = 5
+MAX_CODE_ATTEMPTS = 5
 
 
 class UserService:
     def __init__(self, session: Session):
         self.__userRepository = UserRepository(session=session)
 
-    def signup(self, user_details: UserInCreate) -> UserOutput:
+    @staticmethod
+    def _verification_required() -> bool:
+        """Email confirmation is enforced only when SMTP is configured.
+        Without credentials nobody could ever receive a code, so requiring it
+        would lock every new user out (dev/test setups run without SMTP)."""
+        return Mailer.is_configured()
+
+    def signup(self, user_details: UserInCreate, background_tasks=None) -> UserOutput:
         user_details.email = user_details.email.lower()
-
-        if self.__userRepository.user_exist_by_email(email=user_details.email):
-            raise HTTPException(status_code=400, detail="Please Login")
-        if self.__userRepository.user_exist_by_username(username=user_details.username):
-            raise HTTPException(status_code=400, detail="Username already taken")
-
         password_hash = HashHelper.get_password_hash(plain_password=user_details.password)
-        return self.__userRepository.create_user(user_data=user_details, password_hash=password_hash)
+
+        existing = self.__userRepository.get_user_by_email(email=user_details.email)
+        if existing:
+            if existing.email_verified or not self._verification_required():
+                raise HTTPException(status_code=400, detail="Please Login")
+            # The email was registered but never confirmed — whoever signed up
+            # didn't prove ownership, so this attempt takes the account over.
+            username_owner = self.__userRepository.get_user_by_username(
+                username=user_details.username)
+            if username_owner and username_owner.id != existing.id:
+                raise HTTPException(status_code=400, detail="Username already taken")
+            user = self.__userRepository.update_unverified_signup(
+                user=existing, user_data=user_details, password_hash=password_hash)
+        else:
+            if self.__userRepository.user_exist_by_username(username=user_details.username):
+                raise HTTPException(status_code=400, detail="Username already taken")
+            user = self.__userRepository.create_user(
+                user_data=user_details,
+                password_hash=password_hash,
+                email_verified=not self._verification_required(),
+            )
+
+        if self._verification_required():
+            self._send_verification_code(user=user, background_tasks=background_tasks)
+        return user
+
+    def _email_one_time_code(self, user, kind: str, send, background_tasks=None) -> None:
+        """Issue a fresh 6-digit code into the {kind}_code_* columns and email
+        it via `send` (a Mailer.send_* callable). When background_tasks is
+        given, the email goes out after the response — SMTP roundtrip timing
+        must not reveal whether the address is registered."""
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        self.__userRepository.set_one_time_code(
+            user=user, kind=kind,
+            code_hash=HashHelper.get_password_hash(plain_password=code),
+            expires_at=datetime.utcnow() + timedelta(minutes=CODE_TTL_MINUTES),
+        )
+        if background_tasks is not None:
+            background_tasks.add_task(send, user.email, code)
+        else:
+            send(user.email, code)
+
+    def _require_valid_code(self, user, code: str, kind: str) -> None:
+        """Shared guard for emailed one-time codes ({kind}_code_* columns):
+        presence, expiry, attempt cap, bcrypt match. Every failure raises the
+        same generic 400 so the response doesn't hint at which check failed."""
+        generic = HTTPException(status_code=400, detail="Invalid or expired code")
+        code_hash = getattr(user, f"{kind}_code_hash")
+        expires_at = getattr(user, f"{kind}_code_expires_at")
+        if not code_hash or not expires_at or expires_at < datetime.utcnow():
+            raise generic
+        if (getattr(user, f"{kind}_code_attempts") or 0) >= MAX_CODE_ATTEMPTS:
+            raise generic
+        if not HashHelper.verify_password(plain_password=code, hashed_password=code_hash):
+            self.__userRepository.bump_code_attempts(user=user, kind=kind)
+            raise generic
+
+    def _send_verification_code(self, user, background_tasks=None) -> None:
+        self._email_one_time_code(user=user, kind="verify",
+                                  send=Mailer.send_verification_code,
+                                  background_tasks=background_tasks)
+
+    def verify_email(self, email: str, code: str) -> UserWithToken:
+        """Confirm the address with the emailed code; log the user in on success."""
+        user = self.__userRepository.get_user_by_email(email=email.lower())
+        if not user or user.email_verified:
+            raise HTTPException(status_code=400, detail="Invalid or expired code")
+        self._require_valid_code(user=user, code=code, kind="verify")
+
+        self.__userRepository.mark_email_verified(user=user)
+        return self._issue_tokens(user.id)
+
+    def resend_verification(self, email: str, background_tasks) -> dict:
+        """Send a fresh verification code. Same generic answer whether or not
+        the account exists, so the endpoint can't probe registered emails."""
+        user = self.__userRepository.get_user_by_email(email=email.lower())
+        if user and not user.email_verified and self._verification_required():
+            self._send_verification_code(user=user, background_tasks=background_tasks)
+        return {"detail": "If this email is registered, a verification code has been sent"}
 
     def login(self, login_details: UserInLogin) -> UserWithToken:
         login_details.email = login_details.email.lower()
@@ -37,6 +116,8 @@ class UserService:
 
         user = self.__userRepository.get_user_by_email(email=login_details.email)
         if HashHelper.verify_password(plain_password=login_details.password, hashed_password=user.password_hash):
+            if not user.email_verified and self._verification_required():
+                raise HTTPException(status_code=403, detail="Email not verified")
             return self._issue_tokens(user.id)
         raise HTTPException(status_code=400, detail="Please check your Credentials")
 
@@ -49,35 +130,19 @@ class UserService:
         With empty SMTP credentials (dev) the code is not emailed — the
         Mailer logs it on the server instead, so the flow stays testable.
         """
-        email = email.lower()
-        user = self.__userRepository.get_user_by_email(email=email)
+        user = self.__userRepository.get_user_by_email(email=email.lower())
         if user:
-            code = f"{secrets.randbelow(1_000_000):06d}"
-            self.__userRepository.set_reset_code(
-                user=user,
-                code_hash=HashHelper.get_password_hash(plain_password=code),
-                expires_at=datetime.utcnow() + timedelta(minutes=RESET_CODE_TTL_MINUTES),
-            )
-            # Send after the response so timing doesn't reveal whether the
-            # email is registered (SMTP roundtrip takes noticeable time).
-            background_tasks.add_task(Mailer.send_reset_code, email, code)
+            self._email_one_time_code(user=user, kind="reset",
+                                      send=Mailer.send_reset_code,
+                                      background_tasks=background_tasks)
         return {"detail": "If this email is registered, a reset code has been sent"}
 
     def reset_password(self, email: str, code: str, new_password: str) -> dict:
         """Validate the emailed code and set the new password."""
-        generic = HTTPException(status_code=400, detail="Invalid or expired code")
-
         user = self.__userRepository.get_user_by_email(email=email.lower())
-        if not user or not user.reset_code_hash or not user.reset_code_expires_at:
-            raise generic
-        if user.reset_code_expires_at < datetime.utcnow():
-            raise generic
-        if (user.reset_code_attempts or 0) >= MAX_RESET_CODE_ATTEMPTS:
-            raise generic
-        if not HashHelper.verify_password(plain_password=code,
-                                          hashed_password=user.reset_code_hash):
-            self.__userRepository.bump_reset_attempts(user=user)
-            raise generic
+        if not user:
+            raise HTTPException(status_code=400, detail="Invalid or expired code")
+        self._require_valid_code(user=user, code=code, kind="reset")
 
         self.__userRepository.set_password_and_clear_reset_code(
             user=user,
@@ -108,9 +173,10 @@ class UserService:
 
         user = self.__userRepository.get_user_by_email(email=email)
         if user:
-            # Our signup never verifies emails, so a password set on this
-            # address may belong to someone who pre-registered it. Google DID
-            # verify ownership — link and invalidate the old password.
+            # A password account on this address may predate email
+            # verification (or SMTP was off at signup), so its owner never
+            # proved address ownership. Google DID verify it — link and
+            # invalidate the old password.
             self.__userRepository.link_google_account(
                 user=user, google_sub=google_sub, password_hash=placeholder_hash)
             return self._issue_tokens(user.id)

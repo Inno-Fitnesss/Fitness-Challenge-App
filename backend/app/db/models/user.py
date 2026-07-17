@@ -1,5 +1,5 @@
 from app.core.database import Base
-from sqlalchemy import Column, Integer, String, Date, DateTime, func
+from sqlalchemy import Column, Integer, String, Date, DateTime, Boolean, JSON, func
 
 class User(Base):
     __tablename__ = "users"
@@ -7,6 +7,13 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False)
     email = Column(String(70), unique=True, nullable=False)
     password_hash = Column(String(250), nullable=False)
+    # Email ownership confirmation. Google sign-ins are verified by Google;
+    # password signups get a 6-digit emailed code (see verify_code_* below).
+    # Login is blocked for unverified accounts while SMTP is configured.
+    email_verified = Column(Boolean, default=False)
+    verify_code_hash = Column(String(250))
+    verify_code_expires_at = Column(DateTime)
+    verify_code_attempts = Column(Integer, default=0)
     # Google OAuth subject (stable Google user id). Set once the account is
     # created via / linked to "Sign in with Google"; NULL for password-only accounts.
     google_sub = Column(String(64), unique=True)
@@ -24,5 +31,9 @@ class User(Base):
     streak_longest = Column(Integer, default=0)
     last_activity_date = Column(Date)
     timezone = Column(String(50), default="UTC")
+    # Account-level UI flags (onboarding completed, "don't show again" dismissals).
+    # Flat {key: bool} map merged by PATCH /me so the flags follow the account
+    # across devices instead of living in localStorage.
+    ui_flags = Column(JSON, default=dict)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

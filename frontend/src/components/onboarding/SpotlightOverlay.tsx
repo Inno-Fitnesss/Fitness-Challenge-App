@@ -1,6 +1,12 @@
 import { useLayoutEffect, useState } from 'react';
 import type { TourPlacement } from '../../data/appOnboardingTour.ts';
 import { findTourTarget, getSpotlightRect } from '../../utils/tourTarget.ts';
+import {
+  getTooltipPosition,
+  resolvePlacement,
+  type ResolvedPlacement,
+  type Viewport,
+} from './tourTooltipPosition.ts';
 import { Button } from '../ui/Button.tsx';
 
 interface SpotlightOverlayProps {
@@ -17,124 +23,10 @@ interface SpotlightOverlayProps {
   onSkip: () => void;
 }
 
-type ResolvedPlacement = 'top' | 'bottom' | 'left' | 'right' | 'center' | 'fixed-bottom';
-
-interface TooltipPosition {
-  top: number;
-  left: number;
-  maxWidth: number;
-  placement: ResolvedPlacement;
-}
-
 const OVERLAY_COLOR = 'rgba(55, 65, 81, 0.82)';
-const TOOLTIP_ESTIMATED_HEIGHT = 260;
-const MARGIN = 16;
 
-function resolvePlacement(
-  rect: DOMRect | null,
-  preferred: TourPlacement,
-): ResolvedPlacement {
-  if (!rect || preferred === 'center') return 'center';
-
-  if (rect.height > window.innerHeight * 0.45) {
-    return 'fixed-bottom';
-  }
-
-  const spaceBelow = window.innerHeight - rect.bottom - MARGIN;
-  const spaceAbove = rect.top - MARGIN;
-
-  const flipIfNeeded = (choice: 'top' | 'bottom'): 'top' | 'bottom' => {
-    if (choice === 'bottom' && spaceBelow < TOOLTIP_ESTIMATED_HEIGHT && spaceAbove > spaceBelow) {
-      return 'top';
-    }
-    if (choice === 'top' && spaceAbove < TOOLTIP_ESTIMATED_HEIGHT && spaceBelow > spaceAbove) {
-      return 'bottom';
-    }
-    return choice;
-  };
-
-  if (preferred !== 'auto') {
-    if (preferred === 'top' || preferred === 'bottom') {
-      return flipIfNeeded(preferred);
-    }
-    if (preferred === 'left' || preferred === 'right') {
-      return preferred;
-    }
-    return 'bottom';
-  }
-
-  const spaceRight = window.innerWidth - rect.right;
-
-  if (rect.top > window.innerHeight * 0.65) return 'top';
-  if (spaceRight > 320 && rect.left < 200) return 'right';
-  if (spaceBelow > TOOLTIP_ESTIMATED_HEIGHT) return 'bottom';
-  if (spaceAbove > TOOLTIP_ESTIMATED_HEIGHT) return 'top';
-  return 'fixed-bottom';
-}
-
-function getTooltipPosition(
-  rect: DOMRect | null,
-  placement: ResolvedPlacement,
-): TooltipPosition {
-  const tooltipWidth = Math.min(360, window.innerWidth - MARGIN * 2);
-
-  if (!rect || placement === 'center') {
-    return {
-      top: window.innerHeight / 2,
-      left: window.innerWidth / 2,
-      maxWidth: tooltipWidth,
-      placement: 'center',
-    };
-  }
-
-  if (placement === 'fixed-bottom') {
-    return {
-      top: window.innerHeight - MARGIN,
-      left: window.innerWidth / 2,
-      maxWidth: tooltipWidth,
-      placement: 'fixed-bottom',
-    };
-  }
-
-  let top = 0;
-  let left = 0;
-
-  switch (placement) {
-    case 'top':
-      top = rect.top - MARGIN;
-      left = rect.left + rect.width / 2;
-      break;
-    case 'left':
-      top = rect.top + rect.height / 2;
-      left = rect.left - MARGIN;
-      break;
-    case 'right':
-      top = rect.top + rect.height / 2;
-      left = rect.right + MARGIN;
-      break;
-    default:
-      top = rect.bottom + MARGIN;
-      left = rect.left + rect.width / 2;
-      break;
-  }
-
-  left = Math.min(
-    Math.max(left, MARGIN + tooltipWidth / 2),
-    window.innerWidth - MARGIN - tooltipWidth / 2,
-  );
-
-  if (placement === 'bottom') {
-    top = Math.min(top, window.innerHeight - TOOLTIP_ESTIMATED_HEIGHT - MARGIN);
-  } else if (placement === 'top') {
-    top = Math.max(top, TOOLTIP_ESTIMATED_HEIGHT + MARGIN);
-  } else if (placement === 'left' || placement === 'right') {
-    top = Math.min(
-      Math.max(top, TOOLTIP_ESTIMATED_HEIGHT / 2 + MARGIN),
-      window.innerHeight - TOOLTIP_ESTIMATED_HEIGHT / 2 - MARGIN,
-    );
-  }
-
-  return { top, left, maxWidth: tooltipWidth, placement };
+function currentViewport(): Viewport {
+  return { width: window.innerWidth, height: window.innerHeight };
 }
 
 function tooltipTransformClass(placement: ResolvedPlacement): string {
@@ -193,8 +85,9 @@ export function SpotlightOverlay({
     };
   }, [targetId]);
 
-  const resolvedPlacement = resolvePlacement(rect, placement);
-  const tooltip = getTooltipPosition(rect, resolvedPlacement);
+  const viewport = currentViewport();
+  const resolvedPlacement = resolvePlacement(rect, placement, viewport);
+  const tooltip = getTooltipPosition(rect, resolvedPlacement, viewport);
   const isCenter = tooltip.placement === 'center';
   const isFixedBottom = tooltip.placement === 'fixed-bottom';
 
@@ -236,24 +129,26 @@ export function SpotlightOverlay({
                 }
         }
       >
-        <div className="bg-white rounded-3xl shadow-modal p-5 sm:p-6 pointer-events-auto">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <p className="text-xs font-semibold text-brand uppercase tracking-wide">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-modal p-4 sm:p-6 pointer-events-auto">
+          <div className="flex items-center justify-between gap-3 mb-2 sm:mb-3">
+            <p className="text-[11px] sm:text-xs font-semibold text-brand uppercase tracking-wide">
               Шаг {stepIndex + 1} из {totalSteps}
             </p>
             <button
               type="button"
               onClick={onSkip}
-              className="text-xs font-medium text-neutral-muted hover:text-neutral-secondary"
+              className="text-[11px] sm:text-xs font-medium text-neutral-muted hover:text-neutral-secondary"
             >
               Пропустить
             </button>
           </div>
 
-          <h2 id="tour-title" className="text-lg sm:text-xl font-extrabold text-neutral-text mb-2">
+          <h2 id="tour-title" className="text-base sm:text-xl font-extrabold text-neutral-text mb-1.5 sm:mb-2">
             {title}
           </h2>
-          <p className="text-sm text-neutral-secondary leading-relaxed mb-5">{description}</p>
+          <p className="text-[13px] sm:text-sm text-neutral-secondary leading-relaxed mb-4 sm:mb-5">
+            {description}
+          </p>
 
           <div className="flex gap-2">
             {!isFirst && (

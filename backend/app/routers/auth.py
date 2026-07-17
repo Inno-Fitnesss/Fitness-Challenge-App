@@ -1,6 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, Depends
 from app.db.schema.user import (UserInCreate, UserInLogin, UserWithToken, UserOutput,
-                                RefreshIn, GoogleLoginIn, ForgotPasswordIn, ResetPasswordIn)
+                                RefreshIn, GoogleLoginIn, ForgotPasswordIn, ResetPasswordIn,
+                                VerifyEmailIn, ResendVerificationIn)
 from app.core.database import get_db
 from sqlalchemy.orm import Session
 from app.service.userService import UserService
@@ -36,9 +37,21 @@ def resetPassword(body: ResetPasswordIn, session: Session = Depends(get_db)):
         email=body.email, code=body.code, new_password=body.new_password)
 
 @authRouter.post("/signup", status_code=201, response_model=UserOutput)
-def signUp(signUpDetails: UserInCreate, session: Session = Depends(get_db)):
+def signUp(signUpDetails: UserInCreate, background_tasks: BackgroundTasks,
+           session: Session = Depends(get_db)):
     try:
-        return UserService(session=session).signup(user_details=signUpDetails)
+        return UserService(session=session).signup(
+            user_details=signUpDetails, background_tasks=background_tasks)
     except Exception as error:
         print(error)
         raise error
+
+@authRouter.post("/verify-email", status_code=200, response_model=UserWithToken)
+def verifyEmail(body: VerifyEmailIn, session: Session = Depends(get_db)):
+    return UserService(session=session).verify_email(email=body.email, code=body.code)
+
+@authRouter.post("/resend-verification", status_code=200)
+def resendVerification(body: ResendVerificationIn, background_tasks: BackgroundTasks,
+                       session: Session = Depends(get_db)):
+    return UserService(session=session).resend_verification(
+        email=body.email, background_tasks=background_tasks)

@@ -28,6 +28,7 @@ function mapMeToUser(data: ApiMeResponse): User {
     timezone: data.timezone ?? undefined,
     streakCurrent: data.streak_current,
     streakLongest: data.streak_longest,
+    uiFlags: data.ui_flags ?? {},
     volume: data.volume,
   };
 }
@@ -76,6 +77,20 @@ export const authApi = {
       id_token: idToken,
     });
     return data;
+  },
+
+  /** POST /auth/verify-email — подтвердить email кодом из письма, возвращает токены */
+  async verifyEmail(email: string, code: string): Promise<UserWithToken> {
+    const { data } = await apiClient.post<UserWithToken>('/auth/verify-email', {
+      email,
+      code,
+    });
+    return data;
+  },
+
+  /** POST /auth/resend-verification — выслать код подтверждения повторно */
+  async resendVerification(email: string): Promise<void> {
+    await apiClient.post('/auth/resend-verification', { email });
   },
 
   /** POST /auth/forgot-password — запросить код восстановления на email */
@@ -129,6 +144,12 @@ export const authApi = {
     } catch {
       return currentTimezone;
     }
+  },
+
+  /** PATCH /me — обновить UI-флаги аккаунта (онбординг, «больше не показывать») */
+  async updateUiFlags(flags: Record<string, boolean>): Promise<User> {
+    const { data } = await apiClient.patch<ApiMeResponse>('/me', { ui_flags: flags });
+    return mapMeToUser(data);
   },
 
   /** GET /protected — fallback для совместимости */

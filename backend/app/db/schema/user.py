@@ -15,6 +15,8 @@ class UserOutput(BaseModel):
     email: EmailStr
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    # False right after signup while the emailed confirmation code is pending.
+    email_verified: bool = True
 
 class UserInLogin(BaseModel):
     email: EmailStr
@@ -36,6 +38,19 @@ class MeUpdate(BaseModel):
     new_password: Optional[str] = Field(default=None, min_length=8)
     confirm_password: Optional[str] = None
     timezone: Optional[str] = Field(default=None, max_length=50)
+    # Partial UI-flag update: sent keys are merged into users.ui_flags
+    # (true sets the flag, false removes it); omitted keys stay untouched.
+    ui_flags: Optional[dict[str, bool]] = None
+
+    @model_validator(mode="after")
+    def _valid_ui_flags(self):
+        if self.ui_flags is not None:
+            if len(self.ui_flags) > 50:
+                raise ValueError("too many ui_flags keys")
+            for key in self.ui_flags:
+                if not key or len(key) > 100:
+                    raise ValueError("ui_flags keys must be 1-100 chars")
+        return self
 
     @model_validator(mode="after")
     def _passwords_match(self):
@@ -61,6 +76,15 @@ class GoogleLoginIn(BaseModel):
 
 class ForgotPasswordIn(BaseModel):
     """POST /auth/forgot-password — request a reset code by email."""
+    email: EmailStr
+
+class VerifyEmailIn(BaseModel):
+    """POST /auth/verify-email — confirm the address with the emailed code."""
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+class ResendVerificationIn(BaseModel):
+    """POST /auth/resend-verification — request a fresh verification code."""
     email: EmailStr
 
 class ResetPasswordIn(BaseModel):

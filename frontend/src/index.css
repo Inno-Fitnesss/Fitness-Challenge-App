@@ -10,6 +10,10 @@
   }
   html {
     overflow-x: hidden;
+    /* Disable double-tap-to-zoom; keep normal scrolling/panning. */
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
   body {
     font-family: 'Inter', system-ui, sans-serif;
@@ -32,11 +36,16 @@
   .animate-fade-in {
     animation: fadeIn 0.3s ease-out forwards;
   }
+  /* Без fill-mode: forwards — иначе финальный transform (translateY(0)/scale(1))
+     остаётся применённым навсегда и элемент становится containing block для
+     position:fixed потомков: модалки внутри анимированных обёрток привязываются
+     к обёртке вместо окна и обрезаются её границами. Финальный кадр совпадает
+     с естественным состоянием, так что визуально ничего не меняется. */
   .animate-slide-up {
-    animation: slideUp 0.35s ease-out forwards;
+    animation: slideUp 0.35s ease-out;
   }
   .animate-scale-in {
-    animation: scaleIn 0.25s ease-out forwards;
+    animation: scaleIn 0.25s ease-out;
   }
 }
 

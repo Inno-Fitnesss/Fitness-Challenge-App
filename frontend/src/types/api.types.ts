@@ -75,6 +75,7 @@ export interface ApiMeResponse {
   timezone?: string | null;
   streak_current: number;
   streak_longest: number;
+  ui_flags?: Record<string, boolean>;
   volume: { exercise: string; metric: string; total: number }[];
 }
 

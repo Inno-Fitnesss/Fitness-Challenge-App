@@ -32,6 +32,28 @@ function dayCircleClass(day: CalendarDay): string {
   }
 }
 
+// Мобильная пилюля «день недели + число» по макету: кремовый прямоугольник,
+// сегодняшний день — оранжевый, выполненные — лаймовые.
+function dayPillClass(day: CalendarDay): string {
+  const base =
+    'w-full rounded-xl flex flex-col items-center justify-center gap-0.5 py-2 text-xs font-bold transition-colors';
+
+  switch (day.status) {
+    case 'full':
+      return `${base} bg-lime text-white`;
+    case 'partial':
+      return `${base} bg-lime-light text-lime-hover`;
+    case 'missed':
+      return `${base} bg-neutral-card text-neutral-muted`;
+    case 'pending':
+      return `${base} bg-brand-light text-brand`;
+    case 'rest':
+    case 'future':
+    default:
+      return `${base} bg-[#F6F1E4] ${day.status === 'future' ? 'text-neutral-muted' : 'text-neutral-text'}`;
+  }
+}
+
 function dayTitle(day: CalendarDay): string {
   switch (day.status) {
     case 'full':
@@ -95,7 +117,33 @@ export function WeeklyCalendar({
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 sm:gap-2 w-full min-w-0" aria-label="Календарь активности">
+      {/* Мобильная сетка: пилюли «ПН / 8» по макету */}
+      <div className="grid sm:hidden grid-cols-7 gap-1.5 w-full min-w-0" aria-label="Календарь активности">
+        {days.map((day) => (
+          <button
+            key={day.isoDate}
+            type="button"
+            className={`${dayPillClass(day)} ${
+              day.isToday && day.status !== 'full' && day.status !== 'partial' && day.status !== 'pending'
+                ? '!bg-brand-light !text-brand'
+                : ''
+            } ${isWeekLoading ? 'opacity-60' : ''}`}
+            title={dayTitle(day)}
+            aria-label={`${day.day} ${dayTitle(day)}`}
+            disabled={isWeekLoading}
+          >
+            <span className="text-[11px] leading-none uppercase">{day.weekdayLabel}</span>
+            {day.status === 'full' ? (
+              <Check size={14} strokeWidth={3} aria-hidden />
+            ) : (
+              <span className="text-sm leading-none">{day.day}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {}
+      <div className="hidden sm:grid grid-cols-7 gap-1 sm:gap-2 w-full min-w-0" aria-label="Календарь активности">
         {days.map((day) => (
           <div key={day.isoDate} className="flex flex-col items-center gap-1.5 min-w-0">
             <span className="text-[10px] sm:text-xs text-neutral-muted font-medium truncate w-full text-center">

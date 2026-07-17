@@ -40,9 +40,9 @@ export function ChallengePreview({ data, exercises }: ChallengePreviewProps) {
           </span>
           <span className="text-xs text-neutral-secondary font-medium">
             {data.privacy === 'private' ? (
-              <span className="flex items-center gap-1"><Lock size={11} /> Приватный</span>
+              <span className="flex items-center gap-1"><Lock size={11} /> Индивидуальный</span>
             ) : (
-              <span className="flex items-center gap-1"><Globe size={11} /> Публичный</span>
+              <span className="flex items-center gap-1"><Globe size={11} /> Групповой</span>
             )}
           </span>
         </div>

@@ -1,4 +1,13 @@
 import type { ChallengeListItem } from '../types/challenge.ts';
+import { todayIso } from './dateFormat.ts';
+
+export function isChallengeExpired(challenge: ChallengeListItem): boolean {
+  return !challenge.isUnlimited && Boolean(challenge.endDate) && challenge.endDate < todayIso();
+}
+
+export function canResumeChallenge(challenge: ChallengeListItem): boolean {
+  return !isChallengeExpired(challenge);
+}
 
 export function canEditChallenge(challenge: ChallengeListItem): boolean {
   return challenge.isOwner && challenge.isPrivate && challenge.status === 'active';

@@ -91,8 +91,10 @@ export function mapChallengeDetailToListItem(detail: ApiChallengeDetail): Challe
 export function calcExerciseProgressPercent(exercises: ApiChallengeExercise[]): number {
   if (exercises.length === 0) return 0;
   const sum = exercises.reduce((acc, ex) => {
-    if (!ex.closed) return acc;
-    return acc + 1;
+    if (ex.closed) return acc + 1;
+    if (ex.goal <= 0) return acc;
+    const done = ex.clean_today ?? 0;
+    return acc + Math.min(done / ex.goal, 1);
   }, 0);
   return Math.round((sum / exercises.length) * 100);
 }
@@ -103,11 +105,16 @@ export function mapTodayToPlanItem(
 ): TodayPlanItem {
   const progressPercent = calcExerciseProgressPercent(today.exercises);
   const isCompleted = today.exercises.length > 0 && today.exercises.every((ex) => ex.closed);
+  const exercises = today.exercises.map((ex) => ({
+    label: formatExerciseTag(ex.name, ex.goal, ex.metric),
+    completed: Boolean(ex.closed),
+  }));
 
   return {
     challenge: mapChallengeDetailToListItem(detail),
     progressPercent,
     isCompleted,
+    exercises,
   };
 }
 

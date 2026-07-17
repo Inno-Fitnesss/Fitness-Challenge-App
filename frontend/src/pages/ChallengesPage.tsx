@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/Button.tsx';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog.tsx';
 import { PageTabs } from '../components/ui/PageTabs.tsx';
@@ -10,7 +10,7 @@ import { DiscoveryCard } from '../components/challenges/DiscoveryCard.tsx';
 import { ChallengeDetailModal } from '../components/challenges/ChallengeDetailModal.tsx';
 import { ChallengeFormModal } from '../components/challenges/ChallengeFormModal.tsx';
 import { ChallengeInviteModal } from '../components/challenges/ChallengeInviteModal.tsx';
-import { challengeApi } from '../api/challengeApi.ts';
+import { challengeApi, meApi } from '../api/challengeApi.ts';
 import { parseApiError } from '../utils/parseApiError.ts';
 import { buildChallengeInviteUrl } from '../utils/inviteUrl.ts';
 import type { AxiosError } from 'axios';
@@ -20,6 +20,7 @@ import {
 } from '../api/challengeQueries.ts';
 import type { ChallengeListItem, ChallengeTab, DiscoveryChallenge } from '../types/challenge.ts';
 import { canEditChallenge } from '../utils/challengePermissions.ts';
+import { calcExerciseProgressPercent } from '../utils/challengeMappers.ts';
 
 const TABS = [
   { id: 'individual', label: 'Индивидуальные' },
@@ -91,6 +92,124 @@ function DiscoverySection({
   );
 }
 
+/**
+ * Мобильный блок «Обзор» по макету: горизонтальная карусель готовых
+ * челленджей с точками-индикаторами под ней.
+ */
+function DiscoveryCarousel({
+  discovery,
+  isLoading,
+  onJoin,
+}: {
+  discovery: DiscoveryChallenge[];
+  isLoading: boolean;
+  onJoin: (id: number) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  // Развёрнутый список всех готовых челленджей (только мобильный вид)
+  const [expanded, setExpanded] = useState(false);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el || el.clientWidth === 0) return;
+    // Ширина слайда = ширина контейнера, между слайдами gap 12px
+    const index = Math.round(el.scrollLeft / (el.clientWidth + 12));
+    setActiveIndex(Math.min(Math.max(index, 0), discovery.length - 1));
+  };
+
+  const canExpand = discovery.length > 0;
+
+  if (expanded) {
+    return (
+      <section className="lg:hidden mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            aria-label="Назад"
+            className="flex items-center gap-0.5 -ml-1 py-1 pr-2 text-sm font-semibold text-neutral-muted active:opacity-70"
+          >
+            <ChevronLeft size={22} />
+            Назад
+          </button>
+          <h2 className="text-2xl font-extrabold text-neutral-text">Готовые челленджи</h2>
+        </div>
+
+        <div className="space-y-3">
+          {discovery.map((challenge) => (
+            <DiscoveryCard
+              key={challenge.id}
+              challenge={challenge}
+              onJoin={() => onJoin(challenge.id)}
+            />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="lg:hidden mb-6">
+      <div className="flex items-baseline justify-between gap-3 mb-4">
+        <h2 className="text-2xl font-extrabold text-neutral-text">Обзор</h2>
+        {canExpand ? (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="flex items-center gap-0.5 text-sm font-semibold text-neutral-muted text-right active:opacity-70"
+          >
+            Готовые челленджи
+            <ChevronRight size={16} />
+          </button>
+        ) : (
+          <span className="text-sm font-semibold text-neutral-muted text-right">
+            Готовые челленджи
+          </span>
+        )}
+      </div>
+
+      {discovery.length === 0 && !isLoading && (
+        <p className="text-sm font-medium text-neutral-muted text-center py-2">
+          Пока нет доступных челленджей:(
+        </p>
+      )}
+
+      {discovery.length > 0 && (
+        <>
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex gap-3 overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {discovery.map((challenge) => (
+              <div key={challenge.id} className="w-full flex-shrink-0 snap-center">
+                <DiscoveryCard
+                  challenge={challenge}
+                  onJoin={() => onJoin(challenge.id)}
+                />
+              </div>
+            ))}
+          </div>
+
+          {discovery.length > 1 && (
+            <div className="flex justify-center gap-2 mt-3" aria-hidden>
+              {discovery.map((challenge, index) => (
+                <span
+                  key={challenge.id}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    index === activeIndex ? 'bg-brand' : 'bg-neutral-border'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 export function ChallengesPage() {
   const navigate = useNavigate();
   const { id: routeChallengeId } = useParams<{ id?: string }>();
@@ -128,6 +247,8 @@ export function ChallengesPage() {
   const [activeChallenges, setActiveChallenges] = useState<ChallengeListItem[]>([]);
   const [archivedChallenges, setArchivedChallenges] = useState<ChallengeListItem[]>([]);
   const [discovery, setDiscovery] = useState<DiscoveryChallenge[]>([]);
+  // Прогресс за сегодня по челленджам (id -> %) — для колец на мобильных карточках
+  const [todayProgress, setTodayProgress] = useState<Record<number, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -143,14 +264,21 @@ export function ChallengesPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [active, archived, presets] = await Promise.all([
+      const [active, archived, presets, today] = await Promise.all([
         fetchChallengeListItems('active'),
         fetchChallengeListItems('archived'),
         fetchDiscoveryChallenges(),
+        // Кольца прогресса на мобильных карточках; ошибка не критична
+        meApi.getToday().catch(() => []),
       ]);
       setActiveChallenges(active);
       setArchivedChallenges(archived);
       setDiscovery(presets);
+      setTodayProgress(
+        Object.fromEntries(
+          today.map((item) => [item.id, calcExerciseProgressPercent(item.exercises)]),
+        ),
+      );
     } catch (err) {
       const apiErr = err as { message?: string };
       setError(apiErr.message ?? 'Не удалось загрузить челленджи');
@@ -227,10 +355,10 @@ export function ChallengesPage() {
 
   const handlePublish = (id: number) => {
     setConfirmState({
-      title: 'Сделать челлендж публичным?',
+      title: 'Сделать челлендж групповым?',
       description:
         'После этого его нельзя будет редактировать, он переместится в «Групповые».',
-      confirmLabel: 'Сделать публичным',
+      confirmLabel: 'Сделать групповым',
       action: async () => {
         try {
           await challengeApi.publish(id);
@@ -340,7 +468,7 @@ export function ChallengesPage() {
   const handleOpenEdit = (id: number) => {
     const challenge = allChallenges.find((item) => item.id === id);
     if (!challenge || !canEditChallenge(challenge)) {
-      showToast('Публичный челлендж нельзя редактировать');
+      showToast('Групповой челлендж нельзя редактировать');
       return;
     }
     closeChallenge();
@@ -351,7 +479,8 @@ export function ChallengesPage() {
     <PageContainer>
       <div className="flex flex-col xl:flex-row gap-8 xl:gap-10">
         <div className="flex-1 min-w-0">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+          {/* Десктопная шапка: на мобильных её заменяет блок «Обзор» и FAB */}
+          <div className="hidden lg:flex gap-4 lg:items-center lg:justify-between mb-6">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-text">Челленджи</h1>
             <Button
               variant="primary"
@@ -365,6 +494,12 @@ export function ChallengesPage() {
               Создать челлендж
             </Button>
           </div>
+
+          <DiscoveryCarousel
+            discovery={discovery}
+            isLoading={isLoading}
+            onJoin={(id) => void handleJoin(id)}
+          />
 
           <div data-tour="challenge-tabs">
             <PageTabs
@@ -388,9 +523,11 @@ export function ChallengesPage() {
                   key={challenge.id}
                   challenge={challenge}
                   tab={activeTab}
+                  progressPercent={todayProgress[challenge.id]}
                   onOpen={openChallenge}
                   onCopyLink={() => void handleCopyLink(challenge)}
                   onPublish={(cid) => void handlePublish(cid)}
+                  onEdit={handleOpenEdit}
                   onArchive={(cid) => void handleArchive(cid)}
                   onDelete={(cid) => void handleDelete(cid)}
                   onLeave={(cid) => void handleLeave(cid)}
@@ -401,14 +538,16 @@ export function ChallengesPage() {
               {challenges.length === 0 && (
                 <p className="text-neutral-muted text-center py-12 sm:py-16">
                   {activeTab === 'individual' && 'Создайте индивидуальный челлендж — его можно редактировать до публикации'}
-                  {activeTab === 'group' && 'Здесь появятся публичные челленджи и те, к которым вы присоединились'}
+                  {activeTab === 'group' && 'Здесь появятся групповые челленджи и те, к которым вы присоединились'}
                   {activeTab === 'archive' && 'Архив пуст'}
                 </p>
               )}
             </div>
           )}
 
-          <section className="xl:hidden mt-10 pt-8 border-t border-neutral-border">
+          {/* Ниже xl (но от lg) «Обзор» остаётся под списком, как раньше;
+              на мобильных он показан каруселью сверху */}
+          <section className="hidden lg:block xl:hidden mt-10 pt-8 border-t border-neutral-border">
             <DiscoverySection
               discovery={discovery}
               isLoading={isLoading}
@@ -425,6 +564,17 @@ export function ChallengesPage() {
           />
         </aside>
       </div>
+
+      {/* Мобильный FAB создания челленджа — над нижней таб-панелью */}
+      <button
+        type="button"
+        aria-label="Создать челлендж"
+        data-tour="create-challenge"
+        onClick={openCreateModal}
+        className="lg:hidden fixed z-30 right-4 bottom-[calc(92px+env(safe-area-inset-bottom))] w-14 h-14 rounded-2xl bg-brand text-white shadow-card-hover flex items-center justify-center hover:bg-brand-hover active:scale-95 transition-all"
+      >
+        <Plus size={30} strokeWidth={2.5} />
+      </button>
 
       {showCreateModal && (
         <ChallengeFormModal
@@ -463,6 +613,11 @@ export function ChallengesPage() {
             if (challenge) void handleCopyLink(challenge);
           }}
           onLeave={(cid) => void handleLeave(cid)}
+          onArchive={(cid) => {
+            closeChallenge();
+            void handleArchive(cid);
+          }}
+          onDelete={(cid) => void handleDelete(cid)}
           returnTarget={{ type: 'challenge', challengeId: selectedChallengeId, tab: activeTab }}
         />
       )}
