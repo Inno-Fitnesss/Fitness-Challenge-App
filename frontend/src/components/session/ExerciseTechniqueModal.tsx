@@ -56,10 +56,11 @@ export function ExerciseTechniqueModal({
         }}
       />
       <div className="absolute inset-0 flex items-center justify-center modal-safe-x py-4 pointer-events-none">
-      <div
-        className="pointer-events-auto w-full max-w-lg max-h-[90dvh] overflow-y-auto overflow-x-hidden bg-white rounded-3xl shadow-modal p-5 sm:p-6 min-w-0"
-        onClick={(event) => event.stopPropagation()}
-      >
+        <div
+          className="pointer-events-auto w-full max-w-lg max-h-[90dvh] overflow-hidden rounded-3xl bg-white shadow-modal min-w-0"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="max-h-[90dvh] overflow-y-auto overflow-x-hidden p-5 sm:p-6">
         <header className="text-center mb-4">
           <h2 id="technique-modal-title" className="text-xl font-extrabold text-neutral-text">
             {content.title}
@@ -146,7 +147,8 @@ export function ExerciseTechniqueModal({
         >
           Понятно
         </Button>
-      </div>
+          </div>
+        </div>
       </div>
     </div>
   );
