@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { authApi } from '../api/authApi.ts';
 import { preloadPoseRuntime } from '../cv/poseCvEngine.ts';
 import { STORAGE_KEYS } from '../constants/storage.ts';
+import { safeStorage } from '../utils/safeStorage.ts';
 import type {
   ApiError,
   AuthContextValue,
@@ -24,7 +25,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 function loadStoredUser(): User | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.USER);
+    const raw = safeStorage.getItem(STORAGE_KEYS.USER);
     return raw ? (JSON.parse(raw) as User) : null;
   } catch {
     return null;
@@ -32,9 +33,9 @@ function loadStoredUser(): User | null {
 }
 
 function persistSession(token: string, user: User, rememberMe: boolean): void {
-  localStorage.setItem(STORAGE_KEYS.TOKEN, token);
-  localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-  localStorage.setItem(STORAGE_KEYS.REMEMBER_ME, String(rememberMe));
+  safeStorage.setItem(STORAGE_KEYS.TOKEN, token);
+  safeStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+  safeStorage.setItem(STORAGE_KEYS.REMEMBER_ME, String(rememberMe));
 }
 
 function warmUpCvModel(): void {
@@ -46,15 +47,15 @@ function warmUpCvModel(): void {
 }
 
 function clearSession(): void {
-  localStorage.removeItem(STORAGE_KEYS.TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.USER);
-  localStorage.removeItem(STORAGE_KEYS.REMEMBER_ME);
+  safeStorage.removeItem(STORAGE_KEYS.TOKEN);
+  safeStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+  safeStorage.removeItem(STORAGE_KEYS.USER);
+  safeStorage.removeItem(STORAGE_KEYS.REMEMBER_ME);
 }
 
 function storeRefreshToken(refreshToken?: string): void {
   if (refreshToken) {
-    localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+    safeStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
   }
 }
 
@@ -65,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const checkAuth = useCallback(async () => {
-    const storedToken = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    const storedToken = safeStorage.getItem(STORAGE_KEYS.TOKEN);
 
     if (!storedToken) {
       clearSession();
@@ -85,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ? { ...freshUser, timezone: syncedTimezone }
         : freshUser;
       setUser(resolvedUser);
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(resolvedUser));
+      safeStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(resolvedUser));
       warmUpCvModel();
     } catch (error) {
       const apiError = error as ApiError;
@@ -105,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const completeSession = useCallback(
     async (authToken: string, redirectTo: string) => {
-      localStorage.setItem(STORAGE_KEYS.TOKEN, authToken);
+      safeStorage.setItem(STORAGE_KEYS.TOKEN, authToken);
 
       const currentUser = await authApi.getCurrentUser();
       const syncedTimezone = await authApi.syncTimezone(currentUser.timezone);
@@ -169,13 +170,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const refreshProfile = useCallback(async () => {
-    const storedToken = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    const storedToken = safeStorage.getItem(STORAGE_KEYS.TOKEN);
     if (!storedToken) return;
 
     try {
       const freshUser = await authApi.getCurrentUser();
       setUser(freshUser);
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(freshUser));
+      safeStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(freshUser));
     } catch {
       // Keep cached profile if refresh fails.
     }
