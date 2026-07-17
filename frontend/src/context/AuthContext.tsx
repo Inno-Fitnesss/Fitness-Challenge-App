@@ -16,6 +16,7 @@ import type {
   AuthContextValue,
   LoginCredentials,
   RegisterData,
+  RegisterResult,
   User,
 } from '../types/auth.types.ts';
 
@@ -139,12 +140,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const register = useCallback(
-    async (data: RegisterData, redirectTo = '/dashboard') => {
-      await authApi.register(data);
+    async (data: RegisterData, redirectTo = '/dashboard'): Promise<RegisterResult> => {
+      const created = await authApi.register(data);
+      // Сервер требует подтвердить email — вход произойдёт после ввода кода
+      // (см. verifyEmail). Без SMTP на сервере аккаунт создаётся сразу
+      // подтверждённым, и работает старый сценарий «регистрация → вход».
+      if (created.emailVerified === false) {
+        return 'verification_required';
+      }
       const { token: authToken, refresh_token } = await authApi.login({
         email: data.email,
         password: data.password,
       });
+      storeRefreshToken(refresh_token);
+      await completeSession(authToken, redirectTo);
+      return 'logged_in';
+    },
+    [completeSession],
+  );
+
+  const verifyEmail = useCallback(
+    async (email: string, code: string, redirectTo = '/dashboard') => {
+      const { token: authToken, refresh_token } = await authApi.verifyEmail(email, code);
       storeRefreshToken(refresh_token);
       await completeSession(authToken, redirectTo);
     },
@@ -180,11 +197,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       loginWithGoogle,
       register,
+      verifyEmail,
       logout,
       checkAuth,
       refreshProfile,
     }),
-    [user, token, isLoading, login, loginWithGoogle, register, logout, checkAuth, refreshProfile],
+    [user, token, isLoading, login, loginWithGoogle, register, verifyEmail, logout, checkAuth, refreshProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -9,6 +9,7 @@ import { Input } from '../ui/Input.tsx';
 import { Label } from '../ui/Label.tsx';
 import { FieldError } from '../ui/FieldError.tsx';
 import { ForgotPasswordModal } from './ForgotPasswordModal.tsx';
+import { VerifyEmailModal } from './VerifyEmailModal.tsx';
 import type { ApiError } from '../../types/auth.types.ts';
 
 const authInputClass =
@@ -23,6 +24,9 @@ export function SignInForm({ redirectTo = '/dashboard' }: SignInFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [forgotOpen, setForgotOpen] = useState(false);
+  // Email аккаунта, которому сервер отказал во входе из-за неподтверждённой
+  // почты (401/403 "Email not verified") — открывает модалку с кодом.
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
 
   const {
     register,
@@ -44,6 +48,11 @@ export function SignInForm({ redirectTo = '/dashboard' }: SignInFormProps) {
       await login({ email: values.email, password: values.password }, redirectTo);
     } catch (error) {
       const apiErr = error as ApiError;
+      if (apiErr.status === 403) {
+        // Пароль верный, но email не подтверждён — предлагаем ввести код.
+        setVerifyEmail(values.email);
+        return;
+      }
       setApiError(apiErr.message ?? 'Не удалось войти. Попробуйте снова.');
     }
   };
@@ -132,6 +141,14 @@ export function SignInForm({ redirectTo = '/dashboard' }: SignInFormProps) {
       open={forgotOpen}
       initialEmail={getValues('email')}
       onClose={() => setForgotOpen(false)}
+    />
+
+    <VerifyEmailModal
+      open={verifyEmail !== null}
+      email={verifyEmail ?? ''}
+      autoResend
+      redirectTo={redirectTo}
+      onClose={() => setVerifyEmail(null)}
     />
     </>
   );

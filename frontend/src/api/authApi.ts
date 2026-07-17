@@ -78,6 +78,20 @@ export const authApi = {
     return data;
   },
 
+  /** POST /auth/verify-email — подтвердить email кодом из письма, возвращает токены */
+  async verifyEmail(email: string, code: string): Promise<UserWithToken> {
+    const { data } = await apiClient.post<UserWithToken>('/auth/verify-email', {
+      email,
+      code,
+    });
+    return data;
+  },
+
+  /** POST /auth/resend-verification — выслать код подтверждения повторно */
+  async resendVerification(email: string): Promise<void> {
+    await apiClient.post('/auth/resend-verification', { email });
+  },
+
   /** POST /auth/forgot-password — запросить код восстановления на email */
   async forgotPassword(email: string): Promise<void> {
     await apiClient.post('/auth/forgot-password', { email });

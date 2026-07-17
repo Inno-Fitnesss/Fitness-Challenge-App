@@ -1,4 +1,6 @@
+import logging
 import os
+import time
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -14,12 +16,30 @@ from app.routers.withings import withingsRouter
 from app.util.protectRoute import get_current_user
 from app.db.schema.user import UserOutput
 
+logger = logging.getLogger(__name__)
+
+def _init_db_with_retries(attempts: int = 10, delay_seconds: float = 3.0):
+    """DB init with retries: on deploy/reboot Postgres may come up a bit later
+    than the backend (or hiccup mid-restart). Crashing instantly used to leave
+    the app down; retrying rides out short DB unavailability windows."""
+    for attempt in range(1, attempts + 1):
+        try:
+            create_tables()
+            sync_schema()
+            seed_exercises()
+            seed_preset_challenges()
+            return
+        except Exception as error:
+            if attempt == attempts:
+                raise
+            logger.warning(
+                "DB init failed (attempt %d/%d): %s — retrying in %.0fs",
+                attempt, attempts, error, delay_seconds)
+            time.sleep(delay_seconds)
+
 @asynccontextmanager
 async def lifespan(app : FastAPI):
-    create_tables()
-    sync_schema()
-    seed_exercises()
-    seed_preset_challenges()
+    _init_db_with_retries()
     yield
 
 app = FastAPI(lifespan=lifespan)
