@@ -243,7 +243,7 @@ export function ChallengeInviteModal({ joinCode, onClose, onJoined }: ChallengeI
 
                 <section>
                   <div className="flex items-baseline justify-between gap-2 mb-4">
-                    <h3 className="text-base font-bold text-neutral-text">Лидерборд</h3>
+                    <h3 className="text-base font-bold text-neutral-text">Таблица лидеров</h3>
                     <span className="text-xs text-brand font-medium">регулярность</span>
                   </div>
                   <LeaderboardList entries={leaderboard} />

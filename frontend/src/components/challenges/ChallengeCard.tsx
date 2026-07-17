@@ -97,7 +97,7 @@ function ActionBar({
     const mobileActions = [
       canPublishChallenge(challenge) && (
         <button key="publish" type="button" className={mobileBtnClass} onClick={() => onPublish?.(challengeId)}>
-          Сделать публичным
+          Сделать групповым
         </button>
       ),
       canEditChallenge(challenge) && onEdit && (
@@ -144,7 +144,7 @@ function ActionBar({
           onClick={() => onPublish?.(challengeId)}
         >
           <Globe size={14} />
-          Сделать публичным
+          Сделать групповым
         </button>
       ),
       canArchiveChallenge(challenge) && (
@@ -307,7 +307,7 @@ export function ChallengeCard(props: ChallengeCardProps) {
           <ChallengeScheduleBadge label={challenge.scheduleLabel} />
           <Badge variant="green">{formatParticipants(challenge.participantCount)}</Badge>
           {tab === 'group' && !challenge.isPrivate && (
-            <Badge variant="green">Публичный</Badge>
+            <Badge variant="green">Групповой</Badge>
           )}
         </div>
 

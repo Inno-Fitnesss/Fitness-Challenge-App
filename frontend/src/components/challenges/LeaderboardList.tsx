@@ -25,7 +25,7 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-neutral-text truncate">{entry.username}</p>
         <p className="text-xs text-neutral-muted flex items-center gap-1">
-          🔥 <span className="hidden lg:inline">Глобальный стрик:</span>{' '}
+          🔥 <span className="hidden lg:inline">Дней в ударе:</span>{' '}
           {entry.globalStreakDays} {pluralizeRu(entry.globalStreakDays, ['день', 'дня', 'дней'])}
         </p>
       </div>
@@ -60,7 +60,7 @@ export function LeaderboardList({
     <div
       className="overflow-y-auto overflow-x-hidden pr-1 -mr-1 space-y-1 [scrollbar-width:thin]"
       style={{ maxHeight }}
-      aria-label="Лидерборд"
+      aria-label="Таблица лидеров"
     >
       {entries.map((entry) => (
         <LeaderboardRow key={`${entry.rank}-${entry.username}`} entry={entry} />

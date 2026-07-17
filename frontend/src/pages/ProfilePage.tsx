@@ -154,7 +154,7 @@ export function ProfilePage() {
     try {
       await withingsApi.sync();
     } catch {
-      setError('Не удалось обновить шаги из Withings — попробуй ещё раз чуть позже.');
+      setError('Не удалось обновить шаги из Withings — попробуй ещё раз позже.');
     }
     const data = await stepsApi.getRecent(7);
     setStepsData(data);
@@ -288,7 +288,7 @@ export function ProfilePage() {
             <ProfileStatCard
               icon={Flame}
               value={profile.streakCurrent ?? 0}
-              label="Стрик"
+              label="Дни в ударе"
               iconClassName="text-brand"
             />
             <ProfileStatCard

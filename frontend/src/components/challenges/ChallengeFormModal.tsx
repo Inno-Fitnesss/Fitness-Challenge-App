@@ -237,7 +237,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
           const detail = await challengeApi.getDetail(challengeId);
           if (cancelled) return;
           if (!detail.is_private) {
-            setError('Публичный челлендж нельзя редактировать');
+            setError('Групповой челлендж нельзя редактировать');
             return;
           }
 
