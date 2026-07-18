@@ -2,12 +2,15 @@ import type { ApiExercise } from '../../types/api.types.ts';
 import { ExerciseSelect } from './ExerciseSelect.tsx';
 import {
   clampRepsGoal,
+  clampStepsGoal,
   combinePlankGoal,
   DEFAULT_PLANK_SECONDS,
   DEFAULT_REPS_GOAL,
+  DEFAULT_STEPS_GOAL,
   MAX_PLANK_MINUTES,
   MAX_PLANK_TOTAL_SECONDS,
   MAX_REPS_GOAL,
+  MAX_STEPS_GOAL,
   splitPlankGoal,
 } from '../../constants/challengeLimits.ts';
 import { generateId } from '../../utils/generateId.ts';
@@ -28,7 +31,9 @@ interface ChallengeExerciseRowProps {
 }
 
 function metricLabel(metric: ApiExercise['metric']): string {
-  return metric === 'seconds' ? 'время' : 'повторений';
+  if (metric === 'seconds') return 'время';
+  if (metric === 'steps') return 'шагов';
+  return 'повторений';
 }
 
 export function ChallengeExerciseRow({
@@ -49,14 +54,19 @@ export function ChallengeExerciseRow({
   const handleExerciseChange = (exerciseId: number) => {
     const exercise = exercises.find((e) => e.id === exerciseId);
     const defaultGoal =
-      exercise?.metric === 'seconds' ? DEFAULT_PLANK_SECONDS : DEFAULT_REPS_GOAL;
+      exercise?.metric === 'seconds'
+        ? DEFAULT_PLANK_SECONDS
+        : exercise?.metric === 'steps'
+          ? DEFAULT_STEPS_GOAL
+          : DEFAULT_REPS_GOAL;
     onChange(row.rowId, { exerciseId, goal: defaultGoal });
   };
 
   const handleRepsChange = (raw: string) => {
     const value = parseInt(raw, 10);
     if (!isNaN(value) && value > 0) {
-      onChange(row.rowId, { goal: clampRepsGoal(value) });
+      const clamp = metric === 'steps' ? clampStepsGoal : clampRepsGoal;
+      onChange(row.rowId, { goal: clamp(value) });
     } else if (raw === '') {
       onChange(row.rowId, { goal: 0 });
     }
@@ -124,12 +134,14 @@ export function ChallengeExerciseRow({
         <input
           type="number"
           min={1}
-          max={MAX_REPS_GOAL}
+          max={metric === 'steps' ? MAX_STEPS_GOAL : MAX_REPS_GOAL}
           value={selected && row.goal > 0 ? row.goal : ''}
           onChange={(e) => handleRepsChange(e.target.value)}
           disabled={!selected}
           aria-label="Цель"
-          className="w-14 sm:w-16 text-center text-sm font-medium text-neutral-text border border-neutral-border rounded-xl py-1.5 focus:outline-none focus:border-brand disabled:bg-neutral-card disabled:text-neutral-muted ml-auto sm:ml-0"
+          className={`${
+            metric === 'steps' ? 'w-20 sm:w-24' : 'w-14 sm:w-16'
+          } text-center text-sm font-medium text-neutral-text border border-neutral-border rounded-xl py-1.5 focus:outline-none focus:border-brand disabled:bg-neutral-card disabled:text-neutral-muted ml-auto sm:ml-0`}
         />
       )}
         </div>
@@ -170,6 +182,9 @@ export function isExerciseRowValid(
   if (!exercise) return false;
   if (exercise.metric === 'seconds') {
     return row.goal >= 1 && row.goal <= MAX_PLANK_TOTAL_SECONDS;
+  }
+  if (exercise.metric === 'steps') {
+    return row.goal >= 1 && row.goal <= MAX_STEPS_GOAL;
   }
   return row.goal >= 1 && row.goal <= MAX_REPS_GOAL;
 }

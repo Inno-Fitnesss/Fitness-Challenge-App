@@ -42,6 +42,9 @@ export function formatExerciseTag(name: string, goal: number, metric: string): s
     }
     return `${name} ${goal} сек`;
   }
+  if (metric === 'steps') {
+    return `${name} ${goal.toLocaleString('ru-RU')} шагов`;
+  }
   return `${name} x ${goal}`;
 }
 
@@ -123,18 +126,33 @@ export function mapExerciseProgress(
 ): ExerciseProgress[] {
   return exercises.map((ex) => {
     const isSeconds = ex.metric === 'seconds';
+    const isSteps = ex.metric === 'steps';
     const goal = isSeconds && ex.goal >= 60 ? Math.floor(ex.goal / 60) : ex.goal;
-    const unit = isSeconds && ex.goal >= 60 ? 'minutes' as const : isSeconds ? 'seconds' as const : 'reps' as const;
+    const unit = isSteps
+      ? 'steps' as const
+      : isSeconds && ex.goal >= 60
+        ? 'minutes' as const
+        : isSeconds
+          ? 'seconds' as const
+          : 'reps' as const;
 
     let status: ExerciseProgress['status'] = 'not_started';
     if (ex.closed) status = 'completed';
+
+    // Steps stream in from Withings, so we surface the live partial count
+    // (clean_today). Camera exercises only expose a value once the goal closes,
+    // so they stay at 0 until then, as before.
+    const completed = isSteps
+      ? (ex.clean_today ?? 0)
+      : ex.closed ? goal : 0;
 
     return {
       exerciseId: String(ex.challenge_exercise_id),
       name: ex.name,
       goal,
-      completed: ex.closed ? goal : 0,
+      completed,
       unit: unit === 'seconds' ? 'reps' : unit,
+      metric: ex.metric,
       status,
     };
   });

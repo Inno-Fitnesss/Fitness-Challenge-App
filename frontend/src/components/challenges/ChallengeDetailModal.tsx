@@ -52,10 +52,17 @@ function formatGoal(exercise: ExerciseProgress): string {
   if (exercise.unit === 'minutes') {
     return `${exercise.goal} ${pluralizeRu(exercise.goal, ['минута', 'минуты', 'минут'])}`;
   }
+  if (exercise.unit === 'steps') {
+    return `${exercise.goal.toLocaleString('ru-RU')} ${pluralizeRu(exercise.goal, ['шаг', 'шага', 'шагов'])} в день`;
+  }
   return `${exercise.goal} ${pluralizeRu(exercise.goal, ['повторение', 'повторения', 'повторений'])}`;
 }
 
 function formatStatus(exercise: ExerciseProgress): string {
+  if (exercise.unit === 'steps') {
+    // Steps show a live partial count, not just done/not-done.
+    return `Пройдено ${exercise.completed.toLocaleString('ru-RU')} / ${exercise.goal.toLocaleString('ru-RU')}`;
+  }
   if (exercise.status === 'completed') {
     return `Выполнено ${exercise.completed} / ${exercise.goal}`;
   }
@@ -65,11 +72,18 @@ function formatStatus(exercise: ExerciseProgress): string {
 function ExerciseItem({ exercise, challengeId, isArchived, returnTarget, onStart }: ExerciseItemProps) {
   const navigate = useNavigate();
   const isCompleted = exercise.status === 'completed';
-  const percent = exercise.goal > 0 ? (exercise.completed / exercise.goal) * 100 : 0;
+  const isSteps = exercise.metric === 'steps';
+  const percent = exercise.goal > 0 ? Math.min((exercise.completed / exercise.goal) * 100, 100) : 0;
 
   const handleStart = () => {
     if (isArchived) return;
     onStart();
+    // Steps aren't done via the camera — they come from Withings. Send the user
+    // to their profile, where connecting/refreshing Withings lives.
+    if (isSteps) {
+      navigate('/settings');
+      return;
+    }
     navigate(buildExerciseSessionPath(challengeId, exercise.exerciseId, returnTarget));
   };
 
@@ -91,6 +105,8 @@ function ExerciseItem({ exercise, challengeId, isArchived, returnTarget, onStart
         >
           {isArchived ? (
             'Недоступно'
+          ) : isSteps ? (
+            'Профиль'
           ) : isCompleted ? (
             <>
               <span className="lg:hidden">Выполнено</span>
@@ -109,7 +125,9 @@ function ExerciseItem({ exercise, challengeId, isArchived, returnTarget, onStart
       <p className={`max-lg:hidden text-xs ${isCompleted ? 'text-lime-hover' : 'text-neutral-muted'}`}>
         {isArchived
           ? 'Выполнение недоступно — челлендж в архиве'
-          : formatStatus(exercise)}
+          : isSteps
+            ? `${formatStatus(exercise)} · учитывается автоматически из Withings`
+            : formatStatus(exercise)}
       </p>
     </div>
   );
