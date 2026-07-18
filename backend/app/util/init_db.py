@@ -181,15 +181,28 @@ def sync_schema():
         print(f"schema sync backfill skipped: {error}")
 
 
+_SEED_EXERCISES = [
+    ("Приседания", "reps"),
+    ("Отжимания", "reps"),
+    ("Планка", "seconds"),
+    # Steps come from Withings (steps_daily), not a camera session. The 'steps'
+    # metric marks the exercise so the UI skips the CV workflow and the backend
+    # feeds progress from the daily step count instead of session submissions.
+    ("Шаги", "steps"),
+]
+
+
 def seed_exercises():
+    # Idempotent upsert by name: unlike a one-shot `count() == 0` seed, this also
+    # adds exercises introduced later (e.g. "Шаги") to already-populated databases
+    # without duplicating the ones that are already there.
     db = SessionLocal()
     try:
-        if db.query(Exercise).count() == 0:
-            db.add_all([
-                Exercise(name="Приседания", metric="reps"),
-                Exercise(name="Отжимания", metric="reps"),
-                Exercise(name="Планка", metric="seconds"),
-            ])
+        existing = {e.name for e in db.query(Exercise.name).all()}
+        new = [Exercise(name=name, metric=metric)
+               for name, metric in _SEED_EXERCISES if name not in existing]
+        if new:
+            db.add_all(new)
             db.commit()
     finally:
         db.close()

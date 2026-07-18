@@ -71,6 +71,10 @@ describe('formatExerciseTag', () => {
   it('formats a sub-minute plank goal in seconds', () => {
     expect(formatExerciseTag('Планка', 45, 'seconds')).toBe('Планка 45 сек');
   });
+
+  it('formats a steps goal with the "шагов" unit', () => {
+    expect(formatExerciseTag('Шаги', 500, 'steps')).toBe('Шаги 500 шагов');
+  });
 });
 
 describe('formatParticipants', () => {
@@ -212,6 +216,19 @@ describe('mapExerciseProgress', () => {
     ]);
     expect(done.status).toBe('completed');
     expect(notDone.status).toBe('not_started');
+  });
+
+  it('surfaces the live partial count for steps (unlike camera exercises)', () => {
+    // Steps stream in from Withings, so the modal should show the running total
+    // (5000 of 8000) rather than staying at 0 until the goal closes.
+    const [progress] = mapExerciseProgress([
+      makeExercise({ metric: 'steps', goal: 8000, clean_today: 5000, closed: false }),
+    ]);
+    expect(progress.unit).toBe('steps');
+    expect(progress.metric).toBe('steps');
+    expect(progress.goal).toBe(8000);
+    expect(progress.completed).toBe(5000);
+    expect(progress.status).toBe('not_started');
   });
 });
 

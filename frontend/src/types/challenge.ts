@@ -24,7 +24,10 @@ export interface ExerciseProgress {
   name: string;
   goal: number;
   completed: number;
-  unit: 'reps' | 'minutes';
+  unit: 'reps' | 'minutes' | 'steps';
+  /** Raw metric from the backend. 'steps' exercises are fed from Withings, not
+   * a camera session, so the UI shows live progress instead of a "start" flow. */
+  metric: 'reps' | 'seconds' | 'steps';
   status: ExerciseStatus;
 }
 
