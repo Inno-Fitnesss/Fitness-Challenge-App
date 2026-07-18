@@ -13,6 +13,7 @@ from app.db.schema.withings import WithingsAuthorizeUrl, WithingsStatus, Withing
 from app.db.models.withings import WithingsConnection
 from app.db.models.steps import StepsDaily
 from app.service.withingsService import WithingsService, WithingsError
+from app.service.stepsChallengeService import StepsChallengeService
 
 withingsRouter = APIRouter()
 
@@ -123,5 +124,10 @@ def sync(
                 user_id=user.id, date=day, step_count=step_count, source="withings",
             ))
     db.commit()
+
+    # steps_daily is now committed, so even if this feeder step fails the pulled
+    # steps aren't lost. Feed the counts into any step-based challenge so a daily
+    # step goal closes the day like reps do.
+    StepsChallengeService(db).apply_daily_steps(user.id, steps_by_day)
 
     return WithingsSyncResult(synced_days=len(steps_by_day))

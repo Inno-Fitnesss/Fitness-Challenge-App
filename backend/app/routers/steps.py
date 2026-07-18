@@ -11,6 +11,7 @@ from app.db.schema.steps import (
 )
 from app.db.models.steps import StepsDaily
 from app.db.models.withings import WithingsConnection
+from app.service.stepsChallengeService import StepsChallengeService
 
 stepsRouter = APIRouter()
 
@@ -44,6 +45,12 @@ def sync_steps(
             ))
         synced += 1
     db.commit()
+
+    # Feed the fresh counts into any step-based challenge the user is in, so a
+    # daily step goal closes the day just like reps do.
+    StepsChallengeService(db).apply_daily_steps(
+        user.id, {day.date: day.step_count for day in payload.days}
+    )
     return StepsSyncResult(synced=synced)
 
 

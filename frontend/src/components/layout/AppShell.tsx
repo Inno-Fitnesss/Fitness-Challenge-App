@@ -10,6 +10,7 @@ import {
   CircleUserRound,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
+import { useStepsAutoSync } from '../../hooks/useStepsAutoSync.ts';
 import { BrandLogoLink } from '../ui/BrandLogoLink.tsx';
 import { ProfileAvatar } from '../profile/ProfileAvatar.tsx';
 import { AppOnboardingGate } from '../onboarding/AppOnboardingGate.tsx';
@@ -89,6 +90,9 @@ function NavItem({
 export function AppShell() {
   const { user, logout } = useAuth();
   const displayName = getDisplayName(user?.username, user?.email);
+
+  // Keep steps flowing app-wide (profile + step challenges) while the app is open.
+  useStepsAutoSync();
 
   return (
     <AppOnboardingGate>
