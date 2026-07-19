@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Footprints, Loader2, RefreshCw, X, Maximize2 } from 'lucide-react';
+import { Footprints, HelpCircle, Loader2, RefreshCw, X, Maximize2 } from 'lucide-react';
 import { stepsApi, type ApiStepsRange } from '../../api/stepsApi.ts';
 import { withingsApi } from '../../api/withingsApi.ts';
 
@@ -12,6 +12,7 @@ interface StepsWidgetProps {
   data: ApiStepsRange | null;
   isLoading?: boolean;
   onRefresh?: () => void | Promise<void>;
+  onOpenGuide?: () => void;
 }
 
 function buildLastNDays(days: ApiStepsRange['days'], count: number) {
@@ -174,7 +175,7 @@ function StepsHistoryModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function StepsWidget({ data, isLoading, onRefresh }: StepsWidgetProps) {
+export function StepsWidget({ data, isLoading, onRefresh, onOpenGuide }: StepsWidgetProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -242,6 +243,16 @@ export function StepsWidget({ data, isLoading, onRefresh }: StepsWidgetProps) {
             <p className="text-xs text-neutral-muted">За последние 7 дней</p>
           </div>
           <div className="flex items-center gap-1">
+            {onOpenGuide && (
+              <button
+                type="button"
+                onClick={onOpenGuide}
+                title="Как подключить шаги к Withings"
+                className="p-1.5 rounded-lg text-neutral-muted hover:text-brand hover:bg-neutral-card transition-colors"
+              >
+                <HelpCircle size={16} />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setIsHistoryOpen(true)}

@@ -9,6 +9,7 @@ import { ProfileActivityChart } from '../components/profile/ProfileActivityChart
 import { StepsWidget } from '../components/profile/StepsWidget.tsx';
 import { ProfileAvatar } from '../components/profile/ProfileAvatar.tsx';
 import { ProfileEditModal } from '../components/profile/ProfileEditModal.tsx';
+import { WithingsGuideModal } from '../components/profile/WithingsGuideModal.tsx';
 import { useAuth } from '../context/AuthContext.tsx';
 import type { User } from '../types/auth.types.ts';
 import { fetchLast7DaysChallengeActivity } from '../utils/profileActivityChart.ts';
@@ -97,6 +98,7 @@ export function ProfilePage() {
   const [stepsData, setStepsData] = useState<ApiStepsRange | null>(null);
   const [isStepsLoading, setIsStepsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isWithingsGuideOpen, setIsWithingsGuideOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -192,6 +194,7 @@ export function ProfilePage() {
 
     if (withingsResult === 'connected') {
       void withingsApi.sync().then(() => void loadSteps());
+      setIsWithingsGuideOpen(true);
     } else if (withingsResult === 'error') {
       setError('Не удалось подключить Withings — попробуй ещё раз.');
     }
@@ -315,7 +318,12 @@ export function ProfilePage() {
           <PlankCard secondsParts={plank} />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <StepsWidget data={stepsData} isLoading={isStepsLoading} onRefresh={handleStepsRefresh} />
+            <StepsWidget
+              data={stepsData}
+              isLoading={isStepsLoading}
+              onRefresh={handleStepsRefresh}
+              onOpenGuide={() => setIsWithingsGuideOpen(true)}
+            />
             <ProfileActivityChart data={chartData} isLoading={isChartLoading} />
           </div>
         </div>
@@ -335,6 +343,10 @@ export function ProfilePage() {
           }}
           onSave={(username, nextAvatarUrl) => void handleSaveProfile(username, nextAvatarUrl)}
         />
+      )}
+
+      {isWithingsGuideOpen && (
+        <WithingsGuideModal onClose={() => setIsWithingsGuideOpen(false)} />
       )}
     </PageContainer>
   );
