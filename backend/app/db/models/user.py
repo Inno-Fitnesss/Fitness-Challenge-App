@@ -30,6 +30,10 @@ class User(Base):
     streak_current = Column(Integer, default=0)
     streak_longest = Column(Integer, default=0)
     last_activity_date = Column(Date)
+    # Last authenticated request (UTC), touched at most every few minutes by
+    # get_current_user — the basis for the admin DAU/WAU/MAU metrics. Unlike
+    # last_activity_date (challenge day closed) it counts ANY app usage.
+    last_seen_at = Column(DateTime)
     timezone = Column(String(50), default="UTC")
     # Account-level UI flags (onboarding completed, "don't show again" dismissals).
     # Flat {key: bool} map merged by PATCH /me so the flags follow the account

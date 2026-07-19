@@ -29,8 +29,18 @@ export interface RegistrationPoint {
   count: number;
 }
 
+export interface ActivityStats {
+  /** Активные = хотя бы один авторизованный запрос за окно (24ч / 7д / 30д) */
+  active_today: number;
+  active_week: number;
+  active_month: number;
+  /** Зарегистрировались за текущие сутки (UTC) */
+  new_today: number;
+}
+
 export interface AdminStats {
   total_users: number;
+  activity: ActivityStats;
   challenges: ChallengeBreakdown;
   top_streaks: TopStreakUser[];
   exercise_totals: ExerciseVolume[];

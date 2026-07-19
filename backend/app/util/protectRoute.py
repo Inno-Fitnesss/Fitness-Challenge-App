@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Annotated, Union
@@ -7,6 +9,23 @@ from app.core.database import get_db
 from app.db.schema.user import UserOutput
 
 AUTH_PREFIX = 'Bearer '
+
+# How often (at most) an authenticated request refreshes users.last_seen_at.
+# Coarse on purpose: the admin panel only needs day-level resolution for
+# DAU/WAU/MAU, and this keeps it to a handful of writes per active user per day.
+LAST_SEEN_REFRESH = timedelta(minutes=10)
+
+
+def _touch_last_seen(session: Session, user) -> None:
+    """Best-effort activity mark; must never fail the actual request."""
+    now = datetime.utcnow()
+    if user.last_seen_at is not None and now - user.last_seen_at < LAST_SEEN_REFRESH:
+        return
+    try:
+        user.last_seen_at = now
+        session.commit()
+    except Exception:
+        session.rollback()
 
 
 def get_current_user(
@@ -29,6 +48,7 @@ def get_current_user(
     if payload and payload["user_id"]:
         try:
             user = UserService(session=session).get_user_by_id(payload["user_id"])
+            _touch_last_seen(session=session, user=user)
             return UserOutput(
                 id=user.id,
                 username=user.username,

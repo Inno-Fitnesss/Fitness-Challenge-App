@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from decouple import config
 from fastapi import HTTPException, status
 from sqlalchemy import func
@@ -8,7 +10,7 @@ from app.core.security.hashHelper import HashHelper
 from app.db.models.user import User
 from app.db.models.challenge import Challenge, ChallengeExercise, Exercise, UserExerciseStats
 from app.db.schema.admin import (
-    AdminStatsOut, ChallengeBreakdown, PieSlice, TopStreakUser,
+    AdminStatsOut, ActivityStats, ChallengeBreakdown, PieSlice, TopStreakUser,
     ExerciseVolume, RegistrationPoint,
 )
 
@@ -41,6 +43,7 @@ class AdminService:
     def get_stats(db: Session) -> AdminStatsOut:
         return AdminStatsOut(
             total_users=AdminService._total_users(db),
+            activity=AdminService._activity(db),
             challenges=AdminService._challenge_breakdown(db),
             top_streaks=AdminService._top_streaks(db),
             exercise_totals=AdminService._exercise_totals(db),
@@ -52,6 +55,24 @@ class AdminService:
     @staticmethod
     def _total_users(db: Session) -> int:
         return db.query(func.count(User.id)).scalar() or 0
+
+    @staticmethod
+    def _activity(db: Session) -> ActivityStats:
+        now = datetime.utcnow()
+
+        def active_since(cutoff: datetime) -> int:
+            return db.query(func.count(User.id)) \
+                .filter(User.last_seen_at >= cutoff).scalar() or 0
+
+        new_today = db.query(func.count(User.id)) \
+            .filter(func.date(User.created_at) == now.date()).scalar() or 0
+
+        return ActivityStats(
+            active_today=active_since(now - timedelta(days=1)),
+            active_week=active_since(now - timedelta(days=7)),
+            active_month=active_since(now - timedelta(days=30)),
+            new_today=new_today,
+        )
 
     @staticmethod
     def _challenge_breakdown(db: Session) -> ChallengeBreakdown:

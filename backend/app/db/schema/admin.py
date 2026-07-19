@@ -38,8 +38,18 @@ class RegistrationPoint(BaseModel):
     count: int
 
 
+class ActivityStats(BaseModel):
+    """Active = made at least one authenticated request in the window
+    (users.last_seen_at); rolling windows of 1/7/30 days from now (UTC)."""
+    active_today: int
+    active_week: int
+    active_month: int
+    new_today: int  # registered during the current UTC day
+
+
 class AdminStatsOut(BaseModel):
     total_users: int
+    activity: ActivityStats
     challenges: ChallengeBreakdown
     top_streaks: list[TopStreakUser]
     exercise_totals: list[ExerciseVolume]

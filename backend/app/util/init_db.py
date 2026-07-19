@@ -156,6 +156,11 @@ _PG_COLUMN_MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code_expires_at TIMESTAMP",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code_attempts INTEGER DEFAULT 0",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS ui_flags JSON",
+    # Activity tracking for admin DAU/WAU/MAU. Backfill from
+    # last_activity_date so the metrics aren't empty right after the deploy
+    # (better a lower-bound estimate than zeros).
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP",
+    "UPDATE users SET last_seen_at = last_activity_date WHERE last_seen_at IS NULL AND last_activity_date IS NOT NULL",
 ]
 
 

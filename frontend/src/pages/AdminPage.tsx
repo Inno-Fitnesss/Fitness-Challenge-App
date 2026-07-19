@@ -106,6 +106,14 @@ export function AdminPage() {
           </div>
         </div>
 
+        {/* Активность: DAU / WAU / MAU + новые за сегодня */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <BigNumberCard label="Активные за 24 часа" value={stats.activity.active_today} />
+          <BigNumberCard label="Активные за 7 дней" value={stats.activity.active_week} />
+          <BigNumberCard label="Активные за 30 дней" value={stats.activity.active_month} />
+          <BigNumberCard label="Новые за сегодня" value={stats.activity.new_today} />
+        </div>
+
         {/* Большие цифры */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
           <BigNumberCard label="Всего пользователей" value={stats.total_users} />
