@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { CameraOff, Loader2 } from 'lucide-react';
 import type { CameraStatus } from '../../hooks/useCameraStream.ts';
 import type { CvFeedbackMessage } from '../../types/session.types.ts';
@@ -10,8 +10,10 @@ interface CameraPreviewProps {
   status: CameraStatus;
   errorMessage: string | null;
   activeWarning: CvFeedbackMessage | null;
+  showPoseOverlay?: boolean;
   className?: string;
   style?: CSSProperties;
+  children?: ReactNode;
 }
 
 export function CameraPreview({
@@ -20,11 +22,13 @@ export function CameraPreview({
   status,
   errorMessage,
   activeWarning,
+  showPoseOverlay = true,
   className = '',
   style,
+  children,
 }: CameraPreviewProps) {
   const showVideo = status === 'active';
-  const showPoseOverlay = showVideo;
+  const shouldShowPoseOverlay = showVideo && showPoseOverlay;
   const hasWarning = showVideo && Boolean(activeWarning?.text);
   const warningIsCameraFraming = activeWarning?.type === 'camera';
 
@@ -46,7 +50,7 @@ export function CameraPreview({
         ref={overlayCanvasRef}
         aria-hidden="true"
         className={`absolute inset-0 w-full h-full object-cover scale-x-[-1] pointer-events-none ${
-          showPoseOverlay ? 'opacity-100' : 'opacity-0'
+          shouldShowPoseOverlay ? 'opacity-100' : 'opacity-0'
         }`}
       />
 
@@ -65,7 +69,7 @@ export function CameraPreview({
                 ? 'Подключаем камеру…'
                 : 'Проверьте камеру'}
             </p>
-            <p className="text-white/60 text-sm max-w-xs">
+            <p className="text-white/60 text-sm max-w-xs mx-auto">
               {errorMessage ??
                 'Разрешите доступ к камере, чтобы CV начал считывание автоматически'}
             </p>
@@ -75,6 +79,8 @@ export function CameraPreview({
 
       {showVideo && (
         <>
+          {children}
+
           {/* Внутренняя красная рамка — только на десктопе; на мобилке
               состояние показывает внешняя оранжевая рамка страницы. */}
           {hasWarning && (

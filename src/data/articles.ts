@@ -1,4 +1,4 @@
-export type ArticleCategory = 'motivation' | 'guide';
+export type ArticleCategory = 'exercise' | 'nutrition' | 'motivation' | 'recovery' | 'guide';
 
 export type ArticleContentBlock =
   | { type: 'heading'; text: string }
@@ -11,17 +11,84 @@ export interface Article {
   content: ArticleContentBlock[];
   category: ArticleCategory;
   readMinutes: number;
+  /** Tailwind gradient classes for the poster placeholder */
   gradient: string;
+  /** Optional real image, drop into public/articles/<file> */
   image?: string;
-  sourceUrl: string;
+  /** Marks articles tied to a trackable exercise, shown on the dashboard */
+  exerciseKey?: 'pushups' | 'squats' | 'plank';
+  /** Original source (e.g. WowFit blog) for reposted articles */
+  sourceUrl?: string;
 }
 
 export const CATEGORY_LABELS: Record<ArticleCategory, string> = {
+  exercise: 'Упражнения',
+  nutrition: 'Питание',
   motivation: 'Мотивация',
+  recovery: 'Восстановление',
   guide: 'Гайд',
 };
 
-export const ALL_ARTICLES: Article[] = [
+/** Helper to keep short local articles readable as plain paragraphs. */
+function paragraphs(...texts: string[]): ArticleContentBlock[] {
+  return texts.map((text) => ({ type: 'paragraph', text }));
+}
+
+export const EXERCISE_ARTICLES: Article[] = [
+  {
+    id: 'pushups',
+    title: 'Отжимания',
+    excerpt:
+      'Как правильно отжиматься: положение рук, корпуса и типичные ошибки новичков.',
+    category: 'exercise',
+    exerciseKey: 'pushups',
+    readMinutes: 4,
+    gradient: 'from-brand-light to-accent/60',
+    image: '/articles/pushups.jpg',
+    content: paragraphs(
+      'Отжимания — базовое упражнение для грудных мышц, трицепсов и передних дельт. Оно не требует оборудования и подходит для любого уровня подготовки.',
+      'Поставьте руки чуть шире плеч, тело удерживайте прямой линией от плеч до стоп. Опускайтесь до угла в локтях около 90 градусов, не прогибая поясницу и не поднимая таз.',
+      'Частые ошибки: провал таза, разведённые локти, неполная амплитуда. Если классические отжимания даются тяжело — начните с упора на колени или от возвышения.',
+      'Дышите ровно: вдох на опускании, выдох на подъёме. Начинайте с малого числа повторений и постепенно увеличивайте нагрузку.',
+    ),
+  },
+  {
+    id: 'squats',
+    title: 'Приседания',
+    excerpt:
+      'Техника приседаний для ног и ягодиц: глубина, положение коленей и спины.',
+    category: 'exercise',
+    exerciseKey: 'squats',
+    readMinutes: 4,
+    gradient: 'from-lime-light to-lime/50',
+    image: '/articles/squats.jpg',
+    content: paragraphs(
+      'Приседания прорабатывают квадрицепсы, ягодичные мышцы и мышцы кора. Это одно из самых функциональных упражнений для нижней части тела.',
+      'Ноги на ширине плеч, носки слегка развёрнуты наружу. Спину держите прямой, взгляд направьте вперёд. Опускайтесь до параллели бёдер с полом, отводя таз назад.',
+      'Следите, чтобы колени двигались в направлении носков и не выходили далеко за них. Пятки не отрывайте от пола.',
+      'Для прогресса добавляйте паузу в нижней точке или увеличивайте количество повторений. Позже можно перейти к приседаниям с весом.',
+    ),
+  },
+  {
+    id: 'plank',
+    title: 'Планка',
+    excerpt:
+      'Статическое упражнение для сильного кора: как держать корпус и сколько стоять.',
+    category: 'exercise',
+    exerciseKey: 'plank',
+    readMinutes: 3,
+    gradient: 'from-accent/70 to-brand-light',
+    image: '/articles/plank.jpg',
+    content: paragraphs(
+      'Планка укрепляет мышцы кора, спины и плечевого пояса. Несмотря на простоту, она требует правильной техники для максимальной пользы.',
+      'Обопритесь на предплечья или ладони, тело удерживайте прямой линией. Напрягите пресс и ягодицы, не позволяйте тазу провисать или подниматься вверх.',
+      'Дышите ровно и не задерживайте дыхание. Лучше простоять 20 секунд с идеальной техникой, чем минуту с провисшей поясницей.',
+      'Начинайте с коротких подходов по 20–30 секунд и постепенно увеличивайте время. Для разнообразия пробуйте боковую планку.',
+    ),
+  },
+];
+
+export const FEED_ARTICLES: Article[] = [
   {
     id: 'neurohacking-kak-polyubit-trenirovki',
     title: 'Почему нам так лень заниматься спортом? Нейрохакинг, как полюбить тренировки',
@@ -201,6 +268,8 @@ export const ALL_ARTICLES: Article[] = [
     ],
   },
 ];
+
+export const ALL_ARTICLES: Article[] = [...EXERCISE_ARTICLES, ...FEED_ARTICLES];
 
 export function getArticleById(id: string): Article | undefined {
   return ALL_ARTICLES.find((article) => article.id === id);

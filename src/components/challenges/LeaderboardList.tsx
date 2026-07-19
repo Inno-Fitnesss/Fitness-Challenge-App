@@ -1,5 +1,25 @@
+import { Flame } from 'lucide-react';
 import type { LeaderboardEntry } from '../../types/challenge.ts';
 import { pluralizeRu } from '../../utils/russianPlural.ts';
+
+function StreakFlameBadge({ days }: { days: number }) {
+  return (
+    <div
+      className="relative flex h-12 w-11 flex-shrink-0 items-center justify-center"
+      aria-label={`${days} ${pluralizeRu(days, ['день', 'дня', 'дней'])} в челлендже`}
+      title={`${days} ${pluralizeRu(days, ['день', 'дня', 'дней'])} в челлендже`}
+    >
+      <Flame
+        className="absolute inset-0 h-full w-full fill-[#FFB72C] text-[#FF7A00] drop-shadow-[0_4px_8px_rgba(255,122,0,0.25)]"
+        strokeWidth={2.4}
+        aria-hidden="true"
+      />
+      <span className="relative mt-1 text-sm font-black leading-none text-white [text-shadow:0_1px_2px_rgba(126,47,0,0.55)]">
+        {days}
+      </span>
+    </div>
+  );
+}
 
 function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
   const medalColors: Record<number, string> = {
@@ -25,14 +45,11 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-neutral-text truncate">{entry.username}</p>
         <p className="text-xs text-neutral-muted flex items-center gap-1">
-          🔥 <span className="hidden lg:inline">Глобальный стрик:</span>{' '}
-          {entry.globalStreakDays} {pluralizeRu(entry.globalStreakDays, ['день', 'дня', 'дней'])}
+          Глобальный стрик: {entry.globalStreakDays} {pluralizeRu(entry.globalStreakDays, ['день', 'дня', 'дней'])}
         </p>
       </div>
-      <div className="w-16 sm:w-24 flex-shrink-0 text-right">
-        <span className="text-sm font-semibold text-neutral-text">
-          {entry.challengeStreakDays} {pluralizeRu(entry.challengeStreakDays, ['день', 'дня', 'дней'])}
-        </span>
+      <div className="w-12 sm:w-16 flex flex-shrink-0 justify-end">
+        <StreakFlameBadge days={entry.challengeStreakDays} />
       </div>
     </div>
   );
@@ -60,7 +77,7 @@ export function LeaderboardList({
     <div
       className="overflow-y-auto overflow-x-hidden pr-1 -mr-1 space-y-1 [scrollbar-width:thin]"
       style={{ maxHeight }}
-      aria-label="Лидерборд"
+      aria-label="Таблица лидеров"
     >
       {entries.map((entry) => (
         <LeaderboardRow key={`${entry.rank}-${entry.username}`} entry={entry} />

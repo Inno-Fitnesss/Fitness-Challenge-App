@@ -47,13 +47,13 @@ export function ConfirmDialog({
         onClick={() => !isLoading && onCancel()}
       />
 
-      <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-6 pointer-events-none">
+      <div className="absolute inset-x-0 top-0 h-[100dvh] flex items-end justify-center sm:items-center sm:p-6 pointer-events-none">
         <div
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="confirm-dialog-title"
           aria-describedby={description ? 'confirm-dialog-desc' : undefined}
-          className="pointer-events-auto relative bg-white rounded-t-3xl sm:rounded-3xl shadow-modal w-full sm:max-w-[420px] mx-auto p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:pb-6 animate-fade-in"
+          className="pointer-events-auto relative bg-white rounded-t-3xl sm:rounded-3xl shadow-modal w-full sm:max-w-[420px] mx-auto max-h-[92dvh] overflow-y-auto p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:pb-6 animate-fade-in"
         >
           <h2 id="confirm-dialog-title" className="text-lg font-extrabold text-neutral-text mb-2">
             {title}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AuthBrandMark } from './AuthBrandMark.tsx';
 
 const FEATURES = [
-  'создавайте соревнования или участвуйте в чужих',
+  'создавайте челленджи или участвуйте в чужих',
   'отслеживайте приседания, отжимания и планку',
 ];
 

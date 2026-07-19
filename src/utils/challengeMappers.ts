@@ -29,8 +29,11 @@ function formatShortDate(iso: string): string {
   return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`;
 }
 
+/** Label for challenges without an end date — always capitalized. */
+export const UNLIMITED_DATE_LABEL = 'Бессрочный';
+
 export function formatDateLabel(startDate: string, endDate: string | null): string {
-  if (!endDate) return 'без ограничений';
+  if (!endDate) return UNLIMITED_DATE_LABEL;
   return `${formatShortDate(startDate)} - ${formatShortDate(endDate)}`;
 }
 
@@ -41,6 +44,9 @@ export function formatExerciseTag(name: string, goal: number, metric: string): s
       return `${name} ${mins} мин`;
     }
     return `${name} ${goal} сек`;
+  }
+  if (metric === 'steps') {
+    return `${name} ${goal.toLocaleString('ru-RU')} шагов`;
   }
   return `${name} x ${goal}`;
 }
@@ -91,8 +97,10 @@ export function mapChallengeDetailToListItem(detail: ApiChallengeDetail): Challe
 export function calcExerciseProgressPercent(exercises: ApiChallengeExercise[]): number {
   if (exercises.length === 0) return 0;
   const sum = exercises.reduce((acc, ex) => {
-    if (!ex.closed) return acc;
-    return acc + 1;
+    if (ex.closed) return acc + 1;
+    if (ex.goal <= 0) return acc;
+    const done = ex.clean_today ?? 0;
+    return acc + Math.min(done / ex.goal, 1);
   }, 0);
   return Math.round((sum / exercises.length) * 100);
 }
@@ -121,18 +129,33 @@ export function mapExerciseProgress(
 ): ExerciseProgress[] {
   return exercises.map((ex) => {
     const isSeconds = ex.metric === 'seconds';
+    const isSteps = ex.metric === 'steps';
     const goal = isSeconds && ex.goal >= 60 ? Math.floor(ex.goal / 60) : ex.goal;
-    const unit = isSeconds && ex.goal >= 60 ? 'minutes' as const : isSeconds ? 'seconds' as const : 'reps' as const;
+    const unit = isSteps
+      ? 'steps' as const
+      : isSeconds && ex.goal >= 60
+        ? 'minutes' as const
+        : isSeconds
+          ? 'seconds' as const
+          : 'reps' as const;
 
     let status: ExerciseProgress['status'] = 'not_started';
     if (ex.closed) status = 'completed';
+
+    // Steps stream in from Withings, so we surface the live partial count
+    // (clean_today). Camera exercises only expose a value once the goal closes,
+    // so they stay at 0 until then, as before.
+    const completed = isSteps
+      ? (ex.clean_today ?? 0)
+      : ex.closed ? goal : 0;
 
     return {
       exerciseId: String(ex.challenge_exercise_id),
       name: ex.name,
       goal,
-      completed: ex.closed ? goal : 0,
+      completed,
       unit: unit === 'seconds' ? 'reps' : unit,
+      metric: ex.metric,
       status,
     };
   });
@@ -161,6 +184,7 @@ export function mapPresetToDiscovery(
     title: detail.name,
     description: detail.description ?? preset.description ?? '',
     isUnlimited: !detail.end_date,
+    dateLabel: formatDateLabel(detail.start_date, detail.end_date),
     scheduleType: detail.schedule_type,
     scheduleDays: detail.schedule_days ?? [],
     scheduleLabel: formatScheduleLabel(detail.schedule_type, detail.schedule_days),

@@ -1,7 +1,10 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# Prefer reproducible `npm ci`, but fall back to `npm install` when the
+# committed lockfile drifts out of sync (recurring issue: npm on Windows
+# strips non-host platform/esbuild entries, which breaks Linux `npm ci`).
+RUN npm ci || npm install
 COPY . .
 # Vite inlines VITE_* vars at build time, so the Google client id must be
 # passed as a build arg (empty value hides the Google sign-in button).

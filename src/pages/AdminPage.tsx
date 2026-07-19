@@ -121,6 +121,7 @@ export function AdminPage() {
         </div>
 
         {/* Разбивка челленджей по измерениям — pie charts */}
+        <h2 className="text-xl font-extrabold text-neutral-text">Разбивка челленджей по измерениям</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           <PieStatCard title="По длительности" data={stats.challenges.by_duration} />
           <PieStatCard title="По видимости" data={stats.challenges.by_visibility} />

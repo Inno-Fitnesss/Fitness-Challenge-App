@@ -39,8 +39,16 @@ export function OrientationLockOverlay() {
     };
 
     setIsLandscapePhone(mediaQuery.matches);
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+
+    const legacyHandleChange = (event: MediaQueryListEvent | MediaQueryList) => {
+      setIsLandscapePhone(event.matches);
+    };
+    mediaQuery.addListener(legacyHandleChange);
+    return () => mediaQuery.removeListener(legacyHandleChange);
   }, []);
 
   const isExerciseSession =

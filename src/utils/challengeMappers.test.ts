@@ -9,6 +9,7 @@ import {
   mapTodayToPlanItem,
   mapExerciseProgress,
   mapLeaderboard,
+  UNLIMITED_DATE_LABEL,
 } from './challengeMappers.ts';
 import type { ApiChallengeDetail, ApiChallengeExercise, ApiTodayChallenge } from '../types/api.types.ts';
 
@@ -46,8 +47,9 @@ function makeDetail(overrides: Partial<ApiChallengeDetail> = {}): ApiChallengeDe
 }
 
 describe('formatDateLabel', () => {
-  it('reports "без ограничений" for an open-ended challenge', () => {
-    expect(formatDateLabel('2026-06-01', null)).toBe('без ограничений');
+  it('reports "Бессрочный" for an open-ended challenge', () => {
+    expect(formatDateLabel('2026-06-01', null)).toBe('Бессрочный');
+    expect(formatDateLabel('2026-06-01', null)).toBe(UNLIMITED_DATE_LABEL);
   });
 
   it('formats a bounded range as short dates', () => {
@@ -70,6 +72,10 @@ describe('formatExerciseTag', () => {
 
   it('formats a sub-minute plank goal in seconds', () => {
     expect(formatExerciseTag('Планка', 45, 'seconds')).toBe('Планка 45 сек');
+  });
+
+  it('formats a steps goal with the "шагов" unit', () => {
+    expect(formatExerciseTag('Шаги', 500, 'steps')).toBe('Шаги 500 шагов');
   });
 });
 
@@ -128,13 +134,25 @@ describe('calcExerciseProgressPercent', () => {
     expect(calcExerciseProgressPercent([])).toBe(0);
   });
 
-  it('rounds the fraction of closed exercises to a whole percent', () => {
-    const exercises = [makeExercise({ closed: true }), makeExercise({ closed: false }), makeExercise({ closed: false })];
+  it('rounds the average normalized exercise progress to a whole percent', () => {
+    const exercises = [
+      makeExercise({ goal: 50, clean_today: 25 }),
+      makeExercise({ goal: 20, clean_today: 0 }),
+      makeExercise({ goal: 120, clean_today: 60, metric: 'seconds' }),
+    ];
     expect(calcExerciseProgressPercent(exercises)).toBe(33);
   });
 
-  it('100% when every exercise is closed', () => {
-    const exercises = [makeExercise({ closed: true }), makeExercise({ closed: true })];
+  it('100% when every exercise meets its daily goal', () => {
+    const exercises = [
+      makeExercise({ goal: 10, clean_today: 10, closed: true }),
+      makeExercise({ goal: 60, clean_today: 60, metric: 'seconds', closed: true }),
+    ];
+    expect(calcExerciseProgressPercent(exercises)).toBe(100);
+  });
+
+  it('caps each exercise at 100% of its goal', () => {
+    const exercises = [makeExercise({ goal: 10, clean_today: 20, closed: true })];
     expect(calcExerciseProgressPercent(exercises)).toBe(100);
   });
 });
@@ -200,6 +218,19 @@ describe('mapExerciseProgress', () => {
     ]);
     expect(done.status).toBe('completed');
     expect(notDone.status).toBe('not_started');
+  });
+
+  it('surfaces the live partial count for steps (unlike camera exercises)', () => {
+    // Steps stream in from Withings, so the modal should show the running total
+    // (5000 of 8000) rather than staying at 0 until the goal closes.
+    const [progress] = mapExerciseProgress([
+      makeExercise({ metric: 'steps', goal: 8000, clean_today: 5000, closed: false }),
+    ]);
+    expect(progress.unit).toBe('steps');
+    expect(progress.metric).toBe('steps');
+    expect(progress.goal).toBe(8000);
+    expect(progress.completed).toBe(5000);
+    expect(progress.status).toBe('not_started');
   });
 });
 

@@ -10,6 +10,7 @@ import {
   CircleUserRound,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
+import { useStepsAutoSync } from '../../hooks/useStepsAutoSync.ts';
 import { BrandLogoLink } from '../ui/BrandLogoLink.tsx';
 import { ProfileAvatar } from '../profile/ProfileAvatar.tsx';
 import { AppOnboardingGate } from '../onboarding/AppOnboardingGate.tsx';
@@ -18,7 +19,7 @@ import { AppOnboardingGate } from '../onboarding/AppOnboardingGate.tsx';
 // по мобильным макетам (иконки и подписи там другие).
 const navItems = [
   { to: '/dashboard', label: 'Главная', icon: LayoutGrid, mobileLabel: 'Главная', mobileIcon: Home, end: true, tourId: 'nav-dashboard' },
-  { to: '/challenges', label: 'Челленджи', icon: BarChart3, mobileLabel: 'Соревнования', mobileIcon: BarChart3, end: false, tourId: 'nav-challenges' },
+  { to: '/challenges', label: 'Челленджи', icon: BarChart3, mobileLabel: 'Челленджи', mobileIcon: BarChart3, end: false, tourId: 'nav-challenges' },
   { to: '/feed', label: 'Лента', icon: Newspaper, mobileLabel: 'Полезно', mobileIcon: ClipboardList, end: false, tourId: 'nav-feed' },
   { to: '/settings', label: 'Профиль', icon: Settings, mobileLabel: 'Профиль', mobileIcon: CircleUserRound, end: false, tourId: 'nav-profile' },
 ];
@@ -89,6 +90,9 @@ function NavItem({
 export function AppShell() {
   const { user, logout } = useAuth();
   const displayName = getDisplayName(user?.username, user?.email);
+
+  // Keep steps flowing app-wide (profile + step challenges) while the app is open.
+  useStepsAutoSync();
 
   return (
     <AppOnboardingGate>

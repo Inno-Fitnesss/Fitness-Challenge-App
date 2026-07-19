@@ -2,7 +2,7 @@ import { Clock, Globe, Trash2 } from 'lucide-react';
 import { Badge } from '../ui/Badge.tsx';
 import { ChallengeScheduleBadge } from './ChallengeScheduleBadge.tsx';
 import type { ChallengeListItem, ChallengeTab } from '../../types/challenge.ts';
-import { formatParticipants } from '../../utils/challengeMappers.ts';
+import { formatParticipants, UNLIMITED_DATE_LABEL } from '../../utils/challengeMappers.ts';
 import { useCopyFeedback } from '../../hooks/useCopyFeedback.ts';
 import {
   canArchiveChallenge,
@@ -17,8 +17,6 @@ import {
 interface ChallengeCardProps {
   challenge: ChallengeListItem;
   tab: ChallengeTab;
-  /** Прогресс за сегодня (0-100) — кольцо на мобильной карточке; undefined = не показывать */
-  progressPercent?: number;
   onOpen: (id: number) => void;
   onCopyLink?: (id: number) => void;
   onPublish?: (id: number) => void;
@@ -27,39 +25,6 @@ interface ChallengeCardProps {
   onDelete?: (id: number) => void;
   onLeave?: (id: number) => void;
   onResume?: (id: number) => void;
-}
-
-/** Кольцо прогресса с процентом внутри (мобильный макет) */
-function ProgressRing({ percent, className = '' }: { percent: number; className?: string }) {
-  const clamped = Math.min(100, Math.max(0, Math.round(percent)));
-  const radius = 26;
-  const circumference = 2 * Math.PI * radius;
-
-  return (
-    <span
-      className={`relative flex w-16 h-16 flex-shrink-0 items-center justify-center ${className}`}
-      role="img"
-      aria-label={`Выполнено сегодня: ${clamped}%`}
-    >
-      <svg viewBox="0 0 64 64" className="w-16 h-16 -rotate-90">
-        <circle cx="32" cy="32" r={radius} fill="none" strokeWidth="6" className="stroke-neutral-border" />
-        <circle
-          cx="32"
-          cy="32"
-          r={radius}
-          fill="none"
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - clamped / 100)}
-          className="stroke-lime"
-        />
-      </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-sm font-extrabold text-lime-hover">
-        {clamped}%
-      </span>
-    </span>
-  );
 }
 
 function ActionBar({
@@ -97,7 +62,7 @@ function ActionBar({
     const mobileActions = [
       canPublishChallenge(challenge) && (
         <button key="publish" type="button" className={mobileBtnClass} onClick={() => onPublish?.(challengeId)}>
-          Сделать публичным
+          Сделать групповым
         </button>
       ),
       canEditChallenge(challenge) && onEdit && (
@@ -144,7 +109,7 @@ function ActionBar({
           onClick={() => onPublish?.(challengeId)}
         >
           <Globe size={14} />
-          Сделать публичным
+          Сделать групповым
         </button>
       ),
       canArchiveChallenge(challenge) && (
@@ -266,7 +231,7 @@ function ActionBar({
 }
 
 export function ChallengeCard(props: ChallengeCardProps) {
-  const { challenge, tab, progressPercent, onOpen } = props;
+  const { challenge, tab, onOpen } = props;
   // Все варианты дат сейчас оранжевые (раньше тут был мёртвый тернарник с одинаковыми ветками)
   const dateVariant = 'orange';
 
@@ -277,37 +242,25 @@ export function ChallengeCard(props: ChallengeCardProps) {
         onClick={() => onOpen(challenge.id)}
         className="w-full text-left p-4 sm:p-6 hover:bg-neutral-card/30 transition-colors"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-base sm:text-lg font-bold text-neutral-text mb-3 truncate" title={challenge.title}>
-              {challenge.title}
-            </h3>
-            {challenge.description && (
-              <p className="lg:hidden text-sm text-neutral-muted line-clamp-2 -mt-1 mb-3">
-                {challenge.description}
-              </p>
-            )}
-          </div>
-          {progressPercent !== undefined && tab !== 'archive' && (
-            <ProgressRing percent={progressPercent} className="lg:hidden" />
+        <div className="min-w-0">
+          <h3 className="text-base sm:text-lg font-bold text-neutral-text mb-3 truncate" title={challenge.title}>
+            {challenge.title}
+          </h3>
+          {challenge.description && (
+            <p className="lg:hidden text-sm text-neutral-muted line-clamp-2 -mt-1 mb-3">
+              {challenge.description}
+            </p>
           )}
         </div>
 
         <div className="flex flex-wrap gap-2 mb-3 sm:mb-4">
-          <Badge variant={dateVariant} icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap">
-            {challenge.isUnlimited ? (
-              <>
-                <span className="lg:hidden">бессрочный</span>
-                <span className="hidden lg:inline">{challenge.dateLabel}</span>
-              </>
-            ) : (
-              challenge.dateLabel
-            )}
+          <Badge variant={dateVariant} icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap normal-case">
+            {challenge.isUnlimited ? UNLIMITED_DATE_LABEL : challenge.dateLabel}
           </Badge>
           <ChallengeScheduleBadge label={challenge.scheduleLabel} />
           <Badge variant="green">{formatParticipants(challenge.participantCount)}</Badge>
           {tab === 'group' && !challenge.isPrivate && (
-            <Badge variant="green">Публичный</Badge>
+            <Badge variant="green">Групповой</Badge>
           )}
         </div>
 

@@ -59,16 +59,27 @@ function PlankCard({ secondsParts }: { secondsParts: ReturnType<typeof getPlankD
     { value: secondsParts.seconds, label: 'секунд' },
   ];
 
+  const firstActiveIndex = parts.findIndex((p) => p.value > 0);
+
   return (
     <div className="bg-white rounded-3xl shadow-card p-5 sm:p-6">
       <p className="text-sm text-neutral-secondary mb-4">За всё время вы простояли в планке</p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {parts.map((part) => (
-          <div key={part.label} className="text-center min-w-0">
-            <p className="text-2xl sm:text-3xl font-extrabold text-brand tabular-nums">{part.value}</p>
-            <p className="text-xs sm:text-sm text-neutral-muted mt-1">{part.label}</p>
-          </div>
-        ))}
+        {parts.map((part, index) => {
+          const isActive = firstActiveIndex !== -1 && index >= firstActiveIndex;
+          return (
+            <div key={part.label} className="text-center min-w-0">
+              <p
+                className={`text-2xl sm:text-3xl font-extrabold tabular-nums ${
+                  isActive ? 'text-brand' : 'text-neutral-muted'
+                }`}
+              >
+                {part.value}
+              </p>
+              <p className="text-xs sm:text-sm text-neutral-muted mt-1">{part.label}</p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -143,7 +154,7 @@ export function ProfilePage() {
     try {
       await withingsApi.sync();
     } catch {
-      setError('Не удалось обновить шаги из Withings — попробуй ещё раз чуть позже.');
+      setError('Не удалось обновить шаги из Withings — попробуй ещё раз позже.');
     }
     const data = await stepsApi.getRecent(7);
     setStepsData(data);
@@ -277,7 +288,7 @@ export function ProfilePage() {
             <ProfileStatCard
               icon={Flame}
               value={profile.streakCurrent ?? 0}
-              label="Стрик"
+              label="Дни в ударе"
               iconClassName="text-brand"
             />
             <ProfileStatCard

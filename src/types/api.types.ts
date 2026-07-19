@@ -1,16 +1,20 @@
 /** Raw DTOs from FastAPI backend */
 
+/** 'steps' comes from Withings/companion (steps_daily), not a camera session —
+ * the UI branches on it to skip the CV workflow and show step progress. */
+export type ApiExerciseMetric = 'reps' | 'seconds' | 'steps';
+
 export interface ApiExercise {
   id: number;
   name: string;
-  metric: 'reps' | 'seconds';
+  metric: ApiExerciseMetric;
 }
 
 export interface ApiChallengeExercise {
   challenge_exercise_id: number;
   exercise_id: number;
   name: string;
-  metric: 'reps' | 'seconds';
+  metric: ApiExerciseMetric;
   goal: number;
   clean_today?: number;
   closed?: boolean;
@@ -75,6 +79,7 @@ export interface ApiMeResponse {
   timezone?: string | null;
   streak_current: number;
   streak_longest: number;
+  ui_flags?: Record<string, boolean>;
   volume: { exercise: string; metric: string; total: number }[];
 }
 

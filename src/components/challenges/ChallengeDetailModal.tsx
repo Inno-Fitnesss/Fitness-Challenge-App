@@ -9,7 +9,7 @@ import { useCopyFeedback } from '../../hooks/useCopyFeedback.ts';
 import { fetchChallengeModalData } from '../../api/challengeQueries.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import type { ChallengeModalData, ExerciseProgress } from '../../types/challenge.ts';
-import { formatParticipants } from '../../utils/challengeMappers.ts';
+import { formatParticipants, UNLIMITED_DATE_LABEL } from '../../utils/challengeMappers.ts';
 import { pluralizeRu } from '../../utils/russianPlural.ts';
 import {
   buildExerciseSessionPath,
@@ -52,10 +52,17 @@ function formatGoal(exercise: ExerciseProgress): string {
   if (exercise.unit === 'minutes') {
     return `${exercise.goal} ${pluralizeRu(exercise.goal, ['минута', 'минуты', 'минут'])}`;
   }
+  if (exercise.unit === 'steps') {
+    return `${exercise.goal.toLocaleString('ru-RU')} ${pluralizeRu(exercise.goal, ['шаг', 'шага', 'шагов'])} в день`;
+  }
   return `${exercise.goal} ${pluralizeRu(exercise.goal, ['повторение', 'повторения', 'повторений'])}`;
 }
 
 function formatStatus(exercise: ExerciseProgress): string {
+  if (exercise.unit === 'steps') {
+    // Steps show a live partial count, not just done/not-done.
+    return `Пройдено ${exercise.completed.toLocaleString('ru-RU')} / ${exercise.goal.toLocaleString('ru-RU')}`;
+  }
   if (exercise.status === 'completed') {
     return `Выполнено ${exercise.completed} / ${exercise.goal}`;
   }
@@ -65,11 +72,18 @@ function formatStatus(exercise: ExerciseProgress): string {
 function ExerciseItem({ exercise, challengeId, isArchived, returnTarget, onStart }: ExerciseItemProps) {
   const navigate = useNavigate();
   const isCompleted = exercise.status === 'completed';
-  const percent = exercise.goal > 0 ? (exercise.completed / exercise.goal) * 100 : 0;
+  const isSteps = exercise.metric === 'steps';
+  const percent = exercise.goal > 0 ? Math.min((exercise.completed / exercise.goal) * 100, 100) : 0;
 
   const handleStart = () => {
     if (isArchived) return;
     onStart();
+    // Steps aren't done via the camera — they come from Withings. Send the user
+    // to their profile, where connecting/refreshing Withings lives.
+    if (isSteps) {
+      navigate('/settings');
+      return;
+    }
     navigate(buildExerciseSessionPath(challengeId, exercise.exerciseId, returnTarget));
   };
 
@@ -91,6 +105,8 @@ function ExerciseItem({ exercise, challengeId, isArchived, returnTarget, onStart
         >
           {isArchived ? (
             'Недоступно'
+          ) : isSteps ? (
+            'Профиль'
           ) : isCompleted ? (
             <>
               <span className="lg:hidden">Выполнено</span>
@@ -109,7 +125,9 @@ function ExerciseItem({ exercise, challengeId, isArchived, returnTarget, onStart
       <p className={`max-lg:hidden text-xs ${isCompleted ? 'text-lime-hover' : 'text-neutral-muted'}`}>
         {isArchived
           ? 'Выполнение недоступно — челлендж в архиве'
-          : formatStatus(exercise)}
+          : isSteps
+            ? `${formatStatus(exercise)} · учитывается автоматически из Withings`
+            : formatStatus(exercise)}
       </p>
     </div>
   );
@@ -182,10 +200,10 @@ export function ChallengeDetailModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="challenge-modal-title"
-        className="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-6 pointer-events-none"
+        className="absolute inset-x-0 top-0 h-[100dvh] flex items-end justify-center sm:items-center sm:p-6 pointer-events-none"
       >
       <div
-        className="pointer-events-auto relative bg-white rounded-t-3xl sm:rounded-3xl shadow-modal w-full max-w-full sm:max-w-[900px] max-h-[min(92dvh,100%)] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden animate-fade-in min-w-0 mx-auto"
+        className="pointer-events-auto relative bg-white rounded-t-3xl sm:rounded-3xl shadow-modal w-full max-w-full sm:max-w-[900px] max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden overscroll-contain animate-fade-in min-w-0 mx-auto"
       >
         <button
           type="button"
@@ -212,20 +230,13 @@ export function ChallengeDetailModal({
                   {challenge.title}
                 </h2>
                 <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge variant="orange" icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap">
-                    {challenge.isUnlimited ? (
-                      <>
-                        <span className="lg:hidden">бессрочный</span>
-                        <span className="hidden lg:inline">{challenge.dateLabel}</span>
-                      </>
-                    ) : (
-                      challenge.dateLabel
-                    )}
+                  <Badge variant="orange" icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap normal-case">
+                    {challenge.isUnlimited ? UNLIMITED_DATE_LABEL : challenge.dateLabel}
                   </Badge>
                   <ChallengeScheduleBadge label={challenge.scheduleLabel} />
                   <Badge variant="green">{formatParticipants(challenge.participantCount)}</Badge>
                   {challenge.isOwner && !challenge.isPrivate && !isArchived && (
-                    <Badge variant="green">Публичный</Badge>
+                    <Badge variant="green">Групповой</Badge>
                   )}
                   {isArchived && <Badge variant="grey">В архиве</Badge>}
                 </div>
@@ -248,7 +259,7 @@ export function ChallengeDetailModal({
                       className="w-full sm:w-auto flex-shrink-0"
                       onClick={() => onPublish(challengeId)}
                     >
-                      Сделать публичным
+                      Сделать групповым
                     </Button>
                   )}
                   {canInviteToChallenge(challenge) && onCopyLink && (
@@ -278,7 +289,7 @@ export function ChallengeDetailModal({
                 </div>
                 {challenge.isOwner && !challenge.isPrivate && !isArchived && (
                   <p className="text-xs text-neutral-muted mt-3">
-                    Публичный челлендж нельзя редактировать. Вы можете приглашать участников по ссылке.
+                    Групповой челлендж нельзя редактировать. Вы можете приглашать участников по ссылке.
                   </p>
                 )}
                 {isArchived && (
@@ -336,7 +347,7 @@ export function ChallengeDetailModal({
                 <section className={challenge.isPrivate && challenge.isOwner ? 'max-lg:hidden' : ''}>
                   <h3 className="text-base max-lg:text-lg font-bold text-neutral-text mb-1">
                     <span className="lg:hidden">Рейтинг</span>
-                    <span className="hidden lg:inline">Лидерборд</span>
+                    <span className="hidden lg:inline">Таблица лидеров</span>
                   </h3>
                   <p className="text-xs text-neutral-muted mb-4">сортировка по регулярности выполнения челленджа</p>
                   <LeaderboardList entries={data.leaderboard} />
@@ -362,7 +373,7 @@ export function ChallengeDetailModal({
                   )}
                   {canPublishChallenge(challenge) && onPublish && (
                     <Button variant="lime" size="lg" fullWidth onClick={() => onPublish(challengeId)}>
-                      Сделать публичным
+                      Сделать групповым
                     </Button>
                   )}
                   {canEditChallenge(challenge) && onEdit && (
@@ -399,9 +410,15 @@ export function ChallengeDetailModal({
                     </div>
                   )}
                   {canLeaveChallenge(challenge) && onLeave && (
-                    <Button variant="primary" size="lg" fullWidth onClick={() => onLeave(challengeId)}>
-                      Покинуть
-                    </Button>
+                    <div className="pt-1 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => onLeave(challengeId)}
+                        className="px-5 py-2 text-sm font-semibold text-neutral-muted rounded-full hover:text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        Покинуть челлендж
+                      </button>
+                    </div>
                   )}
                 </div>
               )}

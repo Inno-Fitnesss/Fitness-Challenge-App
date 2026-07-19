@@ -20,6 +20,8 @@ export interface UserOutput {
   email: string;
   first_name?: string | null;
   last_name?: string | null;
+  /** false сразу после регистрации, пока не введён код из письма */
+  email_verified?: boolean;
 }
 
 /** DTO ответа с токеном — UserWithToken */
@@ -40,6 +42,7 @@ export interface User {
   id: number;
   username: string;
   email: string;
+  emailVerified?: boolean;
   firstName?: string;
   lastName?: string;
   heightCm?: number;
@@ -48,6 +51,7 @@ export interface User {
   timezone?: string;
   streakCurrent?: number;
   streakLongest?: number;
+  uiFlags?: Record<string, boolean>;
   volume?: { exercise: string; metric: string; total: number }[];
 }
 
@@ -84,6 +88,9 @@ export interface RegisterData {
   lastName?: string;
 }
 
+/** Результат регистрации: вошли сразу или ждём код подтверждения email */
+export type RegisterResult = 'logged_in' | 'verification_required';
+
 export interface AuthContextValue {
   user: User | null;
   token: string | null;
@@ -91,10 +98,13 @@ export interface AuthContextValue {
   isLoading: boolean;
   login: (credentials: LoginCredentials, redirectTo?: string) => Promise<void>;
   loginWithGoogle: (idToken: string, redirectTo?: string) => Promise<void>;
-  register: (data: RegisterData, redirectTo?: string) => Promise<void>;
+  register: (data: RegisterData, redirectTo?: string) => Promise<RegisterResult>;
+  verifyEmail: (email: string, code: string, redirectTo?: string) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  /** Обновить UI-флаг аккаунта (онбординг, «больше не показывать»). Оптимистично + PATCH /me. */
+  setUiFlag: (key: string, value: boolean) => Promise<void>;
 }
 
 export interface ApiError {

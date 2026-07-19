@@ -13,6 +13,12 @@ export const DEFAULT_PLANK_SECONDS = 30;
 /** Максимум повторений для reps-упражнений */
 export const MAX_REPS_GOAL = 9_999;
 
+/** Дефолтная дневная цель по шагам */
+export const DEFAULT_STEPS_GOAL = 8_000;
+
+/** Максимальная дневная цель по шагам (бэкенд допускает до 100_000) */
+export const MAX_STEPS_GOAL = 100_000;
+
 /** Максимальная длительность планки (секунды) — 60 минут */
 export const MAX_PLANK_TOTAL_SECONDS = 3_600;
 
@@ -20,6 +26,10 @@ export const MAX_PLANK_MINUTES = Math.floor(MAX_PLANK_TOTAL_SECONDS / 60);
 
 export function clampRepsGoal(value: number): number {
   return Math.min(Math.max(1, value), MAX_REPS_GOAL);
+}
+
+export function clampStepsGoal(value: number): number {
+  return Math.min(Math.max(1, value), MAX_STEPS_GOAL);
 }
 
 export function clampPlankSeconds(totalSeconds: number): number {
@@ -41,10 +51,11 @@ export function combinePlankGoal(minutes: number, seconds: number): number {
 }
 
 export function isGoalWithinLimits(
-  metric: 'reps' | 'seconds' | undefined,
+  metric: 'reps' | 'seconds' | 'steps' | undefined,
   goal: number,
 ): boolean {
   if (goal <= 0) return false;
   if (metric === 'seconds') return goal <= MAX_PLANK_TOTAL_SECONDS;
+  if (metric === 'steps') return goal <= MAX_STEPS_GOAL;
   return goal <= MAX_REPS_GOAL;
 }

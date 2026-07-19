@@ -142,7 +142,7 @@ export function WeeklyCalendar({
         ))}
       </div>
 
-      {/* Десктопная сетка — без изменений */}
+      {}
       <div className="hidden sm:grid grid-cols-7 gap-1 sm:gap-2 w-full min-w-0" aria-label="Календарь активности">
         {days.map((day) => (
           <div key={day.isoDate} className="flex flex-col items-center gap-1.5 min-w-0">

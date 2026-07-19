@@ -8,7 +8,7 @@ interface TopStreaksChartProps {
 export function TopStreaksChart({ data }: TopStreaksChartProps) {
   return (
     <div className="bg-white rounded-3xl shadow-card px-5 py-5">
-      <p className="text-sm font-semibold text-neutral-text mb-3">Топ-3 по самому длинному стрику</p>
+      <p className="text-sm font-semibold text-neutral-text mb-3">Топ-3 по количеству дней в ударе</p>
 
       {data.length === 0 ? (
         <p className="text-sm text-neutral-secondary py-8 text-center">Нет данных</p>

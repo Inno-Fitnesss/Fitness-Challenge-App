@@ -3,7 +3,17 @@ import { createRoot } from 'react-dom/client';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import App from './App.tsx';
 import { GOOGLE_CLIENT_ID } from './constants/googleAuth.ts';
+import { initPwa } from './pwa.ts';
 import './index.css';
+
+initPwa();
+
+// iOS Safari ignores `user-scalable=no`/`maximum-scale` in the viewport meta,
+// so block its pinch-zoom gestures directly. touch-action:manipulation (in CSS)
+// already covers double-tap zoom.
+for (const evt of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(evt, (e) => e.preventDefault(), { passive: false });
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
