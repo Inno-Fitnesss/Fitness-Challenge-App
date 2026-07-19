@@ -114,7 +114,7 @@ export function WithingsGuideModal({ onClose }: WithingsGuideModalProps) {
             {WITHINGS_GUIDE_STEPS.map((step, index) => (
               <div
                 key={index}
-                className="w-full flex-shrink-0 snap-start flex flex-col items-center gap-5 px-6 sm:px-8 py-4 overflow-y-auto"
+                className="w-full flex-shrink-0 snap-start flex flex-col items-center justify-center gap-5 px-6 sm:px-8 py-4 overflow-y-auto"
               >
                 <div className="text-center">
                   <p className="text-sm sm:text-base font-semibold text-neutral-text">{step.description}</p>

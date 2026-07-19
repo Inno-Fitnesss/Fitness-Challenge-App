@@ -20,12 +20,12 @@ export const WITHINGS_GUIDE_STEPS: WithingsGuideStep[] = [
     showDownloadButtons: true,
   },
   {
-    description: 'Войдите в свой аккаунт',
+    description: 'Войдите в свой аккаунт, связанный с WowFit',
     image: '/images/withings-guide/step-2-login.png',
   },
   {
     description:
-      'Во вкладке «Поделиться» выберите приложение «Здоровье», которое считает шаги на вашем телефоне',
+      'Во вкладке «Поделиться» выберите приложение «Здоровье» или другой нативный шагомер',
     image: '/images/withings-guide/step-3-connect.png',
   },
   {
