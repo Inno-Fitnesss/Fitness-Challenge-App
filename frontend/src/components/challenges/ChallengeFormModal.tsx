@@ -4,6 +4,7 @@ import { challengeApi, exerciseApi } from '../../api/challengeApi.ts';
 import { parseApiError } from '../../utils/parseApiError.ts';
 import { isValidIsoDate, todayIso } from '../../utils/dateFormat.ts';
 import { DateField } from '../ui/DateField.tsx';
+import { SheetDragHandle } from '../ui/SheetDragHandle.tsx';
 import type { ApiExercise } from '../../types/api.types.ts';
 import {
   ChallengeExerciseRow,
@@ -15,6 +16,7 @@ import { SchedulePicker, type ScheduleMode } from './SchedulePicker.tsx';
 import { generateId } from '../../utils/generateId.ts';
 import { CHALLENGE_NAME_MAX_LENGTH, CHALLENGE_DESCRIPTION_MAX_LENGTH } from '../../constants/challengeLimits.ts';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts';
+import { useSheetDragToClose } from '../../hooks/useSheetDragToClose.ts';
 import type { AxiosError } from 'axios';
 
 interface ChallengeFormModalProps {
@@ -210,6 +212,11 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
     }
     onClose();
   }, [hasUnsavedChanges, isSubmitting, onClose]);
+
+  const { sheetDragStyle, sheetTransitionClassName, handleProps: dragHandleProps } = useSheetDragToClose({
+    onDismiss: requestClose,
+    disabled: isSubmitting || showDiscardConfirm,
+  });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -420,8 +427,9 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
 
       <div className="absolute inset-x-0 top-0 h-[100dvh] flex items-end justify-center sm:items-start sm:p-6 pointer-events-none">
         <div
-          className="pointer-events-auto relative flex flex-col w-full max-w-full sm:max-w-3xl mx-auto bg-white rounded-t-3xl sm:rounded-3xl shadow-modal animate-fade-in
-            max-h-[92dvh] sm:max-h-[calc(100dvh-3rem)] sm:my-8 min-h-0 min-w-0 overflow-hidden"
+          className={`pointer-events-auto relative flex flex-col w-full max-w-full sm:max-w-3xl mx-auto bg-white rounded-t-3xl sm:rounded-3xl shadow-modal animate-fade-in
+            max-h-[92dvh] sm:max-h-[calc(100dvh-3rem)] sm:my-8 min-h-0 min-w-0 overflow-hidden ${sheetTransitionClassName}`}
+          style={sheetDragStyle}
           onClick={(e) => e.stopPropagation()}
         >
         {showDiscardConfirm && (
@@ -459,7 +467,7 @@ export function ChallengeFormModal({ mode, challengeId, onClose, onSuccess }: Ch
         )}
 
         <div className="flex-shrink-0 modal-safe-x pt-4 sm:pt-6 pb-4 sm:pb-4 border-b border-neutral-border/60 sm:border-0">
-          <div className="w-10 h-1 bg-neutral-border rounded-full mx-auto mb-4 sm:hidden" aria-hidden />
+          <SheetDragHandle {...dragHandleProps} />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 min-w-0 w-full">
             <div className="flex-1 min-w-0">
               <input

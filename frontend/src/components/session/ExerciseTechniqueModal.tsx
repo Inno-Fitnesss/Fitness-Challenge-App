@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Play } from 'lucide-react';
 import type { ExerciseTechniqueContent } from '../../data/exerciseTechnique.ts';
 import { Button } from '../ui/Button.tsx';
+import { SheetDragHandle } from '../ui/SheetDragHandle.tsx';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts';
+import { useSheetDragToClose } from '../../hooks/useSheetDragToClose.ts';
 
 interface ExerciseTechniqueModalProps {
   content: ExerciseTechniqueContent;
@@ -19,6 +21,11 @@ export function ExerciseTechniqueModal({
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const { sheetDragStyle, sheetTransitionClassName, handleProps: dragHandleProps } = useSheetDragToClose({
+    onDismiss: () => onClose(dontShowAgain),
+    disabled: isSavingPreference,
+  });
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -57,12 +64,13 @@ export function ExerciseTechniqueModal({
       />
       <div className="absolute inset-x-0 top-0 h-[100dvh] flex items-end justify-center sm:items-center modal-safe-x sm:py-4 pointer-events-none">
         <div
-          className="pointer-events-auto flex flex-col w-full max-w-lg max-h-[90dvh] sm:max-h-[85dvh] bg-white rounded-3xl shadow-modal min-w-0 min-h-0 overflow-hidden"
+          className={`pointer-events-auto flex flex-col w-full max-w-lg max-h-[90dvh] sm:max-h-[85dvh] bg-white rounded-3xl shadow-modal min-w-0 min-h-0 overflow-hidden ${sheetTransitionClassName}`}
+          style={sheetDragStyle}
           onClick={(event) => event.stopPropagation()}
         >
           {/* Fixed header — always visible so the exercise being explained is clear */}
           <header className="flex-shrink-0 px-5 sm:px-6 pt-3 sm:pt-6 pb-3 text-center">
-            <div className="w-10 h-1 bg-neutral-border rounded-full mx-auto mb-3 sm:hidden" aria-hidden />
+            <SheetDragHandle {...dragHandleProps} />
             <h2 id="technique-modal-title" className="text-lg sm:text-xl font-extrabold text-neutral-text">
               {content.title}
             </h2>
