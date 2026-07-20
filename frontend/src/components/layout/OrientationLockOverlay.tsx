@@ -6,20 +6,43 @@ import { Smartphone } from 'lucide-react';
  * Ландшафт на телефоне: тач-устройство (pointer: coarse) с короткой стороной
  * экрана меньше ~620px. Десктопные мониторы (pointer: fine, большая высота)
  * и планшеты в ландшафте (высота > 620px) под условие не попадают.
+ * ориентация определяется по физическим размерам экрана
+ * (window.screen)
  */
-const LANDSCAPE_PHONE_QUERY =
-  '(orientation: landscape) and (pointer: coarse) and (max-height: 620px)';
+const MAX_SHORT_SIDE_PX = 620;
 
 /** Страница выполнения упражнения — единственная, где ландшафт разрешён. */
 const EXERCISE_SESSION_PATTERN =
   '/challenges/:challengeId/exercise/:challengeExerciseId';
 
-function matchesLandscapePhone(): boolean {
+function isCoarsePointer(): boolean {
   return (
     typeof window !== 'undefined' &&
     typeof window.matchMedia === 'function' &&
-    window.matchMedia(LANDSCAPE_PHONE_QUERY).matches
+    window.matchMedia('(pointer: coarse)').matches
   );
+}
+
+function isScreenLandscape(): boolean {
+  if (typeof window === 'undefined' || !window.screen) return false;
+
+  const orientationType = window.screen.orientation?.type;
+  if (orientationType) {
+    return orientationType.startsWith('landscape');
+  }
+
+  // Фолбэк для браузеров без Screen Orientation API: сравниваем реальные
+  // размеры экрана (не viewport), которые не меняются при открытии клавиатуры.
+  return window.screen.width > window.screen.height;
+}
+
+function matchesLandscapePhone(): boolean {
+  if (typeof window === 'undefined' || !window.screen) return false;
+  if (!isCoarsePointer()) return false;
+  if (!isScreenLandscape()) return false;
+
+  const shortSide = Math.min(window.screen.width, window.screen.height);
+  return shortSide <= MAX_SHORT_SIDE_PX;
 }
 
 /**
@@ -31,24 +54,19 @@ export function OrientationLockOverlay() {
   const [isLandscapePhone, setIsLandscapePhone] = useState(matchesLandscapePhone);
 
   useEffect(() => {
-    if (typeof window.matchMedia !== 'function') return;
+    if (typeof window === 'undefined') return;
 
-    const mediaQuery = window.matchMedia(LANDSCAPE_PHONE_QUERY);
-    const handleChange = (event: MediaQueryListEvent) => {
-      setIsLandscapePhone(event.matches);
-    };
-
-    setIsLandscapePhone(mediaQuery.matches);
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
+    const recompute = () => setIsLandscapePhone(matchesLandscapePhone());
+    recompute();
+    const screenOrientation = window.screen?.orientation;
+    if (screenOrientation && typeof screenOrientation.addEventListener === 'function') {
+      screenOrientation.addEventListener('change', recompute);
+      return () => screenOrientation.removeEventListener('change', recompute);
     }
 
-    const legacyHandleChange = (event: MediaQueryListEvent | MediaQueryList) => {
-      setIsLandscapePhone(event.matches);
-    };
-    mediaQuery.addListener(legacyHandleChange);
-    return () => mediaQuery.removeListener(legacyHandleChange);
+    // Фолбэк для браузеров без Screen Orientation API.
+    window.addEventListener('orientationchange', recompute);
+    return () => window.removeEventListener('orientationchange', recompute);
   }, []);
 
   const isExerciseSession =
