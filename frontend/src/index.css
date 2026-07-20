@@ -64,6 +64,16 @@
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes authFeatureLine {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-feature-line {
+  opacity: 0;
+  animation: authFeatureLine 0.45s ease-out forwards;
+}
+
 .date-field-input::-webkit-calendar-picker-indicator {
   opacity: 0;
   position: absolute;

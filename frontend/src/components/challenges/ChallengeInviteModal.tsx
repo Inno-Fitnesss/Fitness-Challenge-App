@@ -197,7 +197,7 @@ export function ChallengeInviteModal({ joinCode, onClose, onJoined }: ChallengeI
                 </div>
 
                 <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge variant="orange" icon={<Clock size={12} />}>
+                  <Badge variant="orange" icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap normal-case">
                     {dateLabel}
                   </Badge>
                   <ChallengeScheduleBadge label={scheduleLabel} />

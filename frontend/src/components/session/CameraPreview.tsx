@@ -69,7 +69,7 @@ export function CameraPreview({
                 ? 'Подключаем камеру…'
                 : 'Проверьте камеру'}
             </p>
-            <p className="text-white/60 text-sm max-w-xs">
+            <p className="text-white/60 text-sm max-w-xs mx-auto">
               {errorMessage ??
                 'Разрешите доступ к камере, чтобы CV начал считывание автоматически'}
             </p>

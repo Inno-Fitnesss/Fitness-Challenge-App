@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { AuthBrandMark } from './AuthBrandMark.tsx';
+import { AuthExerciseShowcase } from './AuthExerciseShowcase.tsx';
+import { AuthStaggeredFeatures } from './AuthStaggeredFeatures.tsx';
 
 const FEATURES = [
   'создавайте челленджи или участвуйте в чужих',
@@ -7,37 +9,22 @@ const FEATURES = [
 ];
 
 export function AuthLandingHero() {
-  const [gifReady, setGifReady] = useState(false);
+  const [slideIndex, setSlideIndex] = useState(0);
 
   return (
-    <div className="flex flex-col items-center text-center w-full max-w-md mx-auto">
+    <div className="flex flex-col items-center text-center w-full max-w-lg mx-auto">
       <AuthBrandMark className="mb-8 sm:mb-10" />
 
       <p className="text-base sm:text-lg text-neutral-text leading-relaxed mb-8 sm:mb-10 px-2">
         Поддерживайте форму даже вне занятий с тренером
       </p>
 
-      <div className="w-full aspect-[4/3] rounded-3xl overflow-hidden bg-gradient-to-br from-violet-300 via-fuchsia-200 to-purple-300 shadow-card mb-8 sm:mb-10 relative">
-        {!gifReady && (
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-400/40 via-fuchsia-300/30 to-purple-400/40" />
-        )}
-        <img
-          src="/auth/hero.gif"
-          alt=""
-          className={`w-full h-full object-cover ${gifReady ? 'block' : 'hidden'}`}
-          onLoad={() => setGifReady(true)}
-          onError={() => setGifReady(false)}
-        />
-      </div>
+      <AuthExerciseShowcase
+        className="w-full max-w-xl mb-8 sm:mb-10"
+        onSlideChange={setSlideIndex}
+      />
 
-      <ul className="w-full space-y-3 text-left text-sm sm:text-base text-neutral-text">
-        {FEATURES.map((text) => (
-          <li key={text} className="flex gap-3 leading-snug">
-            <span className="text-brand font-bold mt-0.5">•</span>
-            <span>{text}</span>
-          </li>
-        ))}
-      </ul>
+      <AuthStaggeredFeatures features={FEATURES} animationKey={slideIndex} className="w-full" />
     </div>
   );
 }

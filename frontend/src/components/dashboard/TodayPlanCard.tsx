@@ -3,6 +3,7 @@ import { Badge } from '../ui/Badge.tsx';
 import { ProgressBar } from '../ui/ProgressBar.tsx';
 import { ChallengeScheduleBadge } from '../challenges/ChallengeScheduleBadge.tsx';
 import type { TodayPlanItem } from '../../types/challenge.ts';
+import { UNLIMITED_DATE_LABEL } from '../../utils/challengeMappers.ts';
 
 interface TodayPlanCardProps {
   item: TodayPlanItem;
@@ -29,8 +30,8 @@ export function TodayPlanCard({ item, onClick }: TodayPlanCardProps) {
             </p>
           )}
           <div className="flex flex-wrap gap-2">
-            <Badge variant="orange" icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap">
-              {challenge.dateLabel}
+            <Badge variant="orange" icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap normal-case">
+              {challenge.isUnlimited ? UNLIMITED_DATE_LABEL : challenge.dateLabel}
             </Badge>
             <ChallengeScheduleBadge label={challenge.scheduleLabel} />
           </div>

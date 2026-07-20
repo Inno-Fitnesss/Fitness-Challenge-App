@@ -9,6 +9,7 @@ import {
   mapTodayToPlanItem,
   mapExerciseProgress,
   mapLeaderboard,
+  UNLIMITED_DATE_LABEL,
 } from './challengeMappers.ts';
 import type { ApiChallengeDetail, ApiChallengeExercise, ApiTodayChallenge } from '../types/api.types.ts';
 
@@ -46,8 +47,9 @@ function makeDetail(overrides: Partial<ApiChallengeDetail> = {}): ApiChallengeDe
 }
 
 describe('formatDateLabel', () => {
-  it('reports "без ограничений" for an open-ended challenge', () => {
-    expect(formatDateLabel('2026-06-01', null)).toBe('без ограничений');
+  it('reports "Бессрочный" for an open-ended challenge', () => {
+    expect(formatDateLabel('2026-06-01', null)).toBe('Бессрочный');
+    expect(formatDateLabel('2026-06-01', null)).toBe(UNLIMITED_DATE_LABEL);
   });
 
   it('formats a bounded range as short dates', () => {

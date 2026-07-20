@@ -3,7 +3,7 @@ import { Badge } from '../ui/Badge.tsx';
 import { Button } from '../ui/Button.tsx';
 import { ChallengeScheduleBadge } from './ChallengeScheduleBadge.tsx';
 import type { DiscoveryChallenge } from '../../types/challenge.ts';
-import { formatParticipants } from '../../utils/challengeMappers.ts';
+import { formatParticipants, UNLIMITED_DATE_LABEL } from '../../utils/challengeMappers.ts';
 
 interface DiscoveryCardProps {
   challenge: DiscoveryChallenge;
@@ -19,9 +19,8 @@ export function DiscoveryCard({ challenge, onJoin }: DiscoveryCardProps) {
         <h3 className="font-bold text-neutral-text truncate min-w-0 max-lg:text-lg" title={challenge.title}>
           {challenge.title}
         </h3>
-        <Badge variant="orange" icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap">
-          <span className="lg:hidden">бессрочный</span>
-          <span className="hidden lg:inline">бессрочный</span>
+        <Badge variant="orange" icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap normal-case">
+          {challenge.isUnlimited ? UNLIMITED_DATE_LABEL : challenge.dateLabel}
         </Badge>
       </div>
 
