@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Info, RotateCcw } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { challengeApi } from '../api/challengeApi.ts';
 import { useAuth } from '../context/AuthContext.tsx';
@@ -14,6 +14,7 @@ import { CAMERA_PRIVACY_TEXT } from '../components/session/CameraPrivacyNotice.t
 import { getExerciseTechniqueContent } from '../data/exerciseTechnique.ts';
 import { useCameraStream } from '../hooks/useCameraStream.ts';
 import { useCvSession } from '../hooks/useCvSession.ts';
+import { useLandscapePhone } from '../hooks/useLandscapePhone.ts';
 import type { CvSessionStats, ExerciseMetric, ExerciseSessionContext } from '../types/session.types.ts';
 import {
   isExerciseOnboardingDismissed,
@@ -127,6 +128,7 @@ export function ExerciseSessionPage() {
 
   const { videoRef, status: cameraStatus, errorMessage, startCamera, stopCamera } =
     useCameraStream();
+  const isLandscapePhone = useLandscapePhone();
 
   const parsedChallengeId = Number(challengeId);
   const parsedExerciseId = Number(challengeExerciseId);
@@ -466,42 +468,52 @@ export function ExerciseSessionPage() {
     : activeWarning
       ? 'max-lg:bg-[#F0764A]'
       : 'max-lg:bg-transparent';
+  // В ландшафте нет места под рамку-паддинг — статус показываем кольцом
+  // поверх полноэкранного видео вместо цветного фона вокруг него.
+  const landscapeRingClassName = goalReached
+    ? 'ring-[#9AE52E]'
+    : activeWarning
+      ? 'ring-[#F0764A]'
+      : 'ring-transparent';
 
   return (
     <div className="h-[100dvh] overflow-hidden bg-white max-lg:flex max-lg:flex-col">
-      {/* Мобильная шапка (< lg): назад, название, счётчик, полоса прогресса */}
-      <header className="bg-white lg:hidden">
-        <div className="flex h-[60px] items-center gap-2 px-4">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="-ml-2 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-neutral-muted transition-colors active:bg-neutral-card"
-            aria-label="Назад"
-          >
-            <ArrowLeft className="h-6 w-6" strokeWidth={2.4} />
-          </button>
-          <h1 className="min-w-0 flex-1 truncate text-[21px] font-extrabold leading-tight text-neutral-text">
-            {context.exerciseName}
-          </h1>
-          <p
-            className="flex-shrink-0 whitespace-nowrap tabular-nums"
-            aria-label={`Прогресс: ${currentDisplay} из ${goalDisplay}`}
-          >
-            <span className="text-[13px] font-semibold text-neutral-muted">
-              выполнено
-            </span>{' '}
-            <span className="text-lg font-extrabold text-neutral-text">
-              {currentDisplay} / {goalDisplay}
-            </span>
-          </p>
-        </div>
-        <div className={`h-2 w-full ${progressTrackClassName}`}>
-          <div
-            className={`h-full rounded-r-full transition-[width] duration-500 ${progressFillClassName}`}
-            style={{ width: `${sessionProgress}%` }}
-          />
-        </div>
-      </header>
+      {/* Мобильная шапка (< lg, портрет): назад, название, счётчик, полоса прогресса.
+          В ландшафте её заменяют плавающие элементы поверх камеры (см. ниже). */}
+      {!isLandscapePhone && (
+        <header className="bg-white lg:hidden">
+          <div className="flex h-[60px] items-center gap-2 px-4">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="-ml-2 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-neutral-muted transition-colors active:bg-neutral-card"
+              aria-label="Назад"
+            >
+              <ArrowLeft className="h-6 w-6" strokeWidth={2.4} />
+            </button>
+            <h1 className="min-w-0 flex-1 truncate text-[21px] font-extrabold leading-tight text-neutral-text">
+              {context.exerciseName}
+            </h1>
+            <p
+              className="flex-shrink-0 whitespace-nowrap tabular-nums"
+              aria-label={`Прогресс: ${currentDisplay} из ${goalDisplay}`}
+            >
+              <span className="text-[13px] font-semibold text-neutral-muted">
+                выполнено
+              </span>{' '}
+              <span className="text-lg font-extrabold text-neutral-text">
+                {currentDisplay} / {goalDisplay}
+              </span>
+            </p>
+          </div>
+          <div className={`h-2 w-full ${progressTrackClassName}`}>
+            <div
+              className={`h-full rounded-r-full transition-[width] duration-500 ${progressFillClassName}`}
+              style={{ width: `${sessionProgress}%` }}
+            />
+          </div>
+        </header>
+      )}
 
       {/* Десктопная шапка (lg+) — без изменений */}
       <header className="max-lg:hidden h-[56px] border-b border-neutral-border/80 bg-white sm:h-[60px]">
@@ -529,26 +541,30 @@ export function ExerciseSessionPage() {
       </header>
 
       <main
-        className={`flex w-full flex-col transition-colors duration-500 max-lg:min-h-0 max-lg:flex-1 max-lg:px-3 max-lg:pb-3 lg:h-[calc(100dvh-60px)] lg:px-12 lg:py-2 ${
-          goalReached ? 'bg-[#F3FFE2]' : 'bg-[#F2F3F5]'
-        }`}
+        className={`flex w-full flex-col transition-colors duration-500 max-lg:min-h-0 max-lg:flex-1 lg:h-[calc(100dvh-60px)] lg:px-12 lg:py-2 ${
+          isLandscapePhone ? '' : 'max-lg:px-3 max-lg:pb-3'
+        } ${goalReached ? 'bg-[#F3FFE2]' : 'bg-[#F2F3F5]'}`}
       >
-        <div className="grid grid-cols-2 gap-3 pt-3 lg:hidden">
-          <button
-            type="button"
-            onClick={handleShowTechnique}
-            className="flex h-11 items-center justify-center rounded-xl border border-[#BCDE68] bg-[#F8F4EC] px-3 text-[15px] font-semibold text-[#93C83D] transition-colors active:bg-[#F0F2DE]"
-          >
-            Инструкция
-          </button>
-          <button
-            type="button"
-            onClick={handleRestart}
-            className="flex h-11 items-center justify-center rounded-xl border border-[#F6A97F] bg-[#FBF3EC] px-3 text-[15px] font-semibold text-[#F2652D] transition-colors active:bg-[#F8E8DB]"
-          >
-            Сбросить счётчик
-          </button>
-        </div>
+        {/* Мобильные кнопки «Инструкция» / «Сбросить счётчик» (только портрет —
+            в ландшафте те же действия доступны как плавающие иконки над камерой) */}
+        {!isLandscapePhone && (
+          <div className="grid grid-cols-2 gap-3 pt-3 lg:hidden">
+            <button
+              type="button"
+              onClick={handleShowTechnique}
+              className="flex h-11 items-center justify-center rounded-xl border border-[#BCDE68] bg-[#F8F4EC] px-3 text-[15px] font-semibold text-[#93C83D] transition-colors active:bg-[#F0F2DE]"
+            >
+              Инструкция
+            </button>
+            <button
+              type="button"
+              onClick={handleRestart}
+              className="flex h-11 items-center justify-center rounded-xl border border-[#F6A97F] bg-[#FBF3EC] px-3 text-[15px] font-semibold text-[#F2652D] transition-colors active:bg-[#F8E8DB]"
+            >
+              Сбросить счётчик
+            </button>
+          </div>
+        )}
 
         <div className="max-lg:hidden mx-auto w-full max-w-[1920px]">
           <div
@@ -561,13 +577,32 @@ export function ExerciseSessionPage() {
           </div>
         </div>
 
-        <section className="flex min-h-0 flex-1 max-lg:flex-col max-lg:pt-3 lg:items-center lg:pb-1.5 lg:pt-5">
-          {/* Мобильная рамка-состояние (оранжевая/зелёная); на lg+ — нейтральная обёртка */}
+        <section
+          className={
+            isLandscapePhone
+              ? 'flex min-h-0 flex-1'
+              : 'flex min-h-0 flex-1 max-lg:flex-col max-lg:pt-3 lg:items-center lg:pb-1.5 lg:pt-5'
+          }
+        >
+          {/* Мобильная рамка-состояние (оранжевая/зелёная); на lg+ — нейтральная обёртка.
+              В ландшафте рамки-паддинга нет — статус вместо неё показывает кольцо
+              поверх полноэкранного видео (см. landscapeRingClassName ниже). */}
           <div
-            className={`max-lg:min-h-0 max-lg:flex-1 max-lg:rounded-[28px] max-lg:p-2 max-lg:transition-colors max-lg:duration-300 ${mobileFrameClassName} lg:w-full`}
+            className={
+              isLandscapePhone
+                ? 'relative h-full w-full overflow-hidden'
+                : `max-lg:min-h-0 max-lg:flex-1 max-lg:rounded-[28px] max-lg:p-2 max-lg:transition-colors max-lg:duration-300 ${mobileFrameClassName} lg:w-full`
+            }
           >
-            {/* Мобильный тёмный блок: видео 3:4 по центру, остальное — тёмный фон */}
-            <div className="relative max-lg:flex max-lg:h-full max-lg:w-full max-lg:items-center max-lg:justify-center max-lg:overflow-hidden max-lg:rounded-[20px] max-lg:bg-[#2d414a] max-lg:[container-type:size]">
+            {/* Мобильный тёмный блок: видео заполняет его целиком без рамки
+                (и в портрете, и в ландшафте) — на lg+ отдельная 16:9 обёртка */}
+            <div
+              className={
+                isLandscapePhone
+                  ? `relative h-full w-full overflow-hidden ring-4 ring-inset transition-colors duration-300 ${landscapeRingClassName}`
+                  : 'relative max-lg:h-full max-lg:w-full max-lg:overflow-hidden max-lg:rounded-[20px] max-lg:bg-[#2d414a]'
+              }
+            >
               <CameraPreview
                 videoRef={videoRef}
                 overlayCanvasRef={overlayCanvasRef}
@@ -575,24 +610,107 @@ export function ExerciseSessionPage() {
                 errorMessage={errorMessage}
                 activeWarning={activeWarning}
                 showPoseOverlay={showSkeleton}
-                className="mx-auto max-lg:aspect-[3/4] max-lg:max-h-full max-lg:w-[min(100%,75cqh)] lg:aspect-video lg:w-full lg:max-w-[min(1840px,max(320px,calc((100dvh_-_150px)_*_1.7778)))]"
+                className={
+                  isLandscapePhone
+                    ? 'h-full w-full rounded-none'
+                    : 'mx-auto max-lg:h-full max-lg:w-full lg:aspect-video lg:w-full lg:max-w-[min(1840px,max(320px,calc((100dvh_-_150px)_*_1.7778)))]'
+                }
               >
-                <button
-                  type="button"
-                  onClick={toggleSkeleton}
-                  className="pointer-events-auto absolute left-3 top-3 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/50 focus:outline-none focus:ring-2 focus:ring-white/80"
-                  aria-label={showSkeleton ? 'Скрыть скелет' : 'Показать скелет'}
-                  title={showSkeleton ? 'Скрыть скелет' : 'Показать скелет'}
-                >
-                  {showSkeleton ? (
-                    <EyeOff className="h-5 w-5" strokeWidth={2.4} />
-                  ) : (
-                    <Eye className="h-5 w-5" strokeWidth={2.4} />
-                  )}
-                </button>
+                {isLandscapePhone ? (
+                  <>
+                    {/* Верхняя плавающая панель: назад + название + прогресс */}
+                    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start gap-2 bg-gradient-to-b from-black/45 to-transparent p-2.5">
+                      <div className="pointer-events-auto flex min-w-0 items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleBack}
+                          aria-label="Назад"
+                          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur-md transition-colors hover:bg-black/50"
+                        >
+                          <ArrowLeft className="h-5 w-5" strokeWidth={2.4} />
+                        </button>
+                        <span className="min-w-0 truncate rounded-full border border-white/20 bg-black/35 px-3 py-1.5 text-sm font-bold text-white backdrop-blur-md">
+                          {context.exerciseName}
+                        </span>
+                        <span className="flex-shrink-0 whitespace-nowrap rounded-full border border-white/20 bg-black/35 px-3 py-1.5 text-sm font-bold tabular-nums text-white backdrop-blur-md">
+                          {currentDisplay} / {goalDisplay}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Правая колонка: скелет / инструкция / сброс */}
+                    <div className="pointer-events-none absolute right-2.5 top-1/2 z-30 flex -translate-y-1/2 flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={toggleSkeleton}
+                        aria-label={showSkeleton ? 'Скрыть скелет' : 'Показать скелет'}
+                        title={showSkeleton ? 'Скрыть скелет' : 'Показать скелет'}
+                        className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur-md transition-colors hover:bg-black/50"
+                      >
+                        {showSkeleton ? (
+                          <EyeOff className="h-5 w-5" strokeWidth={2.4} />
+                        ) : (
+                          <Eye className="h-5 w-5" strokeWidth={2.4} />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleShowTechnique}
+                        aria-label="Инструкция"
+                        title="Инструкция"
+                        className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur-md transition-colors hover:bg-black/50"
+                      >
+                        <Info className="h-5 w-5" strokeWidth={2.4} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRestart}
+                        aria-label="Сбросить счётчик"
+                        title="Сбросить счётчик"
+                        className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur-md transition-colors hover:bg-black/50"
+                      >
+                        <RotateCcw className="h-5 w-5" strokeWidth={2.4} />
+                      </button>
+                    </div>
+
+                    {/* Нижняя плавающая панель: ошибка сохранения + «Сохранить и выйти» */}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col items-center gap-2 bg-gradient-to-t from-black/45 to-transparent p-2.5">
+                      {saveError && (
+                        <div
+                          className="pointer-events-auto rounded-full border border-red-300 bg-red-50/95 px-4 py-1.5 text-center text-xs font-semibold text-red-600 backdrop-blur-md"
+                          role="alert"
+                        >
+                          {saveError}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleFinish}
+                        disabled={!goalReached || isFinishing}
+                        className="pointer-events-auto flex h-10 items-center justify-center rounded-full bg-[#9AE52E] px-6 text-sm font-bold text-white shadow-lg transition-colors active:bg-[#8ED726] disabled:cursor-not-allowed disabled:bg-white/30 disabled:text-white/70"
+                      >
+                        {isFinishing ? 'Сохраняем…' : 'Сохранить и выйти'}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={toggleSkeleton}
+                    className="pointer-events-auto absolute left-3 top-3 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/50 focus:outline-none focus:ring-2 focus:ring-white/80"
+                    aria-label={showSkeleton ? 'Скрыть скелет' : 'Показать скелет'}
+                    title={showSkeleton ? 'Скрыть скелет' : 'Показать скелет'}
+                  >
+                    {showSkeleton ? (
+                      <EyeOff className="h-5 w-5" strokeWidth={2.4} />
+                    ) : (
+                      <Eye className="h-5 w-5" strokeWidth={2.4} />
+                    )}
+                  </button>
+                )}
 
                 <div
-                  className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center"
+                  className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
                   aria-label={`Выполнено ${currentDisplay}`}
                 >
                   <span className="tabular-nums text-[clamp(5rem,22vw,8rem)] font-black leading-none text-white/80 drop-shadow-[0_8px_24px_rgba(0,0,0,0.72)] lg:text-[clamp(6rem,12vw,11rem)]">
@@ -604,25 +722,28 @@ export function ExerciseSessionPage() {
           </div>
         </section>
 
-        {/* Мобильная кнопка «Сохранить и выйти» */}
-        <div className="pt-3 lg:hidden">
-          {saveError && (
-            <div
-              className="mb-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-medium text-red-600"
-              role="alert"
+        {/* Мобильная кнопка «Сохранить и выйти» (только портрет — в ландшафте
+            она встроена в нижнюю плавающую панель над камерой) */}
+        {!isLandscapePhone && (
+          <div className="pt-3 lg:hidden">
+            {saveError && (
+              <div
+                className="mb-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-medium text-red-600"
+                role="alert"
+              >
+                {saveError}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleFinish}
+              disabled={!goalReached || isFinishing}
+              className="flex h-14 w-full items-center justify-center rounded-2xl bg-[#9AE52E] text-lg font-bold text-white transition-colors active:bg-[#8ED726] disabled:cursor-not-allowed disabled:bg-[#D6F0A8]"
             >
-              {saveError}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={handleFinish}
-            disabled={!goalReached || isFinishing}
-            className="flex h-14 w-full items-center justify-center rounded-2xl bg-[#9AE52E] text-lg font-bold text-white transition-colors active:bg-[#8ED726] disabled:cursor-not-allowed disabled:bg-[#D6F0A8]"
-          >
-            {isFinishing ? 'Сохраняем…' : 'Сохранить и выйти'}
-          </button>
-        </div>
+              {isFinishing ? 'Сохраняем…' : 'Сохранить и выйти'}
+            </button>
+          </div>
+        )}
 
         <footer className="max-lg:hidden rounded-2xl bg-white/70 p-2 shadow-sm backdrop-blur-sm sm:p-2.5">
           {saveError && (
