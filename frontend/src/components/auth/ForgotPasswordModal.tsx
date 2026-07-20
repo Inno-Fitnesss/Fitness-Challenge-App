@@ -195,6 +195,10 @@ function ForgotPasswordDialog({
                 новый пароль. Код действует 15 минут.
               </p>
 
+              <div className="px-4 py-3 rounded-2xl bg-orange-50 border border-orange-200 text-sm font-bold text-orange-700">
+                Если письмо не пришло, проверьте папку "Спам"
+              </div>
+
               {resendNotice && (
                 <div
                   role="status"
