@@ -42,6 +42,7 @@ const TECHNIQUE_BY_EXERCISE: Record<CvExercise, Omit<ExerciseTechniqueContent, '
       'Убедитесь, что вас хорошо видно',
       'Встаньте боком, как на видео — должны быть видны плечи, таз и стопы',
     ],
+    videoUrl: '/exercise-videos/pushup.mp4',
     posterGradient: 'from-violet-500/90 to-fuchsia-600/90',
   },
   squat: {
@@ -57,6 +58,7 @@ const TECHNIQUE_BY_EXERCISE: Record<CvExercise, Omit<ExerciseTechniqueContent, '
       'Убедитесь, что вас хорошо видно',
       'Встаньте боком к камере — должны быть видны бедро, колено и стопа',
     ],
+    videoUrl: '/exercise-videos/squat.mp4',
     posterGradient: 'from-emerald-500/90 to-teal-600/90',
   },
   plank: {
@@ -72,6 +74,7 @@ const TECHNIQUE_BY_EXERCISE: Record<CvExercise, Omit<ExerciseTechniqueContent, '
       'Убедитесь, что вас хорошо видно',
       'Встаньте боком — плечи, таз и стопы должны быть в одной плоскости',
     ],
+    videoUrl: '/exercise-videos/plank.mp4',
     posterGradient: 'from-sky-500/90 to-blue-600/90',
   },
   unsupported: DEFAULT_TECHNIQUE,
