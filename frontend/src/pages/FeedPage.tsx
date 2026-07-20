@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { PageContainer } from '../components/layout/PageContainer.tsx';
 import { ArticleFeedCard } from '../components/articles/ArticleFeedCard.tsx';
-import { ALL_ARTICLES } from '../data/articles.ts';
+import { FEED_ARTICLES } from '../data/articles.ts';
 
 export function FeedPage() {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ export function FeedPage() {
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-        {ALL_ARTICLES.map((article) => (
+        {FEED_ARTICLES.map((article) => (
           <ArticleFeedCard
             key={article.id}
             article={article}
