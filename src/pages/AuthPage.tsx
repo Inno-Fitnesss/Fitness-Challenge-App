@@ -63,7 +63,7 @@ export function AuthPage() {
         </div>
       )}
 
-      <aside className="bg-white hidden lg:flex items-center justify-center px-6 sm:px-10 py-10 lg:py-12 lg:overflow-y-auto">
+      <aside className="bg-white hidden lg:flex items-center justify-center px-4 sm:px-8 py-10 lg:py-12 lg:overflow-y-auto">
         <AuthLandingHero />
       </aside>
 
