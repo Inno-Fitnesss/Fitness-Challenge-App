@@ -91,6 +91,7 @@ export interface DiscoveryChallenge {
   title: string;
   description: string;
   isUnlimited: boolean;
+  dateLabel: string;
   scheduleType: 'daily' | 'weekly';
   scheduleDays: number[];
   scheduleLabel: string;

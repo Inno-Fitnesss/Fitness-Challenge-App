@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { BookOpen, CalendarCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AuthBrandMark } from './AuthBrandMark.tsx';
+import { AuthExerciseShowcase } from './AuthExerciseShowcase.tsx';
+import { AuthStaggeredFeatures } from './AuthStaggeredFeatures.tsx';
 import { Button } from '../ui/Button.tsx';
 
 interface OnboardingSlide {
@@ -49,7 +51,7 @@ interface AuthMobileOnboardingProps {
  */
 export function AuthMobileOnboarding({ onStart, onSignIn }: AuthMobileOnboardingProps) {
   const [slideIndex, setSlideIndex] = useState(0);
-  const [gifReady, setGifReady] = useState(false);
+  const [showcaseIndex, setShowcaseIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
   const slide = SLIDES[slideIndex];
@@ -72,7 +74,7 @@ export function AuthMobileOnboarding({ onStart, onSignIn }: AuthMobileOnboarding
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col w-full max-w-md mx-auto px-6 py-8">
+    <div className="min-h-screen bg-white flex flex-col w-full max-w-lg mx-auto px-4 sm:px-6 py-8">
       <div className="flex justify-center mb-8">
         <AuthBrandMark />
       </div>
@@ -87,6 +89,11 @@ export function AuthMobileOnboarding({ onStart, onSignIn }: AuthMobileOnboarding
             {slide.headline}
           </h1>
 
+          {slideIndex === 0 ? (
+            <div className="mb-4 -mx-1">
+              <AuthExerciseShowcase onSlideChange={setShowcaseIndex} />
+            </div>
+          ) : (
           <div className="flex items-center gap-1 mb-4 -mx-2">
             <button
               type="button"
@@ -97,29 +104,18 @@ export function AuthMobileOnboarding({ onStart, onSignIn }: AuthMobileOnboarding
               <ChevronLeft size={28} />
             </button>
 
-            <div className="flex-1 min-w-0 aspect-[4/3] rounded-3xl overflow-hidden shadow-card relative">
-              {slideIndex === 0 ? (
-                <div className="w-full h-full bg-gradient-to-br from-violet-300 via-fuchsia-200 to-purple-300">
-                  {!gifReady && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-violet-400/40 via-fuchsia-300/30 to-purple-400/40" />
+            <div className="flex-1 min-w-0">
+                <div className="aspect-[16/10] rounded-3xl overflow-hidden shadow-card relative">
+                  {slideIndex === 1 ? (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-lime-light to-lime/40">
+                      <CalendarCheck size={72} strokeWidth={1.5} className="text-lime-hover" />
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-light to-accent/50">
+                      <BookOpen size={72} strokeWidth={1.5} className="text-brand" />
+                    </div>
                   )}
-                  <img
-                    src="/auth/hero.gif"
-                    alt=""
-                    className={`w-full h-full object-cover ${gifReady ? 'block' : 'hidden'}`}
-                    onLoad={() => setGifReady(true)}
-                    onError={() => setGifReady(false)}
-                  />
                 </div>
-              ) : slideIndex === 1 ? (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-lime-light to-lime/40">
-                  <CalendarCheck size={72} strokeWidth={1.5} className="text-lime-hover" />
-                </div>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-light to-accent/50">
-                  <BookOpen size={72} strokeWidth={1.5} className="text-brand" />
-                </div>
-              )}
             </div>
 
             <button
@@ -131,6 +127,7 @@ export function AuthMobileOnboarding({ onStart, onSignIn }: AuthMobileOnboarding
               <ChevronRight size={28} />
             </button>
           </div>
+          )}
 
           <div className="flex justify-center gap-1.5 mb-6" aria-hidden="true">
             {SLIDES.map((item, index) => (
@@ -143,14 +140,10 @@ export function AuthMobileOnboarding({ onStart, onSignIn }: AuthMobileOnboarding
             ))}
           </div>
 
-          <ul className="space-y-3 text-left text-sm font-semibold text-neutral-text">
-            {slide.features.map((text) => (
-              <li key={text} className="flex gap-3 leading-snug">
-                <span className="text-neutral-text font-bold mt-0.5">•</span>
-                <span>{text}</span>
-              </li>
-            ))}
-          </ul>
+          <AuthStaggeredFeatures
+            features={slide.features}
+            animationKey={slideIndex === 0 ? showcaseIndex : slideIndex}
+          />
         </div>
       </div>
 

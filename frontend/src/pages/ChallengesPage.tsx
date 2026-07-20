@@ -10,7 +10,7 @@ import { DiscoveryCard } from '../components/challenges/DiscoveryCard.tsx';
 import { ChallengeDetailModal } from '../components/challenges/ChallengeDetailModal.tsx';
 import { ChallengeFormModal } from '../components/challenges/ChallengeFormModal.tsx';
 import { ChallengeInviteModal } from '../components/challenges/ChallengeInviteModal.tsx';
-import { challengeApi, meApi } from '../api/challengeApi.ts';
+import { challengeApi } from '../api/challengeApi.ts';
 import { parseApiError } from '../utils/parseApiError.ts';
 import { buildChallengeInviteUrl } from '../utils/inviteUrl.ts';
 import type { AxiosError } from 'axios';
@@ -20,7 +20,6 @@ import {
 } from '../api/challengeQueries.ts';
 import type { ChallengeListItem, ChallengeTab, DiscoveryChallenge } from '../types/challenge.ts';
 import { canEditChallenge } from '../utils/challengePermissions.ts';
-import { calcExerciseProgressPercent } from '../utils/challengeMappers.ts';
 
 const TABS = [
   { id: 'individual', label: 'Индивидуальные' },
@@ -247,8 +246,6 @@ export function ChallengesPage() {
   const [activeChallenges, setActiveChallenges] = useState<ChallengeListItem[]>([]);
   const [archivedChallenges, setArchivedChallenges] = useState<ChallengeListItem[]>([]);
   const [discovery, setDiscovery] = useState<DiscoveryChallenge[]>([]);
-  // Прогресс за сегодня по челленджам (id -> %) — для колец на мобильных карточках
-  const [todayProgress, setTodayProgress] = useState<Record<number, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -264,21 +261,14 @@ export function ChallengesPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [active, archived, presets, today] = await Promise.all([
+      const [active, archived, presets] = await Promise.all([
         fetchChallengeListItems('active'),
         fetchChallengeListItems('archived'),
         fetchDiscoveryChallenges(),
-        // Кольца прогресса на мобильных карточках; ошибка не критична
-        meApi.getToday().catch(() => []),
       ]);
       setActiveChallenges(active);
       setArchivedChallenges(archived);
       setDiscovery(presets);
-      setTodayProgress(
-        Object.fromEntries(
-          today.map((item) => [item.id, calcExerciseProgressPercent(item.exercises)]),
-        ),
-      );
     } catch (err) {
       const apiErr = err as { message?: string };
       setError(apiErr.message ?? 'Не удалось загрузить челленджи');
@@ -523,7 +513,6 @@ export function ChallengesPage() {
                   key={challenge.id}
                   challenge={challenge}
                   tab={activeTab}
-                  progressPercent={todayProgress[challenge.id]}
                   onOpen={openChallenge}
                   onCopyLink={() => void handleCopyLink(challenge)}
                   onPublish={(cid) => void handlePublish(cid)}

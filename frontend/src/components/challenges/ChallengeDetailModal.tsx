@@ -9,7 +9,7 @@ import { useCopyFeedback } from '../../hooks/useCopyFeedback.ts';
 import { fetchChallengeModalData } from '../../api/challengeQueries.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import type { ChallengeModalData, ExerciseProgress } from '../../types/challenge.ts';
-import { formatParticipants } from '../../utils/challengeMappers.ts';
+import { formatParticipants, UNLIMITED_DATE_LABEL } from '../../utils/challengeMappers.ts';
 import { pluralizeRu } from '../../utils/russianPlural.ts';
 import {
   buildExerciseSessionPath,
@@ -230,15 +230,8 @@ export function ChallengeDetailModal({
                   {challenge.title}
                 </h2>
                 <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge variant="orange" icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap">
-                    {challenge.isUnlimited ? (
-                      <>
-                        <span className="lg:hidden">бессрочный</span>
-                        <span className="hidden lg:inline">{challenge.dateLabel}</span>
-                      </>
-                    ) : (
-                      challenge.dateLabel
-                    )}
+                  <Badge variant="orange" icon={<Clock size={12} />} className="shrink-0 whitespace-nowrap normal-case">
+                    {challenge.isUnlimited ? UNLIMITED_DATE_LABEL : challenge.dateLabel}
                   </Badge>
                   <ChallengeScheduleBadge label={challenge.scheduleLabel} />
                   <Badge variant="green">{formatParticipants(challenge.participantCount)}</Badge>

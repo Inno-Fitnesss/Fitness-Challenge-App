@@ -29,8 +29,11 @@ function formatShortDate(iso: string): string {
   return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`;
 }
 
+/** Label for challenges without an end date — always capitalized. */
+export const UNLIMITED_DATE_LABEL = 'Бессрочный';
+
 export function formatDateLabel(startDate: string, endDate: string | null): string {
-  if (!endDate) return 'без ограничений';
+  if (!endDate) return UNLIMITED_DATE_LABEL;
   return `${formatShortDate(startDate)} - ${formatShortDate(endDate)}`;
 }
 
@@ -181,6 +184,7 @@ export function mapPresetToDiscovery(
     title: detail.name,
     description: detail.description ?? preset.description ?? '',
     isUnlimited: !detail.end_date,
+    dateLabel: formatDateLabel(detail.start_date, detail.end_date),
     scheduleType: detail.schedule_type,
     scheduleDays: detail.schedule_days ?? [],
     scheduleLabel: formatScheduleLabel(detail.schedule_type, detail.schedule_days),

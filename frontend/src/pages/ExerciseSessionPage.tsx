@@ -9,6 +9,8 @@ import { todayIso } from '../utils/dateFormat.ts';
 import { CameraPreview } from '../components/session/CameraPreview.tsx';
 import { ExerciseTechniqueModal } from '../components/session/ExerciseTechniqueModal.tsx';
 import { Button } from '../components/ui/Button.tsx';
+import { Toast } from '../components/ui/Toast.tsx';
+import { CAMERA_PRIVACY_TEXT } from '../components/session/CameraPrivacyNotice.tsx';
 import { getExerciseTechniqueContent } from '../data/exerciseTechnique.ts';
 import { useCameraStream } from '../hooks/useCameraStream.ts';
 import { useCvSession } from '../hooks/useCvSession.ts';
@@ -115,6 +117,8 @@ export function ExerciseSessionPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isTechniqueOpen, setIsTechniqueOpen] = useState(false);
   const [showSkeleton, setShowSkeleton] = useState(true);
+  const [privacyToastVisible, setPrivacyToastVisible] = useState(false);
+  const privacyToastShownRef = useRef(false);
   const repSoundRef = useRef<HTMLAudioElement | null>(null);
   const completionSoundRef = useRef<HTMLAudioElement | null>(null);
   const lastCleanRepsRef = useRef(0);
@@ -302,6 +306,10 @@ export function ExerciseSessionPage() {
   useEffect(() => {
     if (isLoading || !context) return;
     startCamera();
+    if (!privacyToastShownRef.current) {
+      privacyToastShownRef.current = true;
+      setPrivacyToastVisible(true);
+    }
   }, [context, isLoading, startCamera]);
 
   useEffect(() => {
@@ -525,7 +533,6 @@ export function ExerciseSessionPage() {
           goalReached ? 'bg-[#F3FFE2]' : 'bg-[#F2F3F5]'
         }`}
       >
-        {/* Мобильные кнопки «Инструкция» / «Сбросить счётчик» */}
         <div className="grid grid-cols-2 gap-3 pt-3 lg:hidden">
           <button
             type="button"
@@ -660,6 +667,15 @@ export function ExerciseSessionPage() {
         <ExerciseTechniqueModal
           content={techniqueContent}
           onClose={handleCloseTechnique}
+        />
+      )}
+
+      {privacyToastVisible && (
+        <Toast
+          message={CAMERA_PRIVACY_TEXT}
+          type="info"
+          duration={6000}
+          onClose={() => setPrivacyToastVisible(false)}
         />
       )}
     </div>
