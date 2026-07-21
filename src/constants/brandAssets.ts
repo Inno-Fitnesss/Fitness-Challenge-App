@@ -1,5 +1,8 @@
-/** Полный логотип (текст + знак). Положите файл в public/brand/logo-full.svg или .png */
-export const BRAND_LOGO_FULL_SRC = '/brand/logo-full.svg';
+/** Полный логотип (текст + знак). Файл: public/brand/logo-full.png */
+export const BRAND_LOGO_FULL_SRC = '/brand/logo-full.png';
 
-/** Иконка для сайдбара. Положите файл в public/brand/logo-icon.svg или .png */
-export const BRAND_LOGO_ICON_SRC = '/brand/logo-icon.svg';
+/** Квадратная иконка (WF + кольцо). Файл: public/brand/logo-icon.png */
+export const BRAND_LOGO_ICON_SRC = '/brand/logo-icon.png';
+
+/** OG / Twitter share image */
+export const BRAND_OG_IMAGE_SRC = '/brand/og-image.png';

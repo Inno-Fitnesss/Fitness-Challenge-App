@@ -45,7 +45,10 @@ export function AdminPage() {
     return (
       <div className="min-h-screen bg-neutral-card flex items-center justify-center px-4 sm:px-6 py-6">
         <div className="w-full max-w-sm animate-slide-up">
-          <BrandLogoLink className="inline-flex items-center gap-2.5 mb-5 justify-center hover:opacity-90 transition-opacity" />
+          <BrandLogoLink
+            showIcon={false}
+            className="inline-flex items-center gap-2.5 mb-5 justify-center hover:opacity-90 transition-opacity"
+          />
 
           <form
             onSubmit={handleSubmit}
@@ -106,8 +109,18 @@ export function AdminPage() {
           </div>
         </div>
 
+        {/* Активность: DAU / WAU / MAU + новые за сегодня */}
+        <h2 className="text-xl font-extrabold text-neutral-text mb-3">Активные пользователи</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <BigNumberCard label="За 24 часа" value={stats.activity.active_today} />
+          <BigNumberCard label="За 7 дней" value={stats.activity.active_week} />
+          <BigNumberCard label="За 30 дней" value={stats.activity.active_month} />
+          <BigNumberCard label="Новые за сегодня" value={stats.activity.new_today} />
+        </div>
+
         {/* Большие цифры */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+        <h2 className="text-xl font-extrabold text-neutral-text mb-3">Общая статистика</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
           <BigNumberCard label="Всего пользователей" value={stats.total_users} />
           <BigNumberCard label="Всего челленджей" value={stats.challenges.total} />
           {stats.exercise_totals.map((ex) => (
@@ -121,8 +134,8 @@ export function AdminPage() {
         </div>
 
         {/* Разбивка челленджей по измерениям — pie charts */}
-        <h2 className="text-xl font-extrabold text-neutral-text">Разбивка челленджей по измерениям</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <h2 className="text-xl font-extrabold text-neutral-text mb-3">Разбивка челленджей по измерениям</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
           <PieStatCard title="По длительности" data={stats.challenges.by_duration} />
           <PieStatCard title="По видимости" data={stats.challenges.by_visibility} />
           <PieStatCard title="По расписанию" data={stats.challenges.by_schedule} />
@@ -130,12 +143,14 @@ export function AdminPage() {
         </div>
 
         {/* Bar charts */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <h2 className="text-xl font-extrabold text-neutral-text mb-3">Достижения и объёмы</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
           <TopStreaksChart data={stats.top_streaks} />
           <ExerciseTotalsChart data={stats.exercise_totals} />
         </div>
 
         {/* Таймлайн регистраций */}
+        <h2 className="text-xl font-extrabold text-neutral-text mb-3">Регистрации</h2>
         <RegistrationsTimelineChart data={stats.registrations_daily} />
       </div>
     </div>
