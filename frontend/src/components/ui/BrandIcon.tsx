@@ -6,7 +6,7 @@ interface BrandIconProps {
 }
 
 export function BrandIcon({
-  className = 'w-9 h-9 rounded-xl bg-lime flex-shrink-0',
+  className = 'w-9 h-9 rounded-xl bg-black flex-shrink-0',
 }: BrandIconProps) {
   const [failed, setFailed] = useState(false);
 
@@ -18,7 +18,7 @@ export function BrandIcon({
     <img
       src={BRAND_LOGO_ICON_SRC}
       alt=""
-      className={`object-contain ${className}`}
+      className={`object-cover ${className}`}
       onError={() => setFailed(true)}
     />
   );

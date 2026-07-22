@@ -44,7 +44,7 @@ export function BrandMark({
       <img
         src={imageSrc}
         alt="WOWFIT"
-        className={`object-contain ${variant === 'compact' ? 'h-9 w-auto' : 'h-10 sm:h-12 w-auto'} ${className}`}
+        className={`object-contain rounded-md ${variant === 'compact' ? 'h-9 w-auto' : 'h-10 sm:h-12 w-auto'} ${className}`}
         onError={() => {
           setImageFailed(true);
           onError?.();
