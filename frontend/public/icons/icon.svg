@@ -1,10 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Иконка приложения WOWFIT: фирменный оранжевый фон, белая W, лаймовая волна
-       (та же, что в текстовом логотипе BrandMark). PNG-версии генерируются из
-       этого файла скриптом scripts/generate-pwa-icons.mjs — правьте здесь. -->
-  <rect width="512" height="512" fill="#FF5722"/>
-  <text x="256" y="300" font-family="Arial, Helvetica, sans-serif" font-size="240" font-weight="800"
-        text-anchor="middle" fill="#ffffff" letter-spacing="4">W</text>
-  <path d="M96 352 C 148 312, 200 376, 256 344 S 372 312, 416 348"
-        fill="none" stroke="#A3E635" stroke-width="22" stroke-linecap="round"/>
+  <!-- Fallback favicon: чёрный фон + лаймовое кольцо (упрощённый знак WOWFIT).
+       Полные PNG генерируются из public/brand/logo-icon.png скриптом
+       scripts/generate-pwa-icons.mjs. -->
+  <rect width="512" height="512" fill="#000000"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#C6FF00" stroke-width="36"
+          stroke-linecap="round" stroke-dasharray="820 120" transform="rotate(-25 256 256)"/>
+  <text x="168" y="310" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="200"
+        font-weight="800" fill="#1A1C1E">W</text>
+  <text x="268" y="340" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="160"
+        font-weight="800" fill="#1A1C1E">F</text>
 </svg>
