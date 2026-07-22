@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { AuthBrandMark } from './AuthBrandMark.tsx';
 import { AuthExerciseShowcase } from './AuthExerciseShowcase.tsx';
 import { AuthStaggeredFeatures } from './AuthStaggeredFeatures.tsx';
@@ -9,8 +8,6 @@ const FEATURES = [
 ];
 
 export function AuthLandingHero() {
-  const [slideIndex, setSlideIndex] = useState(0);
-
   return (
     <div className="flex flex-col items-center text-center w-full max-w-lg mx-auto">
       <AuthBrandMark className="mb-8 sm:mb-10" />
@@ -19,12 +16,9 @@ export function AuthLandingHero() {
         Поддерживайте форму даже вне занятий с тренером
       </p>
 
-      <AuthExerciseShowcase
-        className="w-full max-w-xl mb-8 sm:mb-10"
-        onSlideChange={setSlideIndex}
-      />
+      <AuthExerciseShowcase className="w-full max-w-xl mb-8 sm:mb-10" />
 
-      <AuthStaggeredFeatures features={FEATURES} animationKey={slideIndex} className="w-full" />
+      <AuthStaggeredFeatures features={FEATURES} animationKey={0} className="w-full" />
     </div>
   );
 }
