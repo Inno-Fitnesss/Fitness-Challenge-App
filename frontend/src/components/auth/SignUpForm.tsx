@@ -10,7 +10,6 @@ import { Label } from '../ui/Label.tsx';
 import { FieldError } from '../ui/FieldError.tsx';
 import { Checkbox } from '../ui/Checkbox.tsx';
 import { VerifyEmailModal } from './VerifyEmailModal.tsx';
-import { GoogleAuthButton } from './GoogleAuthButton.tsx';
 import type { ApiError } from '../../types/auth.types.ts';
 import {
   PRIVACY_POLICY_URL,
@@ -36,7 +35,6 @@ export function SignUpForm({ redirectTo = '/dashboard' }: SignUpFormProps) {
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
@@ -243,13 +241,6 @@ export function SignUpForm({ redirectTo = '/dashboard' }: SignUpFormProps) {
       email={verifyEmail ?? ''}
       redirectTo={redirectTo}
       onClose={() => setVerifyEmail(null)}
-    />
-    <GoogleAuthButton
-      redirectTo={redirectTo}
-      registrationConsents={{
-        termsAccepted: watch('termsAccepted'),
-        privacyAccepted: watch('privacyAccepted'),
-      }}
     />
     </>
   );

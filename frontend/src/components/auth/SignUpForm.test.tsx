@@ -8,10 +8,6 @@ vi.mock('../../context/AuthContext.tsx', () => ({
   }),
 }));
 
-vi.mock('./GoogleAuthButton.tsx', () => ({
-  GoogleAuthButton: () => <div data-testid="google-auth" />,
-}));
-
 import { SignUpForm } from './SignUpForm.tsx';
 import { PRIVACY_POLICY_URL, USER_AGREEMENT_URL } from '../../constants/legalDocuments.ts';
 
