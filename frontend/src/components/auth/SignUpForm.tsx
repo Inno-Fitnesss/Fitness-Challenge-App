@@ -8,8 +8,13 @@ import { Button } from '../ui/Button.tsx';
 import { Input } from '../ui/Input.tsx';
 import { Label } from '../ui/Label.tsx';
 import { FieldError } from '../ui/FieldError.tsx';
+import { Checkbox } from '../ui/Checkbox.tsx';
 import { VerifyEmailModal } from './VerifyEmailModal.tsx';
 import type { ApiError } from '../../types/auth.types.ts';
+import {
+  PRIVACY_POLICY_URL,
+  USER_AGREEMENT_URL,
+} from '../../constants/legalDocuments.ts';
 
 interface SignUpFormProps {
   redirectTo?: string;
@@ -38,6 +43,8 @@ export function SignUpForm({ redirectTo = '/dashboard' }: SignUpFormProps) {
       email: '',
       password: '',
       confirmPassword: '',
+      termsAccepted: false,
+      privacyAccepted: false,
     },
     mode: 'onBlur',
   });
@@ -50,6 +57,8 @@ export function SignUpForm({ redirectTo = '/dashboard' }: SignUpFormProps) {
           username: values.username,
           email: values.email,
           password: values.password,
+          termsAccepted: values.termsAccepted,
+          privacyAccepted: values.privacyAccepted,
         },
         redirectTo,
       );
@@ -168,7 +177,61 @@ export function SignUpForm({ redirectTo = '/dashboard' }: SignUpFormProps) {
         </div>
       </div>
 
-      <Button type="submit" fullWidth size="md" isLoading={isSubmitting} className="mt-1">
+      <fieldset className="space-y-3 min-w-0" aria-describedby="signup-consent-error">
+        <legend className="sr-only">Обязательные юридические согласия</legend>
+        <Checkbox
+          id="signup-terms-accepted"
+          hasError={!!errors.termsAccepted}
+          aria-describedby={errors.termsAccepted ? 'signup-consent-error' : undefined}
+          label={
+            <span className="break-words">
+              Я принимаю условия{' '}
+              <a
+                href={USER_AGREEMENT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-brand underline underline-offset-2"
+                onClick={(event) => event.stopPropagation()}
+              >
+                Пользовательского соглашения
+              </a>
+            </span>
+          }
+          {...register('termsAccepted')}
+        />
+        <Checkbox
+          id="signup-privacy-accepted"
+          hasError={!!errors.privacyAccepted}
+          aria-describedby={errors.privacyAccepted ? 'signup-consent-error' : undefined}
+          label={
+            <span className="break-words">
+              Я даю согласие на обработку персональных данных согласно{' '}
+              <a
+                href={PRIVACY_POLICY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-brand underline underline-offset-2"
+                onClick={(event) => event.stopPropagation()}
+              >
+                Политике конфиденциальности
+              </a>
+            </span>
+          }
+          {...register('privacyAccepted')}
+        />
+        <FieldError
+          id="signup-consent-error"
+          message={errors.termsAccepted?.message ?? errors.privacyAccepted?.message}
+        />
+      </fieldset>
+
+      <Button
+        type="submit"
+        fullWidth
+        size="md"
+        isLoading={isSubmitting}
+        className="mt-1"
+      >
         Создать аккаунт
       </Button>
     </form>

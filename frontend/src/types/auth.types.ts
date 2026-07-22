@@ -5,6 +5,8 @@ export interface UserInCreate {
   password: string;
   first_name?: string;
   last_name?: string;
+  terms_accepted: boolean;
+  privacy_accepted: boolean;
 }
 
 /** DTO запроса входа — POST /auth/login */
@@ -86,6 +88,13 @@ export interface RegisterData {
   password: string;
   firstName?: string;
   lastName?: string;
+  termsAccepted: boolean;
+  privacyAccepted: boolean;
+}
+
+export interface LegalConsents {
+  termsAccepted: boolean;
+  privacyAccepted: boolean;
 }
 
 /** Результат регистрации: вошли сразу или ждём код подтверждения email */
@@ -97,7 +106,11 @@ export interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials, redirectTo?: string) => Promise<void>;
-  loginWithGoogle: (idToken: string, redirectTo?: string) => Promise<void>;
+  loginWithGoogle: (
+    idToken: string,
+    redirectTo?: string,
+    consents?: LegalConsents,
+  ) => Promise<void>;
   register: (data: RegisterData, redirectTo?: string) => Promise<RegisterResult>;
   verifyEmail: (email: string, code: string, redirectTo?: string) => Promise<void>;
   logout: () => void;

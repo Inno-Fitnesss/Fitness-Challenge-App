@@ -23,7 +23,11 @@ def login(loginDetails: UserInLogin, session: Session = Depends(get_db)):
 
 @authRouter.post("/google", status_code=200, response_model=UserWithToken)
 def googleLogin(body: GoogleLoginIn, session: Session = Depends(get_db)):
-    return UserService(session=session).login_with_google(id_token=body.id_token)
+    return UserService(session=session).login_with_google(
+        id_token=body.id_token,
+        terms_accepted=body.terms_accepted,
+        privacy_accepted=body.privacy_accepted,
+    )
 
 @authRouter.post("/forgot-password", status_code=200)
 def forgotPassword(body: ForgotPasswordIn, background_tasks: BackgroundTasks,

@@ -1,4 +1,4 @@
-from pydantic import EmailStr, BaseModel, Field, model_validator
+from pydantic import EmailStr, BaseModel, Field, StrictBool, model_validator
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -8,6 +8,20 @@ class UserInCreate(BaseModel):
     password: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    terms_accepted: StrictBool
+    privacy_accepted: StrictBool
+
+    @model_validator(mode="before")
+    @classmethod
+    def _require_explicit_consents(cls, data):
+        from app.core.legal import CONSENT_REQUIRED_MESSAGE
+
+        if not isinstance(data, dict) or any(
+            type(data.get(field)) is not bool
+            for field in ("terms_accepted", "privacy_accepted")
+        ):
+            raise ValueError(CONSENT_REQUIRED_MESSAGE)
+        return data
 
 class UserOutput(BaseModel):
     id: int
@@ -73,6 +87,19 @@ class RefreshIn(BaseModel):
 class GoogleLoginIn(BaseModel):
     """POST /auth/google — Google ID token issued to our client id."""
     id_token: str
+    terms_accepted: Optional[StrictBool] = None
+    privacy_accepted: Optional[StrictBool] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_optional_consents(cls, data):
+        from app.core.legal import CONSENT_REQUIRED_MESSAGE
+
+        if isinstance(data, dict):
+            for field in ("terms_accepted", "privacy_accepted"):
+                if field in data and type(data[field]) is not bool:
+                    raise ValueError(CONSENT_REQUIRED_MESSAGE)
+        return data
 
 class ForgotPasswordIn(BaseModel):
     """POST /auth/forgot-password — request a reset code by email."""

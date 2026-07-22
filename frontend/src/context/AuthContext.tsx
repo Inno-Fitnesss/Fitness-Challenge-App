@@ -16,6 +16,7 @@ import type {
   ApiError,
   AuthContextValue,
   LoginCredentials,
+  LegalConsents,
   RegisterData,
   RegisterResult,
   User,
@@ -132,8 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const loginWithGoogle = useCallback(
-    async (idToken: string, redirectTo = '/dashboard') => {
-      const { token: authToken, refresh_token } = await authApi.loginWithGoogle(idToken);
+    async (idToken: string, redirectTo = '/dashboard', consents?: LegalConsents) => {
+      const { token: authToken, refresh_token } = await authApi.loginWithGoogle(idToken, consents);
       storeRefreshToken(refresh_token);
       await completeSession(authToken, redirectTo);
     },

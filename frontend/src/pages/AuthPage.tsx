@@ -7,7 +7,6 @@ import { AuthMobileOnboarding } from '../components/auth/AuthMobileOnboarding.ts
 import { AuthBrandMark } from '../components/auth/AuthBrandMark.tsx';
 import { SignInForm } from '../components/auth/SignInForm.tsx';
 import { SignUpForm } from '../components/auth/SignUpForm.tsx';
-import { GoogleAuthButton } from '../components/auth/GoogleAuthButton.tsx';
 import { useAuth } from '../context/AuthContext.tsx';
 
 const AUTH_TABS = [
@@ -108,8 +107,6 @@ export function AuthPage() {
                 <SignInForm redirectTo={redirectTo} />
               )}
             </div>
-
-            <GoogleAuthButton redirectTo={redirectTo} />
 
             <p className="lg:hidden mt-6 text-center text-sm font-bold text-neutral-text">
               {isSignUp ? 'Уже есть аккаунт?' : 'Нет аккаунта?'}{' '}

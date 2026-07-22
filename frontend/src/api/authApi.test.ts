@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const patchMock = vi.fn();
+const postMock = vi.fn();
 vi.mock('./axios.ts', () => ({
   apiClient: {
     patch: (...args: unknown[]) => patchMock(...args),
-    post: vi.fn(),
+    post: (...args: unknown[]) => postMock(...args),
     get: vi.fn(),
   },
 }));
@@ -18,6 +19,7 @@ import { authApi } from './authApi.ts';
 
 beforeEach(() => {
   patchMock.mockReset();
+  postMock.mockReset();
   getBrowserTimezoneMock.mockReset();
 });
 
@@ -50,5 +52,48 @@ describe('authApi.syncTimezone', () => {
     patchMock.mockRejectedValue(new Error('network error'));
     const result = await authApi.syncTimezone('UTC');
     expect(result).toBe('UTC');
+  });
+});
+
+describe('registration legal consents', () => {
+  it('maps the two consents to separate signup fields without client metadata', async () => {
+    postMock.mockResolvedValue({
+      data: { id: 1, username: 'runner', email: 'runner@example.com' },
+    });
+
+    await authApi.register({
+      username: 'runner',
+      email: 'runner@example.com',
+      password: 'Password123!',
+      termsAccepted: true,
+      privacyAccepted: true,
+    });
+
+    expect(postMock).toHaveBeenCalledWith('/auth/signup', {
+      username: 'runner',
+      email: 'runner@example.com',
+      password: 'Password123!',
+      terms_accepted: true,
+      privacy_accepted: true,
+    });
+  });
+
+  it('omits consents for ordinary Google login and sends them for registration', async () => {
+    postMock.mockResolvedValue({ data: { token: 'token' } });
+
+    await authApi.loginWithGoogle('existing-token');
+    await authApi.loginWithGoogle('new-token', {
+      termsAccepted: true,
+      privacyAccepted: true,
+    });
+
+    expect(postMock).toHaveBeenNthCalledWith(1, '/auth/google', {
+      id_token: 'existing-token',
+    });
+    expect(postMock).toHaveBeenNthCalledWith(2, '/auth/google', {
+      id_token: 'new-token',
+      terms_accepted: true,
+      privacy_accepted: true,
+    });
   });
 });

@@ -72,6 +72,7 @@ def registered_user():
         "username": "resetuser",
         "email": USER_EMAIL,
         "password": USER_PASSWORD,
+        "terms_accepted": True, "privacy_accepted": True,
     })
     assert response.status_code == 201
     return response.json()

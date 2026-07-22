@@ -18,11 +18,15 @@ export function mapRegisterDataToApi(data: {
   password: string;
   firstName?: string;
   lastName?: string;
+  termsAccepted: boolean;
+  privacyAccepted: boolean;
 }) {
   return {
     username: data.username,
     email: data.email,
     password: data.password,
+    terms_accepted: data.termsAccepted,
+    privacy_accepted: data.privacyAccepted,
     ...(data.firstName ? { first_name: data.firstName } : {}),
     ...(data.lastName ? { last_name: data.lastName } : {}),
   };

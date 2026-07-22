@@ -94,6 +94,7 @@ def auth_token(monkeypatch):
     data = {
         "username": "streakuser", "email": "streak@example.com", "password": "Test123!",
         "first_name": "Streak", "last_name": "User",
+        "terms_accepted": True, "privacy_accepted": True,
     }
     client.post("/auth/signup", json=data)
     resp = client.post("/auth/login", json={"email": "streak@example.com", "password": "Test123!"})
@@ -105,6 +106,7 @@ def auth_token2():
     data = {
         "username": "streakuser2", "email": "streak2@example.com", "password": "Test123!",
         "first_name": "Streak2", "last_name": "User2",
+        "terms_accepted": True, "privacy_accepted": True,
     }
     client.post("/auth/signup", json=data)
     resp = client.post("/auth/login", json={"email": "streak2@example.com", "password": "Test123!"})

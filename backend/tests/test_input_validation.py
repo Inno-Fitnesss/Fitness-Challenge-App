@@ -60,6 +60,7 @@ def auth_token():
     data = {
         "username": "validationuser", "email": "validation@example.com", "password": "Test123!",
         "first_name": "Val", "last_name": "User",
+        "terms_accepted": True, "privacy_accepted": True,
     }
     client.post("/auth/signup", json=data)
     resp = client.post("/auth/login", json={"email": "validation@example.com", "password": "Test123!"})

@@ -70,6 +70,7 @@ def setup_database():
 def auth_header():
     client.post("/auth/signup", json={
         "username": "walker", "email": "walker@example.com", "password": "Walk123!",
+        "terms_accepted": True, "privacy_accepted": True,
     })
     token = client.post("/auth/login", json={
         "email": "walker@example.com", "password": "Walk123!",

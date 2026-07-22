@@ -89,8 +89,11 @@ def google_invalid(monkeypatch):
     monkeypatch.setattr(googleVerifier.google_id_token, "verify_oauth2_token", boom)
 
 
-def google_login(token="fake-google-id-token"):
-    return client.post("/auth/google", json={"id_token": token})
+def google_login(token="fake-google-id-token", include_consents=True):
+    body = {"id_token": token}
+    if include_consents:
+        body.update({"terms_accepted": True, "privacy_accepted": True})
+    return client.post("/auth/google", json=body)
 
 
 def get_user_by_email(email):
@@ -130,6 +133,12 @@ class TestGoogleAuthConfig:
 class TestGoogleSignup:
     """First-ever Google sign-in -> account is created."""
 
+    def test_missing_consents_does_not_create_account(self, google_ok):
+        response = google_login(include_consents=False)
+        assert response.status_code == 400
+        assert "принять Пользовательское соглашение" in response.json()["detail"]
+        assert get_user_by_email("ivan@gmail.com") is None
+
     def test_creates_account_and_returns_tokens(self, google_ok):
         response = google_login()
         assert response.status_code == 200
@@ -154,6 +163,7 @@ class TestGoogleSignup:
         client.post("/auth/signup", json={
             "username": "ivan", "email": "other@example.com",
             "password": "Test123!",
+            "terms_accepted": True, "privacy_accepted": True,
         })
         google_login()
         user = get_user_by_email("ivan@gmail.com")
@@ -187,7 +197,7 @@ class TestGoogleRepeatLogin:
 
     def test_no_duplicate_account(self, google_ok):
         google_login()
-        response = google_login()
+        response = google_login(include_consents=False)
         assert response.status_code == 200
         db = TestingSessionLocal()
         count = db.query(User).count()
@@ -213,6 +223,8 @@ class TestGoogleLinkExistingAccount:
         "username": "oldschool",
         "email": "ivan@gmail.com",
         "password": "Classic123!",
+        "terms_accepted": True,
+        "privacy_accepted": True,
     }
 
     def _signup_password_user(self):

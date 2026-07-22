@@ -268,6 +268,11 @@ export function ExerciseSessionPage() {
           return;
         }
 
+        if (exercise.metric === 'steps') {
+          setLoadError('Шаги синхронизируются автоматически и не требуют тренировки с камерой.');
+          return;
+        }
+
         if (detail.status === 'archived') {
           setLoadError('Челлендж в архиве. Сначала возобновите его, чтобы начать выполнение.');
           return;

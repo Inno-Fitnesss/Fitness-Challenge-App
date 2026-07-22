@@ -17,7 +17,65 @@ jobs:
           username: root
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            set -Eeuo pipefail
             cd /opt/fitness
+
+            BACKUP_DIR=/opt/fitness/backups
+            BACKUP_FILE="$BACKUP_DIR/fitness-before-deploy-$(date -u +%Y%m%dT%H%M%SZ).dump"
+            mkdir -p "$BACKUP_DIR"
+
+            docker compose exec -T db sh -c \
+              'pg_dump --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --format=custom' \
+              > "$BACKUP_FILE"
+            test -s "$BACKUP_FILE"
+            docker compose exec -T db pg_restore --list < "$BACKUP_FILE" > /dev/null
+
+            USERS_BEFORE=$(docker compose exec -T db sh -c \
+              'psql --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --tuples-only --no-align --command="SELECT count(*) FROM users;"')
+            PREVIOUS_COMMIT=$(git rev-parse HEAD)
+
+            rollback() {
+              trap - ERR
+              echo "Deployment failed; restoring application commit $PREVIOUS_COMMIT"
+              git reset --hard "$PREVIOUS_COMMIT"
+              docker compose up -d --build
+            }
+            trap rollback ERR
+
             git fetch origin main
             git reset --hard origin/main
             docker compose up -d --build
+
+            BACKEND_CONTAINER=$(docker compose ps -q backend)
+            BACKEND_HEALTH=starting
+            for attempt in $(seq 1 30); do
+              BACKEND_HEALTH=$(docker inspect --format \
+                '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' \
+                "$BACKEND_CONTAINER")
+              if [ "$BACKEND_HEALTH" = healthy ]; then
+                break
+              fi
+              if [ "$BACKEND_HEALTH" = unhealthy ]; then
+                exit 1
+              fi
+              sleep 5
+            done
+            test "$BACKEND_HEALTH" = healthy
+
+            USERS_AFTER=$(docker compose exec -T db sh -c \
+              'psql --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --tuples-only --no-align --command="SELECT count(*) FROM users;"')
+            test "$USERS_AFTER" -ge "$USERS_BEFORE"
+
+            USER_COLUMNS=$(docker compose exec -T db sh -c \
+              'psql --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --command="\d users"')
+            LEGAL_COLUMNS=0
+            for column in terms_accepted terms_accepted_at terms_version \
+              privacy_accepted privacy_accepted_at privacy_version; do
+              if printf '%s\n' "$USER_COLUMNS" | grep -Eq "^[[:space:]]*$column[[:space:]]"; then
+                LEGAL_COLUMNS=$((LEGAL_COLUMNS + 1))
+              fi
+            done
+            test "$LEGAL_COLUMNS" -eq 6
+
+            trap - ERR
+            echo "Deployment complete; backup: $BACKUP_FILE; users: $USERS_BEFORE -> $USERS_AFTER"

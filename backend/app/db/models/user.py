@@ -17,6 +17,12 @@ class User(Base):
     # Google OAuth subject (stable Google user id). Set once the account is
     # created via / linked to "Sign in with Google"; NULL for password-only accounts.
     google_sub = Column(String(64), unique=True)
+    terms_accepted = Column(Boolean, nullable=False, default=False, server_default="false")
+    terms_accepted_at = Column(DateTime(timezone=True))
+    terms_version = Column(String(50))
+    privacy_accepted = Column(Boolean, nullable=False, default=False, server_default="false")
+    privacy_accepted_at = Column(DateTime(timezone=True))
+    privacy_version = Column(String(50))
     # "Forgot password" one-time code: bcrypt hash of the 6-digit code, its
     # expiry, and how many wrong guesses were made (anti-bruteforce).
     reset_code_hash = Column(String(250))
