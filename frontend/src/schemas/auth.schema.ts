@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LEGAL_CONSENT_ERROR } from '../constants/legalDocuments.ts';
 
 export const signInSchema = z.object({
   email: z
@@ -30,6 +31,8 @@ export const signUpSchema = z
       .min(1, 'Пароль обязателен')
       .min(8, 'Пароль должен содержать минимум 8 символов'),
     confirmPassword: z.string().min(1, 'Подтвердите пароль'),
+    termsAccepted: z.boolean().refine((accepted) => accepted, LEGAL_CONSENT_ERROR),
+    privacyAccepted: z.boolean().refine((accepted) => accepted, LEGAL_CONSENT_ERROR),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Пароли не совпадают',

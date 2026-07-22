@@ -9,6 +9,7 @@ import type {
   UserInLogin,
   UserOutput,
   UserWithToken,
+  LegalConsents,
 } from '../types/auth.types.ts';
 import type { ApiMeResponse } from '../types/api.types.ts';
 import type { FitnessLevel } from '../constants/fitnessLevels.ts';
@@ -72,9 +73,15 @@ export const authApi = {
   },
 
   /** POST /auth/google — вход/регистрация по Google ID-токену */
-  async loginWithGoogle(idToken: string): Promise<UserWithToken> {
+  async loginWithGoogle(idToken: string, consents?: LegalConsents): Promise<UserWithToken> {
     const { data } = await apiClient.post<UserWithToken>('/auth/google', {
       id_token: idToken,
+      ...(consents
+        ? {
+            terms_accepted: consents.termsAccepted,
+            privacy_accepted: consents.privacyAccepted,
+          }
+        : {}),
     });
     return data;
   },

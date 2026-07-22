@@ -109,7 +109,7 @@ export function AuthPage() {
               )}
             </div>
 
-            <GoogleAuthButton redirectTo={redirectTo} />
+            {!isSignUp && <GoogleAuthButton redirectTo={redirectTo} />}
 
             <p className="lg:hidden mt-6 text-center text-sm font-bold text-neutral-text">
               {isSignUp ? 'Уже есть аккаунт?' : 'Нет аккаунта?'}{' '}

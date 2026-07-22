@@ -9,6 +9,7 @@ from main import app
 from app.core.database import Base, get_db
 from app.db.models.user import User
 from app.db.models.challenge import Exercise
+from app.core.legal import USER_AGREEMENT_VERSION, PRIVACY_POLICY_VERSION
 
 
 # ================================================================
@@ -84,7 +85,9 @@ def test_user_data():
         "email": "test@example.com",
         "password": "Test123!",
         "first_name": "Test",
-        "last_name": "User"
+        "last_name": "User",
+        "terms_accepted": True,
+        "privacy_accepted": True,
     }
 
 
@@ -145,6 +148,47 @@ class TestRegistration:
         assert "password" not in data
         assert "id" in data
 
+    @pytest.mark.parametrize("field", ["terms_accepted", "privacy_accepted"])
+    def test_signup_requires_each_consent(self, test_user_data, field):
+        test_user_data[field] = False
+        response = client.post("/auth/signup", json=test_user_data)
+
+        assert response.status_code == 400
+        assert "принять Пользовательское соглашение" in response.json()["detail"]
+        db = TestingSessionLocal()
+        assert db.query(User).filter_by(email=test_user_data["email"]).first() is None
+        db.close()
+
+    def test_signup_rejects_missing_consents(self, test_user_data):
+        test_user_data.pop("terms_accepted")
+        test_user_data.pop("privacy_accepted")
+        response = client.post("/auth/signup", json=test_user_data)
+
+        assert response.status_code == 422
+        assert "принять Пользовательское соглашение" in str(response.json())
+
+    def test_signup_stores_server_owned_consent_metadata(self, test_user_data):
+        test_user_data.update({
+            "terms_version": "client-forgery",
+            "privacy_version": "client-forgery",
+            "terms_accepted_at": "2000-01-01T00:00:00Z",
+            "privacy_accepted_at": "2000-01-01T00:00:00Z",
+        })
+        response = client.post("/auth/signup", json=test_user_data)
+        assert response.status_code == 201
+
+        db = TestingSessionLocal()
+        user = db.query(User).filter_by(email=test_user_data["email"]).one()
+        assert user.terms_accepted is True
+        assert user.privacy_accepted is True
+        assert user.terms_version == USER_AGREEMENT_VERSION
+        assert user.privacy_version == PRIVACY_POLICY_VERSION
+        assert user.terms_accepted_at is not None
+        assert user.privacy_accepted_at is not None
+        assert user.terms_accepted_at.year != 2000
+        assert user.privacy_accepted_at.year != 2000
+        db.close()
+
     def test_signup_fails_with_duplicate_email(self, test_user_data):
         """
         What we're testing:
@@ -165,7 +209,9 @@ class TestRegistration:
             "email": "different@example.com",
             "password": "Test123!",
             "first_name": "Test2",
-            "last_name": "User2"
+            "last_name": "User2",
+            "terms_accepted": True,
+            "privacy_accepted": True,
         }
         response = client.post("/auth/signup", json=duplicate_data)
         assert response.status_code == 400
@@ -180,7 +226,9 @@ class TestRegistration:
             "email": "invalid-email",
             "password": "Test123!",
             "first_name": "Test",
-            "last_name": "User"
+            "last_name": "User",
+            "terms_accepted": True,
+            "privacy_accepted": True,
         }
         response = client.post("/auth/signup", json=data)
         assert response.status_code == 422
@@ -422,7 +470,9 @@ class TestPasswordHashing:
             "email": "test2@example.com",
             "password": test_user_data["password"],
             "first_name": "Test2",
-            "last_name": "User2"
+            "last_name": "User2",
+            "terms_accepted": True,
+            "privacy_accepted": True,
         }
         client.post("/auth/signup", json=second_user)
         db = TestingSessionLocal()
@@ -674,7 +724,9 @@ class TestJWTWithChallengeAPI:
             "email": "test2@example.com",
             "password": "Test123!",
             "first_name": "Test2",
-            "last_name": "User2"
+            "last_name": "User2",
+            "terms_accepted": True,
+            "privacy_accepted": True,
         }
         client.post("/auth/signup", json=second_user_data)
         login_data2 = {
@@ -943,7 +995,8 @@ class TestBulkRegistration:
         """
         users = [
             {"username": f"user{i}", "email": f"user{i}@example.com", 
-             "password": "Test123!", "first_name": f"User{i}", "last_name": f"Test{i}"}
+             "password": "Test123!", "first_name": f"User{i}", "last_name": f"Test{i}",
+             "terms_accepted": True, "privacy_accepted": True}
             for i in range(1, 4)
         ]
         for user_data in users:

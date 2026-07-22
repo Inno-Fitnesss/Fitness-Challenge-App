@@ -59,6 +59,7 @@ def _register(username, email, password="Test123!"):
     data = {
         "username": username, "email": email, "password": password,
         "first_name": "F", "last_name": "L",
+        "terms_accepted": True, "privacy_accepted": True,
     }
     return client.post("/auth/signup", json=data)
 

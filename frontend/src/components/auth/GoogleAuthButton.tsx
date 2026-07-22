@@ -3,16 +3,22 @@ import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { GOOGLE_CLIENT_ID } from '../../constants/googleAuth.ts';
 import type { ApiError } from '../../types/auth.types.ts';
+import type { LegalConsents } from '../../types/auth.types.ts';
+import { LEGAL_CONSENT_ERROR } from '../../constants/legalDocuments.ts';
 
 interface GoogleAuthButtonProps {
   redirectTo?: string;
+  registrationConsents?: LegalConsents;
 }
 
 /**
  * Кнопка "Войти через Google" с разделителем «или».
  * Не рендерится, если VITE_GOOGLE_CLIENT_ID не задан.
  */
-export function GoogleAuthButton({ redirectTo = '/dashboard' }: GoogleAuthButtonProps) {
+export function GoogleAuthButton({
+  redirectTo = '/dashboard',
+  registrationConsents,
+}: GoogleAuthButtonProps) {
   const { loginWithGoogle } = useAuth();
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -23,7 +29,7 @@ export function GoogleAuthButton({ redirectTo = '/dashboard' }: GoogleAuthButton
   const handleCredential = async (credential: string) => {
     setApiError(null);
     try {
-      await loginWithGoogle(credential, redirectTo);
+      await loginWithGoogle(credential, redirectTo, registrationConsents);
     } catch (error) {
       const apiErr = error as ApiError;
       setApiError(apiErr.message ?? 'Не удалось войти через Google. Попробуйте снова.');
@@ -47,7 +53,19 @@ export function GoogleAuthButton({ redirectTo = '/dashboard' }: GoogleAuthButton
         </div>
       )}
 
-      <div className="flex justify-center">
+      <div
+        className={`relative flex justify-center ${
+          registrationConsents &&
+          (!registrationConsents.termsAccepted || !registrationConsents.privacyAccepted)
+            ? 'opacity-60'
+            : ''
+        }`}
+        aria-disabled={
+          registrationConsents
+            ? !registrationConsents.termsAccepted || !registrationConsents.privacyAccepted
+            : undefined
+        }
+      >
         <GoogleLogin
           onSuccess={(response) => {
             if (response.credential) {
@@ -58,6 +76,15 @@ export function GoogleAuthButton({ redirectTo = '/dashboard' }: GoogleAuthButton
           text="continue_with"
           shape="pill"
         />
+        {registrationConsents &&
+          (!registrationConsents.termsAccepted || !registrationConsents.privacyAccepted) && (
+            <button
+              type="button"
+              className="absolute inset-0 min-h-11 w-full cursor-not-allowed rounded-full"
+              aria-label="Сначала примите обязательные документы"
+              onClick={() => setApiError(LEGAL_CONSENT_ERROR)}
+            />
+          )}
       </div>
     </div>
   );

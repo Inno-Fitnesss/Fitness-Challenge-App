@@ -91,7 +91,8 @@ def auth_token():
         "email": "test@example.com",
         "password": "Test123!",
         "first_name": "Test",
-        "last_name": "User"
+        "last_name": "User",
+        "terms_accepted": True, "privacy_accepted": True,
     }
     client.post("/auth/signup", json=register_data)
     
@@ -113,7 +114,8 @@ def auth_token2():
         "email": "test2@example.com",
         "password": "Test123!",
         "first_name": "Test2",
-        "last_name": "User2"
+        "last_name": "User2",
+        "terms_accepted": True, "privacy_accepted": True,
     }
     client.post("/auth/signup", json=register_data)
     

@@ -67,6 +67,7 @@ def auth_header():
         "username": "stepsuser",
         "email": USER_EMAIL,
         "password": USER_PASSWORD,
+        "terms_accepted": True, "privacy_accepted": True,
     })
     response = client.post("/auth/login", json={
         "email": USER_EMAIL,

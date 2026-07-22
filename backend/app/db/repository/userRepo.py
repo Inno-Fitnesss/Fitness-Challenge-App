@@ -1,6 +1,18 @@
 from .base import BaseRepository
 from app.db.models.user import User
 from app.db.schema.user import UserInCreate
+from app.core.legal import USER_AGREEMENT_VERSION, PRIVACY_POLICY_VERSION
+from datetime import datetime, timezone
+
+
+def _record_current_consents(user: User) -> None:
+    accepted_at = datetime.now(timezone.utc)
+    user.terms_accepted = True
+    user.terms_accepted_at = accepted_at
+    user.terms_version = USER_AGREEMENT_VERSION
+    user.privacy_accepted = True
+    user.privacy_accepted_at = accepted_at
+    user.privacy_version = PRIVACY_POLICY_VERSION
 
 class UserRepository(BaseRepository):
     def create_user(self, user_data: UserInCreate, password_hash: str,
@@ -13,6 +25,7 @@ class UserRepository(BaseRepository):
             last_name=user_data.last_name,
             email_verified=email_verified,
         )
+        _record_current_consents(newUser)
 
         self.session.add(instance=newUser)
         self.session.commit()
@@ -28,6 +41,7 @@ class UserRepository(BaseRepository):
         user.password_hash = password_hash
         user.first_name = user_data.first_name
         user.last_name = user_data.last_name
+        _record_current_consents(user)
         self.session.commit()
         self.session.refresh(instance=user)
         return user
@@ -53,6 +67,7 @@ class UserRepository(BaseRepository):
             # Google already verified ownership of this address.
             email_verified=True,
         )
+        _record_current_consents(newUser)
 
         self.session.add(instance=newUser)
         self.session.commit()

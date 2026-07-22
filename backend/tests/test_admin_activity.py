@@ -57,6 +57,7 @@ def admin_token(monkeypatch):
 def _register(username, email):
     client.post("/auth/signup", json={
         "username": username, "email": email, "password": "Test123!",
+        "terms_accepted": True, "privacy_accepted": True,
     })
     resp = client.post("/auth/login", json={"email": email, "password": "Test123!"})
     return resp.json()["token"]

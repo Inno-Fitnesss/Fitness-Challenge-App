@@ -51,6 +51,7 @@ SIGNUP_BODY = {
     "username": "verifyuser",
     "email": USER_EMAIL,
     "password": USER_PASSWORD,
+    "terms_accepted": True, "privacy_accepted": True,
 }
 
 
@@ -202,6 +203,7 @@ class TestUnverifiedReSignup:
             "username": "verifyuser2",
             "email": USER_EMAIL,
             "password": "OtherPass456!",
+            "terms_accepted": True, "privacy_accepted": True,
         })
         assert response.status_code == 201
         assert len(sent_codes) == 2
@@ -225,6 +227,7 @@ class TestUnverifiedReSignup:
             "username": "verifyuser3",
             "email": USER_EMAIL,
             "password": "OtherPass456!",
+            "terms_accepted": True, "privacy_accepted": True,
         })
         assert response.status_code == 400
         assert response.json()["detail"] == "Please Login"

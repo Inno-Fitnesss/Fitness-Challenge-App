@@ -10,6 +10,7 @@ from app.core.security.authHandler import AuthHandler
 from app.core.security.googleVerifier import GoogleVerifier
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
+from app.core.legal import CONSENT_REQUIRED_MESSAGE
 
 MAX_CODE_ATTEMPTS = 5
 
@@ -26,6 +27,8 @@ class UserService:
         return Mailer.is_configured()
 
     def signup(self, user_details: UserInCreate, background_tasks=None) -> UserOutput:
+        self._require_consents(
+            user_details.terms_accepted, user_details.privacy_accepted)
         user_details.email = user_details.email.lower()
         password_hash = HashHelper.get_password_hash(plain_password=user_details.password)
 
@@ -150,7 +153,13 @@ class UserService:
         )
         return {"detail": "Password has been reset"}
 
-    def login_with_google(self, id_token: str) -> UserWithToken:
+    @staticmethod
+    def _require_consents(terms_accepted, privacy_accepted) -> None:
+        if terms_accepted is not True or privacy_accepted is not True:
+            raise HTTPException(status_code=400, detail=CONSENT_REQUIRED_MESSAGE)
+
+    def login_with_google(self, id_token: str, terms_accepted=None,
+                          privacy_accepted=None) -> UserWithToken:
         """Sign in / sign up with a verified Google ID token.
 
         Resolution order:
@@ -180,6 +189,8 @@ class UserService:
             self.__userRepository.link_google_account(
                 user=user, google_sub=google_sub, password_hash=placeholder_hash)
             return self._issue_tokens(user.id)
+
+        self._require_consents(terms_accepted, privacy_accepted)
 
         user = self.__userRepository.create_google_user(
             username=self._unique_username_from_email(email=email),
