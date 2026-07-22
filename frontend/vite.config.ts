@@ -45,13 +45,19 @@ export default defineConfig(({ mode }) => {
         // Прекешируем весь билд: html/js/css + статические иконки, шрифты и звуки.
         // Картинки статей кэшируются в рантайме (см. runtimeCaching), чтобы не
         // раздувать установку.
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2,wav}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2,wav,pdf}'],
         // Основной JS-бандл ~1.5MB > дефолтного лимита 2MiB c запасом на рост.
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: '/index.html',
         // Бэкендовые адреса не должны падать в SPA-фолбэк и вообще
         // обрабатываться SW-навигацией.
-        navigateFallbackDenylist: [/^\/api\//, /^\/docs/, /^\/redoc/, /^\/openapi\.json/],
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/legal\//,
+          /^\/docs/,
+          /^\/redoc/,
+          /^\/openapi\.json/,
+        ],
         runtimeCaching: [
           {
             // Картинки (обложки статей и т.п.) — CacheFirst с ограничением,

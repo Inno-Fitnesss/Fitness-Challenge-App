@@ -14,7 +14,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
           id={id}
           type="checkbox"
           className={`
-            mt-1 w-5 h-5 rounded-md border-2 cursor-pointer
+            mt-1 w-5 h-5 min-w-5 min-h-5 shrink-0 rounded-md border-2 cursor-pointer
             text-brand focus:ring-2 focus:ring-brand/20 focus:ring-offset-0
             transition-colors duration-150
             ${hasError ? 'border-red-400' : 'border-neutral-border'}
@@ -23,7 +23,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
         />
         <label
           htmlFor={id}
-          className="text-sm text-neutral-secondary leading-relaxed cursor-pointer select-none"
+          className="min-w-0 flex-1 text-sm leading-5 text-neutral-secondary cursor-pointer select-none"
         >
           {label}
         </label>
