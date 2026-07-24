@@ -88,6 +88,18 @@ def last_code(codes):
     return codes[-1][1]
 
 
+def age_code(kind: str, email: str = USER_EMAIL, seconds: int = 120):
+    """Back-date a live one-time code so the resend cooldown is treated as
+    elapsed. issued_at is derived as expires_at - TTL, so pushing expiry
+    earlier makes the code look older than RESEND_COOLDOWN_SECONDS."""
+    db = TestingSessionLocal()
+    user = db.query(User).filter_by(email=email).first()
+    setattr(user, f"{kind}_code_expires_at",
+            getattr(user, f"{kind}_code_expires_at") - timedelta(seconds=seconds))
+    db.commit()
+    db.close()
+
+
 # ================================================================
 # 3. TESTS
 # ================================================================
@@ -168,6 +180,7 @@ class TestSignupWithVerification:
 class TestResendVerification:
     def test_resend_issues_new_code(self, sent_codes):
         client.post("/auth/signup", json=SIGNUP_BODY)
+        age_code("verify")  # signup just sent one — let the cooldown elapse
         response = client.post("/auth/resend-verification", json={"email": USER_EMAIL})
         assert response.status_code == 200
         assert len(sent_codes) == 2
@@ -177,6 +190,24 @@ class TestResendVerification:
             "email": USER_EMAIL, "code": sent_codes[-1][1],
         })
         assert response.status_code == 200
+
+    def test_resend_rate_limited_within_cooldown(self, sent_codes):
+        client.post("/auth/signup", json=SIGNUP_BODY)  # code #1 just sent
+        response = client.post("/auth/resend-verification", json={"email": USER_EMAIL})
+        assert response.status_code == 429
+        assert "Retry-After" in response.headers
+        assert len(sent_codes) == 1  # no second code went out
+
+    def test_resend_allowed_again_after_cooldown(self, sent_codes):
+        client.post("/auth/signup", json=SIGNUP_BODY)
+        assert client.post(
+            "/auth/resend-verification", json={"email": USER_EMAIL}
+        ).status_code == 429
+        age_code("verify")
+        assert client.post(
+            "/auth/resend-verification", json={"email": USER_EMAIL}
+        ).status_code == 200
+        assert len(sent_codes) == 2
 
     def test_resend_does_not_reveal_registered_emails(self, sent_codes):
         response = client.post(
