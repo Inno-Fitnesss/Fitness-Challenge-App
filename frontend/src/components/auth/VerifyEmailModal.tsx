@@ -232,6 +232,14 @@ function VerifyEmailDialog({
                     : 'Отправить код ещё раз'}
               </button>
             </div>
+
+            <Button type="button" variant="secondary" fullWidth onClick={onClose}>
+              Подтвердить позже
+            </Button>
+            <p className="text-xs text-neutral-secondary text-center leading-relaxed">
+              Аккаунт уже создан. Подтвердить email можно позже — при входе мы
+              снова пришлём код. До подтверждения вход недоступен.
+            </p>
           </form>
         </div>
       </div>
