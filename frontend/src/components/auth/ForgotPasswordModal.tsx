@@ -10,7 +10,6 @@ import {
 } from '../../schemas/auth.schema.ts';
 import { authApi } from '../../api/authApi.ts';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts';
-import { useResendCooldown } from '../../hooks/useResendCooldown.ts';
 import { Button } from '../ui/Button.tsx';
 import { Input } from '../ui/Input.tsx';
 import { Label } from '../ui/Label.tsx';
@@ -48,7 +47,6 @@ function ForgotPasswordDialog({
   const [resendNotice, setResendNotice] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { secondsLeft, isCoolingDown, start: startCooldown } = useResendCooldown();
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -76,8 +74,6 @@ function ForgotPasswordDialog({
       await authApi.forgotPassword(values.email);
       setEmail(values.email);
       setStep('code');
-      // Код только что ушёл — блокируем повторную отправку на 60 с.
-      startCooldown();
     } catch (error) {
       setApiError((error as ApiError).message ?? 'Не удалось отправить код. Попробуйте снова.');
     }
@@ -99,22 +95,14 @@ function ForgotPasswordDialog({
   };
 
   const resendCode = async () => {
-    if (isCoolingDown) return;
     setApiError(null);
     setResendNotice(false);
     setIsResending(true);
     try {
       await authApi.forgotPassword(email);
       setResendNotice(true);
-      startCooldown();
     } catch (error) {
-      const err = error as ApiError;
-      // 429 — слишком часто: запускаем кулдаун и не пугаем красной ошибкой.
-      if (err.status === 429) {
-        startCooldown();
-      } else {
-        setApiError(err.message ?? 'Не удалось отправить код. Попробуйте снова.');
-      }
+      setApiError((error as ApiError).message ?? 'Не удалось отправить код. Попробуйте снова.');
     } finally {
       setIsResending(false);
     }
@@ -327,14 +315,10 @@ function ForgotPasswordDialog({
                 <button
                   type="button"
                   onClick={resendCode}
-                  disabled={isResending || isCoolingDown}
+                  disabled={isResending}
                   className="font-medium text-brand hover:text-brand-hover transition-colors duration-150 disabled:opacity-50"
                 >
-                  {isResending
-                    ? 'Отправляем…'
-                    : isCoolingDown
-                      ? `Отправить ещё раз через ${secondsLeft} с`
-                      : 'Отправить код ещё раз'}
+                  {isResending ? 'Отправляем…' : 'Отправить код ещё раз'}
                 </button>
               </div>
             </form>

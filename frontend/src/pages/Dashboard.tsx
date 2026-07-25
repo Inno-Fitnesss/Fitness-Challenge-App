@@ -53,6 +53,7 @@ export function Dashboard() {
   const [completedDates, setCompletedDates] = useState<string[]>([]);
   const [weekOffset, setWeekOffset] = useState(0);
   const [isWeekLoading, setIsWeekLoading] = useState(false);
+  const [streakDays, setStreakDays] = useState(user?.streakCurrent ?? 0);
   // Шаги для мобильного чипа в шапке; null — Withings не подключён/не загрузилось
   const [todaySteps, setTodaySteps] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,6 +87,9 @@ export function Dashboard() {
     try {
       const week = await meApi.getWeekActivity(toIsoDate(getWeekStart(new Date(), offset)));
       setCompletedDates(week.completed_dates);
+      if (offset === 0) {
+        setStreakDays(week.streak_current);
+      }
     } catch (err) {
       const apiErr = err as { message?: string };
       setCalendarError(apiErr.message ?? 'Не удалось загрузить календарь');
@@ -134,17 +138,6 @@ export function Dashboard() {
 
   const hasActiveChallenges = activeChallenges.length > 0;
 
-  // Single source of truth for the flame: the context user's streak, which is
-  // the server's decay-corrected value (GET /me) and is kept fresh by
-  // refreshProfile() on every dashboard load and after every session. We never
-  // derive it from a separately-cached number that could lag.
-  const streakValue = user?.streakCurrent ?? 0;
-  // The cached user (localStorage) does NOT decay client-side, so on the very
-  // first paint — before loadDashboard's refreshProfile() resolves — streakValue
-  // may still be stale. Gate the number behind the initial load (a celebration
-  // means we already have the fresh value) so a stale streak is never shown.
-  const showStreak = !isLoading || celebration != null;
-
   return (
     <PageContainer>
       <header className="mb-5 sm:mb-8">
@@ -179,31 +172,21 @@ export function Dashboard() {
         <div className="flex items-center gap-2.5 min-w-0" data-tour="streak-widget">
           <span
             className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${
-              showStreak && streakValue > 0 ? 'bg-brand-light' : 'bg-neutral-card'
+              streakDays > 0 ? 'bg-brand-light' : 'bg-neutral-card'
             }`}
           >
-            <Flame
-              size={22}
-              className={showStreak && streakValue > 0 ? 'text-brand' : 'text-neutral-muted'}
-            />
+            <Flame size={22} className={streakDays > 0 ? 'text-brand' : 'text-neutral-muted'} />
           </span>
-          {showStreak ? (
-            <span
-              className={`text-xl font-extrabold whitespace-nowrap ${
-                streakValue > 0 ? 'text-brand' : 'text-neutral-muted'
-              }`}
-            >
-              {streakValue}{' '}
-              <span className="text-sm font-bold">
-                {pluralizeRu(streakValue, ['день в ударе', 'дня в ударе', 'дней в ударе'])}
-              </span>
+          <span
+            className={`text-xl font-extrabold whitespace-nowrap ${
+              streakDays > 0 ? 'text-brand' : 'text-neutral-muted'
+            }`}
+          >
+            {streakDays}{' '}
+            <span className="text-sm font-bold">
+              {pluralizeRu(streakDays, ['день в ударе', 'дня в ударе', 'дней в ударе'])}
             </span>
-          ) : (
-            <span
-              aria-hidden
-              className="h-6 w-28 rounded-md bg-neutral-card animate-pulse"
-            />
-          )}
+          </span>
         </div>
       </div>
 
@@ -225,8 +208,7 @@ export function Dashboard() {
         {/* На мобилке стрик показан чипом в шапке — карточка только с lg */}
         <div className="hidden lg:block">
           <StreakWidget
-            days={streakValue}
-            isLoading={!showStreak}
+            days={streakDays}
             celebration={celebration}
             onCelebrationComplete={() => setCelebration(null)}
           />

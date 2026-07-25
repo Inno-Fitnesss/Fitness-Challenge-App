@@ -93,16 +93,6 @@ def request_code(email: str = USER_EMAIL):
     return client.post("/auth/forgot-password", json={"email": email})
 
 
-def age_reset_code(email: str = USER_EMAIL, seconds: int = 120):
-    """Back-date the live reset code so the 60s resend cooldown is treated as
-    elapsed (issued_at = reset_code_expires_at - TTL)."""
-    db = TestingSessionLocal()
-    user = db.query(User).filter_by(email=email).first()
-    user.reset_code_expires_at = user.reset_code_expires_at - timedelta(seconds=seconds)
-    db.commit()
-    db.close()
-
-
 def reset_password(code: str, email: str = USER_EMAIL,
                    new_password: str = NEW_PASSWORD,
                    confirm_password: str = None):
@@ -175,28 +165,11 @@ class TestHappyPath:
 
     def test_new_request_overwrites_previous_code(self, registered_user, sent_codes):
         request_code()
-        age_reset_code()  # otherwise the 60s cooldown blocks the second request
         request_code()
         first_code, second_code = sent_codes[0][1], sent_codes[1][1]
         if first_code != second_code:
             assert reset_password(first_code).status_code == 400
         assert reset_password(second_code).status_code == 200
-
-    def test_second_request_within_cooldown_is_rate_limited(
-        self, registered_user, sent_codes):
-        assert request_code().status_code == 200
-        response = request_code()
-        assert response.status_code == 429
-        assert "Retry-After" in response.headers
-        assert len(sent_codes) == 1  # no second code went out
-
-    def test_request_allowed_again_after_cooldown(
-        self, registered_user, sent_codes):
-        assert request_code().status_code == 200
-        assert request_code().status_code == 429
-        age_reset_code()
-        assert request_code().status_code == 200
-        assert len(sent_codes) == 2
 
 
 # ================================================================

@@ -9,7 +9,6 @@ import {
 import { authApi } from '../../api/authApi.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts';
-import { useResendCooldown } from '../../hooks/useResendCooldown.ts';
 import { Button } from '../ui/Button.tsx';
 import { Input } from '../ui/Input.tsx';
 import { Label } from '../ui/Label.tsx';
@@ -65,7 +64,6 @@ function VerifyEmailDialog({
   const [resendNotice, setResendNotice] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const autoResendDone = useRef(false);
-  const { secondsLeft, isCoolingDown, start: startCooldown } = useResendCooldown();
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -74,13 +72,6 @@ function VerifyEmailDialog({
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
-
-  // Код уже отправлен в потоке, открывшем модалку (регистрация / autoResend),
-  // поэтому кнопка повторной отправки сразу уходит на 60-секундный кулдаун —
-  // в тон бэкенду, который вернёт 429 при слишком раннем повторе.
-  useEffect(() => {
-    startCooldown();
-  }, [startCooldown]);
 
   useEffect(() => {
     if (!autoResend || autoResendDone.current) return;
@@ -109,22 +100,16 @@ function VerifyEmailDialog({
   };
 
   const resendCode = async () => {
-    if (isCoolingDown) return;
     setApiError(null);
     setResendNotice(false);
     setIsResending(true);
     try {
       await authApi.resendVerification(email);
       setResendNotice(true);
-      startCooldown();
     } catch (error) {
-      const err = error as ApiError;
-      // 429 — слишком часто: запускаем кулдаун и не пугаем красной ошибкой.
-      if (err.status === 429) {
-        startCooldown();
-      } else {
-        setApiError(err.message ?? 'Не удалось отправить код. Попробуйте снова.');
-      }
+      setApiError(
+        (error as ApiError).message ?? 'Не удалось отправить код. Попробуйте снова.',
+      );
     } finally {
       setIsResending(false);
     }
@@ -222,24 +207,12 @@ function VerifyEmailDialog({
               <button
                 type="button"
                 onClick={resendCode}
-                disabled={isResending || isCoolingDown}
+                disabled={isResending}
                 className="font-medium text-brand hover:text-brand-hover transition-colors duration-150 disabled:opacity-50"
               >
-                {isResending
-                  ? 'Отправляем…'
-                  : isCoolingDown
-                    ? `Отправить ещё раз через ${secondsLeft} с`
-                    : 'Отправить код ещё раз'}
+                {isResending ? 'Отправляем…' : 'Отправить код ещё раз'}
               </button>
             </div>
-
-            <Button type="button" variant="secondary" fullWidth onClick={onClose}>
-              Подтвердить позже
-            </Button>
-            <p className="text-xs text-neutral-secondary text-center leading-relaxed">
-              Аккаунт уже создан. Подтвердить email можно позже — при входе мы
-              снова пришлём код. До подтверждения вход недоступен.
-            </p>
           </form>
         </div>
       </div>

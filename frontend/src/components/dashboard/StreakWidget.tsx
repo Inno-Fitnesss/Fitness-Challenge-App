@@ -7,14 +7,11 @@ const COUNT_DURATION_MS = 1100;
 
 interface StreakWidgetProps {
   days: number;
-  /** While true the real streak hasn't loaded yet — show a placeholder instead
-   *  of a possibly-stale cached number (see Dashboard's streakReady). */
-  isLoading?: boolean;
   celebration?: StreakCelebration | null;
   onCelebrationComplete?: () => void;
 }
 
-export function StreakWidget({ days, isLoading, celebration, onCelebrationComplete }: StreakWidgetProps) {
+export function StreakWidget({ days, celebration, onCelebrationComplete }: StreakWidgetProps) {
   const isCelebrating = Boolean(celebration);
   const [displayDays, setDisplayDays] = useState(celebration ? celebration.from : days);
   const rafRef = useRef<number | null>(null);
@@ -42,10 +39,7 @@ export function StreakWidget({ days, isLoading, celebration, onCelebrationComple
     };
   }, [celebration, days]);
 
-  // Placeholder wins only before the first real value arrives; a live
-  // celebration always means we already have the fresh streak.
-  const showPlaceholder = Boolean(isLoading) && !celebration;
-  const isActive = !showPlaceholder && displayDays > 0;
+  const isActive = displayDays > 0;
 
   return (
     <div
@@ -64,19 +58,12 @@ export function StreakWidget({ days, isLoading, celebration, onCelebrationComple
           className="w-14 h-14 sm:w-16 sm:h-16"
         />
       </div>
-      {showPlaceholder ? (
-        <div aria-hidden className="space-y-2">
-          <div className="h-9 w-14 rounded-lg bg-neutral-card animate-pulse" />
-          <div className="h-5 w-28 rounded-md bg-neutral-card animate-pulse" />
-        </div>
-      ) : (
-        <div>
-          <p className="text-4xl font-extrabold text-neutral-text leading-tight">{displayDays}</p>
-          <p className="text-lg text-neutral-text">
-            {pluralizeRu(displayDays, ['День в ударе', 'Дня в ударе', 'Дней в ударе'])}
-          </p>
-        </div>
-      )}
+      <div>
+        <p className="text-4xl font-extrabold text-neutral-text leading-tight">{displayDays}</p>
+        <p className="text-lg text-neutral-text">
+          {pluralizeRu(displayDays, ['День в ударе', 'Дня в ударе', 'Дней в ударе'])}
+        </p>
+      </div>
     </div>
   );
 }

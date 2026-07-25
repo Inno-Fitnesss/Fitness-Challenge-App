@@ -1,4 +1,3 @@
-import math
 import re
 import secrets
 from datetime import datetime, timedelta
@@ -14,11 +13,6 @@ from fastapi import HTTPException, status
 from app.core.legal import CONSENT_REQUIRED_MESSAGE
 
 MAX_CODE_ATTEMPTS = 5
-# Anti-spam: a fresh code (verification / password reset) can be requested at
-# most once per this many seconds. Enforced by deriving the last-issued time
-# from the still-live code's expiry (issued_at = expires_at - CODE_TTL), so no
-# extra column is needed.
-RESEND_COOLDOWN_SECONDS = 60
 
 
 class UserService:
@@ -79,29 +73,6 @@ class UserService:
         else:
             send(user.email, code)
 
-    def _enforce_resend_cooldown(self, user, kind: str) -> None:
-        """Rate-limit re-sending a {kind} code to once per RESEND_COOLDOWN_SECONDS.
-        The previous code's expiry encodes when it was issued (expires_at minus
-        the fixed TTL), so we can tell how long ago the last one went out without
-        storing a separate timestamp. Raises 429 with Retry-After while on
-        cooldown. NB: this returns a distinct status for existing accounts, so it
-        does leak that the address is registered — an acceptable trade-off, since
-        signup already reveals the same thing, and the real goal here is stopping
-        inbox flooding / SMTP-quota burn."""
-        expires_at = getattr(user, f"{kind}_code_expires_at")
-        if not expires_at:
-            return
-        issued_at = expires_at - timedelta(minutes=CODE_TTL_MINUTES)
-        ready_at = issued_at + timedelta(seconds=RESEND_COOLDOWN_SECONDS)
-        remaining = (ready_at - datetime.utcnow()).total_seconds()
-        if remaining > 0:
-            wait = math.ceil(remaining)
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Please wait {wait}s before requesting a new code",
-                headers={"Retry-After": str(wait)},
-            )
-
     def _require_valid_code(self, user, code: str, kind: str) -> None:
         """Shared guard for emailed one-time codes ({kind}_code_* columns):
         presence, expiry, attempt cap, bcrypt match. Every failure raises the
@@ -137,7 +108,6 @@ class UserService:
         the account exists, so the endpoint can't probe registered emails."""
         user = self.__userRepository.get_user_by_email(email=email.lower())
         if user and not user.email_verified and self._verification_required():
-            self._enforce_resend_cooldown(user=user, kind="verify")
             self._send_verification_code(user=user, background_tasks=background_tasks)
         return {"detail": "If this email is registered, a verification code has been sent"}
 
@@ -165,7 +135,6 @@ class UserService:
         """
         user = self.__userRepository.get_user_by_email(email=email.lower())
         if user:
-            self._enforce_resend_cooldown(user=user, kind="reset")
             self._email_one_time_code(user=user, kind="reset",
                                       send=Mailer.send_reset_code,
                                       background_tasks=background_tasks)
