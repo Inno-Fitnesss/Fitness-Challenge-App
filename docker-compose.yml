@@ -38,6 +38,12 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-WOWFIT}
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      # Set on hosts that block outbound SMTP — mail then goes over 443
+      # instead. Empty everywhere else, which keeps the SMTP path above.
+      UNIONE_API_KEY: ${UNIONE_API_KEY:-}
+      UNIONE_API_URL: ${UNIONE_API_URL:-}
+      REPLY_TO_EMAIL: ${REPLY_TO_EMAIL:-}
+      UNIONE_SKIP_UNSUBSCRIBE: ${UNIONE_SKIP_UNSUBSCRIBE:-}
       WITHINGS_CLIENT_ID: 8757257514f493dad3e2a502ec1ae93263f13494ed7a6d60132a45d3ebe39d1b
       WITHINGS_CLIENT_SECRET: fa5e7275d571c65c1db80465e11d4f45e88d10fea6d85fc04b3d922d6c387f6d
       WITHINGS_REDIRECT_URI: ${WITHINGS_REDIRECT_URI:-https://hi-baam.space/api/me/withings/callback}
