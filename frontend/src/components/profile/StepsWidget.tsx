@@ -30,6 +30,29 @@ function buildLastNDays(days: ApiStepsRange['days'], count: number) {
   });
 }
 
+/** Сколько шаги могут не меняться, прежде чем мы решим, что они перестали
+ * доходить. Цепочка такая: телефон копит шаги в Здоровье → приложение Withings
+ * переливает их в облако, но только когда работает (открыто или в фоне) → мы
+ * опрашиваем облако раз в 2 минуты, пока открыта вкладка. Рвётся почти всегда
+ * среднее звено, и тогда наши опросы получают одно и то же число. */
+const STALE_AFTER_MS = 5 * 60 * 60 * 1000;
+
+/** Экспортируется ради тестов. `lastSyncedAt` — ISO-строка С зоной (бэк отдаёт
+ * UTC-маркер; без него браузер прочитал бы время как локальное и порог поехал
+ * бы на смещение зоны). null означает, что шагов не приходило ни разу, хотя
+ * Withings уже подключён — это тоже повод показать подсказку. */
+export function isStepsDataStale(
+  lastSyncedAt: string | null,
+  now: number = Date.now(),
+): boolean {
+  if (!lastSyncedAt) return true;
+  const syncedAt = new Date(lastSyncedAt).getTime();
+  // На битой строке молчим: лучше не показать подсказку, чем пугать красным
+  // из-за ошибки парсинга.
+  if (Number.isNaN(syncedAt)) return false;
+  return now - syncedAt > STALE_AFTER_MS;
+}
+
 /** "5 мин назад", "2 ч назад", "вчера в 14:03" и т.п. — без падежных форм,
  * чтобы не гадать со склонением числительных на все случаи. */
 function formatLastSynced(iso: string): string {
@@ -373,6 +396,16 @@ export function StepsWidget({ data, isLoading, onRefresh }: StepsWidgetProps) {
             </>
           )}
         </div>
+
+        {isStepsDataStale(data.last_synced_at) && (
+          <div
+            role="alert"
+            className="mb-4 px-4 py-3 rounded-2xl bg-red-50 border border-red-200 text-sm text-red-600"
+          >
+            Шаги не обновляются. Откройте приложение Withings на телефоне — оно
+            передаст шаги, и они появятся здесь через несколько минут.
+          </div>
+        )}
 
         <StepsBarChart days={last7} variant="compact" />
       </section>
