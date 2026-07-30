@@ -134,3 +134,28 @@ def test_step_rows_without_withings_count_as_connected(auth_header):
     body = response.json()
     assert body["connected"] is True
     assert body["total_steps"] == 1234
+
+
+def test_last_synced_at_carries_its_timezone(auth_header):
+    """`synced_at` is stored naive-but-UTC, and a zone-less ISO string is read
+    by browsers as *local* time. Shipping it bare shifted both "обновлено N ч
+    назад" and the stale-steps warning by the viewer's offset — three hours in
+    Moscow, so the 5h warning fired after two.
+    """
+    db = TestingSessionLocal()
+    try:
+        # Yesterday: today's row is taken by the test above and (user, date) is unique.
+        db.add(StepsDaily(
+            user_id=get_user_id(),
+            date=date.today() - timedelta(days=1),
+            step_count=500,
+            source="mobile",
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+    body = client.get("/me/steps?days=7", headers=auth_header).json()
+    last_synced_at = body["last_synced_at"]
+    assert last_synced_at is not None
+    assert datetime.fromisoformat(last_synced_at).tzinfo is not None, last_synced_at

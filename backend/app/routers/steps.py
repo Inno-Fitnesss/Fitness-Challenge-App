@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -86,5 +86,11 @@ def get_steps(
         days=[StepsDayOut(date=r.date, step_count=r.step_count, source=r.source) for r in rows],
         total_steps=sum(r.step_count for r in rows),
         connected=any_row_ever or withings_linked,
-        last_synced_at=last_synced.isoformat() if last_synced else None,
+        # synced_at is stored naive but holds UTC (the DB session runs in UTC),
+        # so stamp the zone explicitly. Without it the browser reads the string
+        # as *local* time, and both "обновлено N ч назад" and the staleness
+        # warning drift by the viewer's offset — three hours off in Moscow.
+        last_synced_at=(
+            last_synced.replace(tzinfo=timezone.utc).isoformat() if last_synced else None
+        ),
     )
