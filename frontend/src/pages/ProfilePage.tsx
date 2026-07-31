@@ -9,6 +9,10 @@ import { ProfileActivityChart } from '../components/profile/ProfileActivityChart
 import { StepsWidget } from '../components/profile/StepsWidget.tsx';
 import { ProfileAvatar } from '../components/profile/ProfileAvatar.tsx';
 import { ProfileEditModal } from '../components/profile/ProfileEditModal.tsx';
+import {
+  WithingsSetupModal,
+  WITHINGS_SETUP_FLAG,
+} from '../components/profile/WithingsSetupModal.tsx';
 import { useAuth } from '../context/AuthContext.tsx';
 import type { User } from '../types/auth.types.ts';
 import { fetchLast7DaysChallengeActivity } from '../utils/profileActivityChart.ts';
@@ -86,7 +90,7 @@ function PlankCard({ secondsParts }: { secondsParts: ReturnType<typeof getPlankD
 }
 
 export function ProfilePage() {
-  const { user: authUser, refreshProfile, logout } = useAuth();
+  const { user: authUser, refreshProfile, logout, setUiFlag } = useAuth();
   const [profile, setProfile] = useState<User | null>(authUser);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     authUser ? getStoredAvatarUrl(authUser.id) : null,
@@ -97,6 +101,8 @@ export function ProfilePage() {
   const [stepsData, setStepsData] = useState<ApiStepsRange | null>(null);
   const [isStepsLoading, setIsStepsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isWithingsSetupOpen, setIsWithingsSetupOpen] = useState(false);
+  const [isWithingsSetupPending, setIsWithingsSetupPending] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -192,11 +198,27 @@ export function ProfilePage() {
 
     if (withingsResult === 'connected') {
       void withingsApi.sync().then(() => void loadSteps());
+      // Решение «показывать ли инструкцию» откладываем: параметр из адреса
+      // нужно снять сразу, а ui_flags приезжают вместе с профилем, которого
+      // на этом тике ещё нет — иначе флаг всегда читался бы как пустой.
+      setIsWithingsSetupPending(true);
     } else if (withingsResult === 'error') {
       setError('Не удалось подключить Withings — попробуй ещё раз.');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Профиль подъехал — теперь видно, показывали ли инструкцию раньше.
+  // Привязка сама по себе шагов не даёт: их шлёт мобильное приложение
+  // Withings, поэтому объясняем это сразу после возврата с OAuth, пока
+  // человек ещё в контексте подключения. Один раз на пользователя.
+  useEffect(() => {
+    if (!isWithingsSetupPending || !authUser) return;
+    setIsWithingsSetupPending(false);
+    if (!authUser.uiFlags?.[WITHINGS_SETUP_FLAG]) {
+      setIsWithingsSetupOpen(true);
+    }
+  }, [isWithingsSetupPending, authUser]);
 
   const handleSaveProfile = async (username: string, nextAvatarUrl: string | null) => {
     if (!profile || isSaving) return;
@@ -334,6 +356,18 @@ export function ProfilePage() {
             }
           }}
           onSave={(username, nextAvatarUrl) => void handleSaveProfile(username, nextAvatarUrl)}
+        />
+      )}
+
+      {isWithingsSetupOpen && (
+        <WithingsSetupModal
+          variant="just-connected"
+          onClose={() => {
+            setIsWithingsSetupOpen(false);
+            // Флаг ставим на закрытии, а не на открытии: если человек ушёл со
+            // страницы, не дочитав, инструкцию стоит показать ещё раз.
+            void setUiFlag(WITHINGS_SETUP_FLAG, true);
+          }}
         />
       )}
     </PageContainer>
