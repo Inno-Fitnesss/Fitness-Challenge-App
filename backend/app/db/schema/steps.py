@@ -31,4 +31,9 @@ class StepsRangeOut(BaseModel):
     days: List[StepsDayOut]
     total_steps: int
     connected: bool  # has the user ever synced from the companion app at all?
+    # Whether a Withings account is linked *right now*. `connected` stays true
+    # forever once any steps arrived, so it can't answer this: after a link is
+    # dropped the old rows keep the widget in its connected state and the
+    # "connect" button never comes back.
+    withings_linked: bool = False
     last_synced_at: Optional[str] = None

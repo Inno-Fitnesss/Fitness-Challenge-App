@@ -374,16 +374,37 @@ export function StepsWidget({ data, isLoading, onRefresh }: StepsWidgetProps) {
           )}
         </div>
 
-        {/* Шаги доходят до нас, только пока приложение Withings на телефоне
-            живо: оно переливает их из Здоровья в облако, а мы читаем облако.
-            Само по себе это невидимо, поэтому подсказка висит постоянно. */}
-        {/* Приглушённый серо-красный: заметнее серого, но не алармный, как
-            text-red-*. Контраст 5.08:1 — мелкий текст остаётся читаемым. */}
-        <p className="mb-4 text-xs leading-relaxed text-[#96605F]">
+        {!data.withings_linked ? (
+          /* Привязка отвалилась, но старые записи шагов держат `connected` в
+             true — без этой ветки виджет молча показывал бы устаревший график
+             и не давал переподключиться. */
+          <div className="mb-4 px-4 py-3 rounded-2xl bg-red-50 border border-red-200">
+            <p className="text-sm text-red-600">
+              Withings отключён — новые шаги не приходят. Ниже последние данные,
+              которые мы успели получить.
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleConnect()}
+              disabled={isConnecting}
+              className="mt-2.5 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-60"
+            >
+              {isConnecting && <Loader2 size={16} className="animate-spin" />}
+              Подключить Withings
+            </button>
+          </div>
+        ) : (
+          /* Шаги доходят, только пока приложение Withings на телефоне живо: оно
+             переливает их из Здоровья в облако, а мы читаем облако. Само по
+             себе это невидимо, поэтому подсказка висит постоянно.
+             Приглушённый серо-красный: заметнее серого, но не алармный, как
+             text-red-*. Контраст 5.08:1 — мелкий текст остаётся читаемым. */
+          <p className="mb-4 text-xs leading-relaxed text-[#96605F]">
             Шаги подтягиваются, пока приложение Withings работает на телефоне.
             Если цифры перестали обновляться — откройте его, и данные появятся
             здесь через несколько минут.
-        </p>
+          </p>
+        )}
 
         <StepsBarChart days={last7} variant="compact" />
       </section>

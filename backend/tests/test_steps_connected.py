@@ -144,10 +144,9 @@ def test_last_synced_at_carries_its_timezone(auth_header):
     """
     db = TestingSessionLocal()
     try:
-        # Yesterday: today's row is taken by the test above and (user, date) is unique.
         db.add(StepsDaily(
             user_id=get_user_id(),
-            date=date.today() - timedelta(days=1),
+            date=date.today(),
             step_count=500,
             source="mobile",
         ))
@@ -159,3 +158,26 @@ def test_last_synced_at_carries_its_timezone(auth_header):
     last_synced_at = body["last_synced_at"]
     assert last_synced_at is not None
     assert datetime.fromisoformat(last_synced_at).tzinfo is not None, last_synced_at
+
+
+def test_dropped_link_is_visible_even_though_old_steps_remain(auth_header):
+    """Swapping the Withings app invalidated every stored refresh token, so the
+    links had to be dropped and re-made. But `connected` is sticky — one step
+    row ever keeps it true — and the widget hangs its "connect" button off it,
+    so a user whose link was dropped had no way back in. `withings_linked`
+    reports the link itself, independently of leftover rows.
+    """
+    db = TestingSessionLocal()
+    try:
+        # Steps that arrived while the link was still alive; the link itself is
+        # gone (deleted after the app swap), which is exactly the broken state.
+        db.add(StepsDaily(
+            user_id=get_user_id(), date=date.today(), step_count=4200, source="withings",
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+    body = client.get("/me/steps?days=7", headers=auth_header).json()
+    assert body["connected"] is True, "старые записи шагов никуда не делись"
+    assert body["withings_linked"] is False, "а вот привязки уже нет"

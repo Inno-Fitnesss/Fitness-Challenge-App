@@ -86,6 +86,7 @@ def get_steps(
         days=[StepsDayOut(date=r.date, step_count=r.step_count, source=r.source) for r in rows],
         total_steps=sum(r.step_count for r in rows),
         connected=any_row_ever or withings_linked,
+        withings_linked=withings_linked,
         # synced_at is stored naive but holds UTC (the DB session runs in UTC),
         # so stamp the zone explicitly. Without it the browser reads the string
         # as *local* time, and both "обновлено N ч назад" and the staleness
