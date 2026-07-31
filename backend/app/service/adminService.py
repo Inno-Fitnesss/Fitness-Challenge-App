@@ -43,6 +43,7 @@ class AdminService:
     def get_stats(db: Session) -> AdminStatsOut:
         return AdminStatsOut(
             total_users=AdminService._total_users(db),
+            users_by_verification=AdminService._users_by_verification(db),
             activity=AdminService._activity(db),
             challenges=AdminService._challenge_breakdown(db),
             top_streaks=AdminService._top_streaks(db),
@@ -55,6 +56,22 @@ class AdminService:
     @staticmethod
     def _total_users(db: Session) -> int:
         return db.query(func.count(User.id)).scalar() or 0
+
+    @staticmethod
+    def _users_by_verification(db: Session) -> list[PieSlice]:
+        """Unconfirmed accounts can't log in while SMTP is configured, so this
+        split is also a read on how many signups are stuck rather than real.
+        `email_verified` defaults to False and is NULL on rows created before
+        the column existed — both mean "not confirmed", hence isnot(True).
+        """
+        verified = db.query(func.count(User.id)) \
+            .filter(User.email_verified.is_(True)).scalar() or 0
+        unverified = db.query(func.count(User.id)) \
+            .filter(User.email_verified.isnot(True)).scalar() or 0
+        return [
+            PieSlice(label="Подтвердили почту", value=verified),
+            PieSlice(label="Не подтвердили", value=unverified),
+        ]
 
     @staticmethod
     def _activity(db: Session) -> ActivityStats:

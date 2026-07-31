@@ -49,6 +49,10 @@ class ActivityStats(BaseModel):
 
 class AdminStatsOut(BaseModel):
     total_users: int
+    # Подтвердили почту / нет. Аккаунты через Google считаются подтверждёнными
+    # (почту за нас проверил Google), поэтому «не подтвердили» — это ровно те,
+    # кто регистрировался паролем и не ввёл код из письма.
+    users_by_verification: list[PieSlice]
     activity: ActivityStats
     challenges: ChallengeBreakdown
     top_streaks: list[TopStreakUser]

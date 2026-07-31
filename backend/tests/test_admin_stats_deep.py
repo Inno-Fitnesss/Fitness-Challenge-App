@@ -14,6 +14,7 @@ from main import app
 from app.core.database import Base, get_db
 from app.core.security.hashHelper import HashHelper
 from app.db.models.challenge import Exercise
+from app.db.models.user import User
 
 SQLALCHEMY_TEST_DATABASE_URL = "sqlite:///./test_admin_stats_deep.db"
 
@@ -215,3 +216,46 @@ class TestAdminStatsVisibilityAndDuration:
         by_dur = {s["label"]: s["value"] for s in stats["challenges"]["by_duration"]}
         assert by_dur["Бессрочные"] >= 1
         assert by_dur["С датой окончания"] >= 1
+
+class TestAdminStatsVerification:
+    """Unconfirmed accounts can't log in while SMTP is on, so the split doubles
+    as a read on how many signups are stuck rather than real."""
+
+    def test_split_separates_confirmed_from_pending(self, admin_token):
+        # Signup sets email_verified = not _verification_required(), and the
+        # suite runs with SMTP off — so both land verified and one has to be
+        # pushed back to imitate a signup made while mail was working.
+        _register("verifdone", "verifdone@example.com")
+        _register("verifpending", "verifpending@example.com")
+
+        db = TestingSessionLocal()
+        try:
+            user = db.query(User).filter(User.email == "verifpending@example.com").one()
+            user.email_verified = False
+            db.commit()
+        finally:
+            db.close()
+
+        stats = client.get("/admin/stats", headers=_auth(admin_token)).json()
+        by_label = {s["label"]: s["value"] for s in stats["users_by_verification"]}
+        assert by_label["Подтвердили почту"] == 1
+        assert by_label["Не подтвердили"] == 1
+
+    def test_split_accounts_for_every_user(self, admin_token):
+        """email_verified is NULL on rows predating the column, and NULL loses
+        every plain `== False` comparison — such users would vanish from both
+        slices and the chart would quietly under-report."""
+        _register("verifsum1", "verifsum1@example.com")
+        _register("verifsum2", "verifsum2@example.com")
+
+        db = TestingSessionLocal()
+        try:
+            user = db.query(User).filter(User.email == "verifsum1@example.com").one()
+            user.email_verified = None
+            db.commit()
+        finally:
+            db.close()
+
+        stats = client.get("/admin/stats", headers=_auth(admin_token)).json()
+        counted = sum(s["value"] for s in stats["users_by_verification"])
+        assert counted == stats["total_users"]

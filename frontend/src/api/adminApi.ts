@@ -40,6 +40,8 @@ export interface ActivityStats {
 
 export interface AdminStats {
   total_users: number;
+  /** Подтвердили почту / нет. Google-аккаунты считаются подтверждёнными. */
+  users_by_verification: PieSlice[];
   activity: ActivityStats;
   challenges: ChallengeBreakdown;
   top_streaks: TopStreakUser[];
